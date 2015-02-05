@@ -1,0 +1,6 @@
+name: Andrea Venuta - Thesis prototypes
+markdown: kramdown
+highlighter: pygments
+collections:
+  source:
+    output: true

@@ -1,0 +1,9 @@
+---
+layout: default
+---
+<h1>Prototypes</h1>
+<ul>
+  {% for proto in site.collections.source.docs %}
+  <li><a href='{{proto.url}}'>{{proto.title}}</a></li>
+  {%endfor%}
+</ul>

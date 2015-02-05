@@ -1,0 +1,92 @@
+---
+---
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Ubuntu', sans-serif;
+}
+
+a, a:visited {
+  color: #257059;
+  text-decoration: none;
+}
+
+div#content {
+  box-sizing: border-box;
+  h1, h2, h3, h4, h5, p, div {
+    padding: 0rem 2rem;
+    margin-top: 0;
+  }
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style-type: none;
+    border-top: 1px solid #257059;
+    li {
+      position: relative;
+      a, a:visited {
+        position: relative;
+        &::before {
+          content: '\00BB';
+          display: block;
+          text-align: center;
+          width: 2rem;
+          position: absolute;
+          left: 0rem;
+        }
+        display: block;
+        padding: .5rem 2rem;
+        color: #257059;
+        border-bottom: 1px solid #257059;
+        background: white;
+        transition: color .3s, background .3s;
+        &:hover {
+          color: white;
+          background-color: #257059;
+        }
+      }
+    }
+
+  }
+
+  @media screen and (max-width: 799px) {
+    canvas {
+      width: 640px;
+      height: 480px;
+    }
+    & {
+      max-width: 640px;
+      min-height: 480px;
+    }
+  }
+  @media screen and (min-width: 800px) {
+    canvas {
+      width: 800px;
+      height: 600px;
+    }
+    & {
+      max-width: 800px;
+      min-height: 600px;
+    }
+  }
+  @media screen and (min-width: 1280px) {
+    canvas {
+      width: 1280px;
+      height: 800px;
+    }
+    & {
+      max-width: 1280px;
+      min-height: 800px;
+    }
+  }
+  margin: auto auto;
+  padding: 2rem 0rem;
+  box-shadow: 0px 0px 32px rgba(0,0,0,.5);
+
+  iframe {
+    width: 100%;
+    min-height: 16rem;
+    border: none;
+  }
+}
