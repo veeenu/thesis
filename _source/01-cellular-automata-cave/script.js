@@ -6,6 +6,13 @@
       w         = Math.floor(bcr.width / 4),
       h         = Math.floor(bcr.height / 4),
       automaton = new Uint8Array(w * h);
+
+  // Next two lines are just boilerplate. Canvas' size is defined by
+  // CSS responsive media queries, but its drawbuffer's size must be
+  // set manually because it defaults to 300x150 and CSS stretches
+  // it out. These prototypes will require substantial pixel precision
+  // so we set the internal size to the size provided by the bounding
+  // rectangle.
   canvas.width = bcr.width;
   canvas.height = bcr.height;
 
