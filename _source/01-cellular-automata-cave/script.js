@@ -49,16 +49,16 @@
     automaton[i] = (Math.random() > 0.5 ? 1 : 0);
 
   function run() {
-    run.count++;
-    //console.profile('Step ' + run.count);
-    step();
-    //console.profileEnd();
     render();
     ctx.font = '48px Ubuntu';
     ctx.fillStyle = 'white';
-    ctx.fillText('Step ' + run.count, 32, 64);
-    if(run.count < 10)
-      setTimeout(run, 1000);
+    ctx.fillText(run.count === 0 ? 'Uniformly distributed random noise' : 'Step ' + run.count, 32, 64);
+    run.count++;
+    if(run.count <= 10)
+      setTimeout(run, 1500);
+    //console.profile('Step ' + run.count);
+    step();
+    //console.profileEnd();
   }
   run.count = 0;
   run();
