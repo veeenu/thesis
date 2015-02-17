@@ -4,4 +4,4 @@ highlighter: pygments
 collections:
   source:
     output: true
-baseurl: /thesis
+baseurl: thesis
