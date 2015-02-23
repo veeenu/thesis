@@ -1,0 +1,31 @@
+---
+layout: proto
+title: "Perlin Noise"
+---
+<script type='application/x-vertex-shader' id='vertex-shader'>
+
+uniform mat4 model, view, projection;
+
+attribute vec3 vertex;
+varying highp float color;
+
+void main(void) {
+
+  gl_Position = model * view * vec4(vertex, 1.0);
+  color = -vertex.z + 0.3;
+
+}
+
+</script>
+<script type='application/x-fragment-shader' id='fragment-shader'> 
+
+precision highp float;
+
+varying float color;
+
+void main(void) {
+  gl_FragColor = vec4(color, color, color, 1.0);
+}
+
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.1.0/gl-matrix-min.js'></script>
