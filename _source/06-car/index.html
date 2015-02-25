@@ -1,0 +1,31 @@
+---
+layout: proto
+title: "Car animation"
+---
+<script type='application/x-vertex-shader' id='vertex-shader'>
+
+uniform mat4 view, projection;
+
+attribute vec3 vertex;
+varying highp float color;
+
+void main(void) {
+
+  gl_Position = projection * view * vec4(vertex.xzy, 1.0);
+  color = clamp(vertex.z, 0., 7.) + .3;
+
+}
+
+</script>
+<script type='application/x-fragment-shader' id='fragment-shader'> 
+
+precision highp float;
+
+varying float color;
+
+void main(void) {
+  gl_FragColor = vec4(color, 0.0, 0.0, 1.0);
+}
+
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.2.1/gl-matrix-min.js'></script>
