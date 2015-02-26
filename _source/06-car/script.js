@@ -31,7 +31,7 @@
   }());
 
   var buildings = (function() {
-    var vertices = [], indices = [], mI = 0, S = 8;
+    var vertices = [], indices = [], colors = [], mI = 0, S = 8;
     // Create 4 buildings on the right side of each road segment
     for(var i = 0; i < roads.length; i++) {
       var p0 = roads[i], p1;
@@ -52,7 +52,8 @@
                 x1 : p0.x + xb * cth - yb * sth,
                 y1 : p0.y + xb * sth + yb * cth,
                 h  : Math.random() + .5
-              };
+              },
+              col = [ Math.random(), Math.random(), Math.random() ];
 
           vertices.push.apply(vertices, [
             b.x0, b.y0, 0,
@@ -64,6 +65,8 @@
             b.x1, b.y1, b.h,
             b.x1, b.y0, b.h
           ].map(function(v) { return v; }));
+          for(var C = 8; C--;)
+            colors.push.apply(colors, col);
           indices.push.apply(indices, [
             0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7,
             0, 1, 5, 0, 5, 4, 3, 2, 6, 3, 6, 7,
@@ -74,7 +77,7 @@
       }
     }
 
-    return { v: vertices, i: indices }
+    return { v: vertices, i: indices, c: colors }
 
   }());
 
@@ -83,7 +86,7 @@
   var projection = mat4.create(),
       view = mat4.create(),
       program, vsh, fsh,
-      vbuf, ibuf;
+      vbuf, ibuf, cbuf;
 
   mat4.identity(view);
 
@@ -101,8 +104,10 @@
   
   vbuf = gl.createBuffer();
   ibuf = gl.createBuffer();
+  cbuf = gl.createBuffer();
 
   gl.enableVertexAttribArray(gl.getAttribLocation(program, 'vertex'));
+  gl.enableVertexAttribArray(gl.getAttribLocation(program, 'color'));
 
   gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(buildings.v), gl.STATIC_DRAW);
@@ -110,6 +115,10 @@
   gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(buildings.i), gl.STATIC_DRAW);
 
   gl.vertexAttribPointer(gl.getAttribLocation(program, 'vertex'), 3, gl.FLOAT, false, 0, 0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, cbuf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(buildings.c), gl.STATIC_DRAW);
+  gl.vertexAttribPointer(gl.getAttribLocation(program, 'color'), 3, gl.FLOAT, false, 0, 0);
 
   gl.enable(gl.DEPTH_TEST);
   gl.depthFunc(gl.LEQUAL);
@@ -121,8 +130,6 @@
         var tl = path.getTotalLength(),
             eye = path.getPointAtLength(tl * (t % 1)),
             center = path.getPointAtLength(tl * ((t + 0.2 / count) % 1));
-        //console.clear();
-        //console.log(eye.x.toFixed(2), eye.y.toFixed(2), tl);
 
         mat4.lookAt(view, [eye.x, 0.5, eye.y], [center.x, 0.5, center.y], [0,1,0]);
       }
@@ -139,8 +146,8 @@
       break;
     count++;
   }
-  console.log(attrStr);
-  path.setAttribute('d', attrStr); //'M0,0 L1,0 L1,1 L0,1 L0,0');
+  //console.log(attrStr);
+  path.setAttribute('d', attrStr);
   var render = function() {
 
     mat4.identity(view);
@@ -154,7 +161,7 @@
 
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.drawElements(gl.TRIANGLES, buildings.i.length, gl.UNSIGNED_SHORT, 0);
-    angle += 0.01 / count;
+    angle += 0.005 / count;
     requestAnimationFrame(render);
   }
   render();

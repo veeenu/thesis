@@ -6,13 +6,15 @@ title: "Car animation"
 
 uniform mat4 view, projection;
 
-attribute vec3 vertex;
-varying highp float color;
+attribute vec3 vertex, color;
+varying highp vec3 c;
+varying highp float dist;
 
 void main(void) {
 
   gl_Position = projection * view * vec4(vertex.xzy, 1.0);
-  color = clamp(vertex.z, 0., 7.) + .3;
+  c = color;
+  dist = length(gl_Position);
 
 }
 
@@ -21,10 +23,11 @@ void main(void) {
 
 precision highp float;
 
-varying float color;
+varying vec3 c;
+varying float dist;
 
 void main(void) {
-  gl_FragColor = vec4(color, 0.0, 0.0, 1.0);
+  gl_FragColor = vec4(c * (1.3 - clamp(dist / 2.0, 0.0, 0.7)), 1.0);
 }
 
 </script>
