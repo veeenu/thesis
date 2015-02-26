@@ -131,7 +131,7 @@
             eye = path.getPointAtLength(tl * (t % 1)),
             center = path.getPointAtLength(tl * ((t + 0.2 / count) % 1));
 
-        mat4.lookAt(view, [eye.x, 0.5, eye.y], [center.x, 0.5, center.y], [0,1,0]);
+        mat4.lookAt(view, [eye.x, 0.1, eye.y], [center.x, 0.2, center.y], [0,1,0]);
       }
 
   var attrStr = 'M0,0 ', count = 0, curp = roads[0], newp = curp, oldp = curp;
