@@ -1,0 +1,13 @@
+{
+  "name": "Thesis",
+  "version": "0.0.1",
+  "description": "",
+  "main": "main.js",
+  "dependencies": {
+    "brfs": "^1.4.0",
+    "gl-matrix": "^2.2.1"
+  },
+  "devDependencies": {},
+  "author": "Andrea Venuta",
+  "license": "MIT"
+}

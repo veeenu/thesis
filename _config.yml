@@ -5,3 +5,4 @@ collections:
   source:
     output: true
 baseurl: /thesis
+exclude: ['src', 'LICENSE', 'README.md']
