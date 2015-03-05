@@ -6,4 +6,3 @@ collections:
     output: true
 baseurl: /thesis
 exclude: ['src', 'LICENSE', 'README.md']
-keep_files: ['build.js']
