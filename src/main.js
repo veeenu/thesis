@@ -11,3 +11,12 @@ canvas.width  = w;
 canvas.height = h;
 gl.viewport(0, 0, w, h);
 
+var city      = new City(0),
+    renderer  = new Renderer(gl, city);
+
+function r() {
+  renderer.render(gl);
+  requestAnimationFrame(r);
+}
+
+r();
