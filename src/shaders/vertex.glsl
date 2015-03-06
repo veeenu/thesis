@@ -1,7 +1,7 @@
 uniform mat4 view, projection;
 
-attribute vec3 vertex, color, normal;
-varying highp vec3 fnorm, c;
+attribute vec3 vertex, color, normal, uv;
+varying highp vec3 fnorm, c, texCoord;
 varying highp float dist;
 
 void main(void) {
@@ -10,5 +10,6 @@ void main(void) {
   c = color;
   fnorm = normalize(normal);
   dist = max(length(gl_Position), 1.);
+  texCoord = uv;
 
 }
