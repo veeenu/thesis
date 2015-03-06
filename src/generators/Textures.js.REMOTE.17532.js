@@ -5,11 +5,7 @@ var PRNG   = new (require('PRNG')),
 
 canvas.width = canvas.height = 512;
 
-<<<<<<< HEAD
-//canvas.setAttribute('style', 'position: fixed; top: 64px; left: 64px;');
-=======
 canvas.setAttribute('style', 'position: fixed; top: 64px; left: 64px;');
->>>>>>> 35aa48a672f7e84ec4ca4085bc806128e86ca007
 
 // #D0C9C9 - mortar
 // #B74E27 - brick
@@ -57,11 +53,7 @@ for(var x = 0; x < 64; x++) {
 
 ctx.putImageData(imgd, 0, 0)
 
-<<<<<<< HEAD
-//document.body.appendChild(canvas);
-=======
 document.body.appendChild(canvas);
->>>>>>> 35aa48a672f7e84ec4ca4085bc806128e86ca007
 
 module.exports = function(gl) {
   var tex = gl.createTexture();
