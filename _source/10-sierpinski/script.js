@@ -1,10 +1,3 @@
-/*
- * TODO: Refactor code. This is ugly and unpleasant.
- * Ideally create a `GraphToPolys` module that exports
- * only one function that takes the planar graph as
- * input and returns the collection of polygons and
- * that's it.
- */
 (function() {
 
   var canvas = document.getElementById('canvas'),
