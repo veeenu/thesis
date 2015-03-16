@@ -1,0 +1,60 @@
+---
+layout: proto
+title: "Normal mapping"
+---
+<script type='application/x-vertex-shader' id='vertex-shader'>
+attribute vec2 UV;
+attribute vec3 vertex, normal;
+
+uniform mat4 projection, view, model;
+
+varying vec3 position, vnormal;
+varying vec2 uv;
+
+void main() {
+
+  gl_Position = projection * view * model * vec4(vertex, 1.);
+  
+  position = vec4(model * vec4(vertex, 1.)).xyz;
+  vnormal = normal;
+  uv = UV;
+
+}
+
+</script>
+<script type='application/x-fragment-shader' id='fragment-shader'> 
+precision highp float;
+
+#extension GL_OES_standard_derivatives : enable
+
+uniform sampler2D texture;
+varying vec2 uv;
+varying vec3 position, vnormal;
+
+uniform vec3 lightPos;
+
+vec3 getNormal() {
+  vec3 dPdx = dFdx(position);
+  vec3 dPdy = dFdy(position);
+  
+  vec3 normal = normalize(cross(dPdx, dPdy));
+
+  float depthX = texture2D(texture, uv).r,
+        depthY = texture2D(texture, uv).g;
+
+  dPdx -= 30. * depthX * normal;
+  dPdy -= 30. * depthY * normal;
+
+  return normalize(cross(dPdx, dPdy));
+}
+
+void main() {
+  vec4 color = vec4(0.2, 0.2, 0.8, 1.);
+
+  float diffuse = max(0., dot(normalize(- position + lightPos), getNormal()));
+
+  gl_FragColor = mix(vec4(0., 0., 0., 1.), color, .1 + .9 * diffuse);
+}
+
+</script>
+<script src='https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.2.1/gl-matrix-min.js'></script>

@@ -1,5 +1,5 @@
 MAKEFLAGS 			 += -j
-SOURCE     				= $(shell find . -name '*.js' -or -name '*.glsl' -not -path './node_modules/**')
+SOURCE     				= $(shell find . -name '*.glsl' -or -name '*.js' -not -path './node_modules/**')
 ENTRY_POINT				= main.js
 BUILD			 				= ../_site/build.js
 BUILD_GHPAGES			= ../build.js
