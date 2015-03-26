@@ -16,7 +16,7 @@ void main() {
   gl_Position = projection * view * model * vec4(vertex, 1.);
   
   position = vec4(model * vec4(vertex, 1.)).xyz;
-  vnormal = normal;
+  vnormal = vec4(model * vec4(normal, 1.)).xyz;
   uv = UV;
 
 }

@@ -22,6 +22,6 @@ void main(void) {
   float lambert = clamp(dot( fnorm, -lightDir ), 0.0, 1.0);
   float att = min(1.0, 1.0 / (.2 + .6 * dist + .4 * dist * dist));
 
-  gl_FragColor = vec4(color.xyz * (att * .4 + lambert * .4 + 0.2), 1.0);
+  gl_FragColor = vec4(color.xyz * (att * .2 + lambert * .6 + 0.2), 1.0);
 }
 
