@@ -115,8 +115,16 @@
     return program;
   }
 
-  var mesh1 = new Mesh(Cuboid([0, 0, 0], [1, 1, 1])),
-      mesh2 = new Mesh(Cuboid([0, -1, 0], [10, .1, 10]));
+  var mesh2 = new Mesh(Cuboid([0, -2, 0], [20, 1, 20])),
+      cubes = [];
+  [-2, -1, 0, 1, 2].forEach(function(x) {
+    [-2, -1, 0, 1, 2].forEach(function(y) {
+      [-2, -1, 0, 1, 2].forEach(function(z) {
+        var mesh = new Mesh(Cuboid([2 * x, 2 * y + 4, 2 * z], [.5, .5, .5]));
+        cubes.push(mesh);
+      });
+    });
+  });
 
   var program = Shader(document.getElementById('vertex-shader').textContent, 
                        document.getElementById('fragment-shader').textContent),
@@ -186,11 +194,11 @@
   gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, shRb);
 
   mat4.perspective(proj, Math.PI / 2, w / h, 0.0001, 1000.0);
-  mat4.ortho(shProj, -10, 10, -10, 10, -40, 40);
+  mat4.ortho(shProj, -20, 20, -20, 20, -40, 40);
 
   mat4.identity(view);
-  mat4.translate(view, view, [0, 0, -5]);
-  mat4.scale(view, view, [.5, .5, .5]);
+  mat4.translate(view, view, [0, 0, -20]);
+  //mat4.scale(view, view, [.5, .5, .5]);
   mat4.rotateX(view, view, Math.PI / 12);
 
   mat4.identity(shView);
@@ -219,10 +227,15 @@
     gl.uniformMatrix4fv(gl.getUniformLocation(shadowMapProgram, 'model'), false, model);
     gl.drawArrays(gl.TRIANGLES, 0, mesh2.count);
 
-    mesh1.bind();
+    //mesh1.bind();
     mat4.translate(model, model, [0, 1 + Math.sin(render.t), 0]);
+    mat4.rotateY(model, model, render.t * .5);
     gl.uniformMatrix4fv(gl.getUniformLocation(shadowMapProgram, 'model'), false, model);
-    gl.drawArrays(gl.TRIANGLES, 0, mesh1.count);
+    cubes.forEach(function(cube) {
+      cube.bind();
+      gl.drawArrays(gl.TRIANGLES, 0, cube.count);
+    })
+    //gl.drawArrays(gl.TRIANGLES, 0, mesh1.count);
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.bindRenderbuffer(gl.RENDERBUFFER, null);
@@ -245,15 +258,20 @@
     gl.uniformMatrix4fv(gl.getUniformLocation(program, 'model'), false, model);
     gl.drawArrays(gl.TRIANGLES, 0, mesh2.count);
 
-    mesh1.bind();
+    //mesh1.bind();
     mat4.translate(model, model, [0, 1 + Math.sin(render.t), 0]);
+    mat4.rotateY(model, model, render.t * .5);
     gl.uniformMatrix4fv(gl.getUniformLocation(program, 'model'), false, model);
-    gl.drawArrays(gl.TRIANGLES, 0, mesh1.count);
+    cubes.forEach(function(cube) {
+      cube.bind();
+      gl.drawArrays(gl.TRIANGLES, 0, cube.count);
+    })
+    //gl.drawArrays(gl.TRIANGLES, 0, mesh1.count);
 
-    lightPos[0] = 16 * Math.cos(render.t);
+    lightPos[0] = 16 * Math.cos(render.t / 2);
     lightPos[1] = 16;
     //lightPos[1] = 8 * Math.cos(render.t);
-    lightPos[2] = 16 * Math.sin(render.t);
+    lightPos[2] = 16 * Math.sin(render.t / 2);
 
     render.t += 0.02;
 
@@ -265,7 +283,6 @@
   }
   render.t = 0;
   render();
-  console.dir(gl)
 
   c2d.style.position = 'absolute';
   c2d.style.top = canvas.getBoundingClientRect().top + 'px';
