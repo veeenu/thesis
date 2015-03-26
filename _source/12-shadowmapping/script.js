@@ -115,12 +115,12 @@
     return program;
   }
 
-  var mesh2 = new Mesh(Cuboid([0, -2, 0], [20, 1, 20])),
+  var mesh2 = new Mesh(Cuboid([0, -2, 0], [32, 1, 32])),
       cubes = [];
   [-2, -1, 0, 1, 2].forEach(function(x) {
     [-2, -1, 0, 1, 2].forEach(function(y) {
       [-2, -1, 0, 1, 2].forEach(function(z) {
-        var mesh = new Mesh(Cuboid([2 * x, 2 * y + 4, 2 * z], [.5, .5, .5]));
+        var mesh = new Mesh(Cuboid([4 * x, 4 * y + 8, 4 * z], [1, 1, 1]));
         cubes.push(mesh);
       });
     });
@@ -171,18 +171,19 @@
       view = mat4.create(),
       model = mat4.create(),
       lightTransf = mat4.create(),
-      lightPos = vec3.fromValues(0, 5, 0),
+      lightPos = vec3.fromValues(1, 0.25, 1),
       shProj = mat4.create(),
       shView = mat4.create(),
       shFb = gl.createFramebuffer(),
       shTex = gl.createTexture(),
-      shRb = gl.createRenderbuffer();
+      shRb = gl.createRenderbuffer(),
+      ext = gl.getExtension('EXT_texture_filter_anisotropic');
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, shFb);
   shFb.size = 1024;
   gl.bindTexture(gl.TEXTURE_2D, shTex);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, shFb.size, shFb.size, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
@@ -194,7 +195,7 @@
   gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, shRb);
 
   mat4.perspective(proj, Math.PI / 2, w / h, 0.0001, 1000.0);
-  mat4.ortho(shProj, -20, 20, -20, 20, -40, 40);
+  mat4.ortho(shProj, -48, 48, -48, 48, -48, 48);
 
   mat4.identity(view);
   mat4.translate(view, view, [0, 0, -20]);
@@ -203,10 +204,6 @@
 
   mat4.identity(shView);
 
-  mat4.identity(model);
-  //mat4.rotateY(model, model, Math.PI / 3);
-
-  //gl.uniform1i(gl.getUniformLocation(program, 'texture'), 0);
   function render() {
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, shFb);
@@ -220,22 +217,19 @@
     gl.useProgram(shadowMapProgram);
     gl.uniformMatrix4fv(gl.getUniformLocation(shadowMapProgram, 'projection'), false, shProj);
     gl.uniformMatrix4fv(gl.getUniformLocation(shadowMapProgram, 'view'), false, shView);
-    gl.uniformMatrix4fv(gl.getUniformLocation(shadowMapProgram, 'model'), false, model);
 
     mesh2.bind();
     mat4.identity(model);
     gl.uniformMatrix4fv(gl.getUniformLocation(shadowMapProgram, 'model'), false, model);
     gl.drawArrays(gl.TRIANGLES, 0, mesh2.count);
 
-    //mesh1.bind();
-    mat4.translate(model, model, [0, 1 + Math.sin(render.t), 0]);
+    //mat4.translate(model, model, [0, 1 + Math.sin(render.t), 0]);
     mat4.rotateY(model, model, render.t * .5);
     gl.uniformMatrix4fv(gl.getUniformLocation(shadowMapProgram, 'model'), false, model);
     cubes.forEach(function(cube) {
       cube.bind();
       gl.drawArrays(gl.TRIANGLES, 0, cube.count);
     })
-    //gl.drawArrays(gl.TRIANGLES, 0, mesh1.count);
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.bindRenderbuffer(gl.RENDERBUFFER, null);
@@ -258,27 +252,25 @@
     gl.uniformMatrix4fv(gl.getUniformLocation(program, 'model'), false, model);
     gl.drawArrays(gl.TRIANGLES, 0, mesh2.count);
 
-    //mesh1.bind();
-    mat4.translate(model, model, [0, 1 + Math.sin(render.t), 0]);
+    //mat4.translate(model, model, [0, 1 + Math.sin(render.t), 0]);
     mat4.rotateY(model, model, render.t * .5);
     gl.uniformMatrix4fv(gl.getUniformLocation(program, 'model'), false, model);
     cubes.forEach(function(cube) {
       cube.bind();
       gl.drawArrays(gl.TRIANGLES, 0, cube.count);
     })
-    //gl.drawArrays(gl.TRIANGLES, 0, mesh1.count);
 
     lightPos[0] = 16 * Math.cos(render.t / 2);
     lightPos[1] = 16;
-    //lightPos[1] = 8 * Math.cos(render.t);
     lightPos[2] = 16 * Math.sin(render.t / 2);
+    vec3.normalize(lightPos, lightPos);
 
     render.t += 0.02;
 
     //mat4.lookAt(shView, lightPos, [0, 0, 0], [0, 1, 0]);
 
     //mat4.rotateY(model, model, Math.PI / 1024);
-    mat4.rotateY(view, view, Math.PI / 1024);
+    //mat4.rotateY(view, view, Math.PI / 1024);
     requestAnimationFrame(render);
   }
   render.t = 0;

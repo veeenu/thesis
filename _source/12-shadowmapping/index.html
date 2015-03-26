@@ -38,7 +38,7 @@ float chebyshevIneq(vec2 moments, float t) {
   if(t <= moments.x)
     return 1.;
 
-  float variance = max(moments.y - (moments.x * moments.x), .0005);
+  float variance = max(moments.y - (moments.x * moments.x), .005);
   float d = t - moments.x;
   return variance / (variance + d * d);
 }
@@ -50,15 +50,12 @@ float unpack(vec2 color) {
 void main() {
 
   vec4 color = vec4(0.2, 0.2, 0.8, 1.);
-  vec3 depth = luv.xyz;// / luv.w;
+  vec3 depth = luv.xyz / luv.w;
 
-  float diffuse = max(0., dot(normalize(lightPos), vnormal));
+  float diffuse = max(dot(normalize(lightPos), vnormal), 0.);
   vec4 sample = texture2D(texture, depth.xy);
 
   float illum = chebyshevIneq(vec2(unpack(sample.rg), unpack(sample.ba)), depth.z);
-  /*float illum = 1.;
-  if(sample.a > 0.1 && sample.r < luv.z - 0.002)
-    illum = .5;*/
 
   gl_FragColor = mix(vec4(0., 0., 0., 1.), color, .2 + .8 * diffuse * illum);
 }
@@ -70,19 +67,14 @@ attribute vec3 vertex, normal;
 
 uniform mat4 projection, view, model;
 
-varying vec4 position;
-
 void main() {
-
-  position = projection * view * model * vec4(vertex, 1.);
-  gl_Position = position;
+  
+  gl_Position = projection * view * model * vec4(vertex, 1.);
 }
 
 </script>
 <script type='application/x-fragment-shader' id='fragment-shadow'> 
 precision highp float;
-
-varying vec4 position;
 
 vec2 pack(float depth) {
   const vec2 bias = vec2(1. / 255., 0.);
@@ -92,8 +84,7 @@ vec2 pack(float depth) {
 }
 
 void main() {
-  //gl_FragColor = vec4(gl_FragCoord.zzz, 1.);
-  float moment = gl_FragCoord.z; //length(position);
+  float moment = gl_FragCoord.z; 
   gl_FragColor = vec4(pack(moment), pack(moment * moment));
 }
 
