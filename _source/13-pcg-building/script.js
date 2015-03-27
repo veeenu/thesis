@@ -163,6 +163,58 @@ Object.defineProperty(Scene.prototype, "lightPos", {
   }
 });
 
+var Cuboid = function(translate, scale) {
+
+  var verts,  indices,
+      vertices = [], normals = [], uvs = [],
+      tangents = [], bitangents = [],
+      xn, yn, zn, xt, yt, zt, xb, yb, zb;
+  verts = [
+    0, 0, 0,
+    0, 0,  1,
+     1, 0,  1,
+     1, 0, 0,
+    0,  1, 0,
+    0,  1,  1,
+     1,  1,  1,
+     1,  1, 0
+  ];
+  indices = [
+    0, 2, 1, 0, 3, 2, 4, 5, 6, 4, 6, 7,
+    1, 5, 4, 1, 4, 0, 3, 7, 6, 3, 6, 2,
+    2, 6, 5, 2, 5, 1, 0, 4, 7, 0, 7, 3
+  ];
+
+  for(var k = 0, o = indices.length; k < o;) {
+    var i1 = indices[k++], i2 = indices[k++], i3 = indices[k++],
+        x1 = scale[0] * verts[i1 * 3] + translate[0], 
+        y1 = scale[1] * verts[i1 * 3 + 1] + translate[1], 
+        z1 = scale[2] * verts[i1 * 3 + 2] + translate[2],
+        x2 = scale[0] * verts[i2 * 3] + translate[0], 
+        y2 = scale[1] * verts[i2 * 3 + 1] + translate[1], 
+        z2 = scale[2] * verts[i2 * 3 + 2] + translate[2],
+        x3 = scale[0] * verts[i3 * 3] + translate[0], 
+        y3 = scale[1] * verts[i3 * 3 + 1] + translate[1], 
+        z3 = scale[2] * verts[i3 * 3 + 2] + translate[2];
+
+    vertices.push(x1, y1, z1, x2, y2, z2, x3, y3, z3);
+
+    var u = vec3.fromValues(x2 - x1, y2 - y1, z2 - z1),
+        v = vec3.fromValues(x3 - x1, y3 - y1, z3 - z1),
+        w = vec3.fromValues(x3 - x2, y3 - y2, z3 - z2),
+        xn = u[1] * v[2] - u[2] * v[1],
+        yn = u[2] * v[0] - u[0] * v[2],
+        zn = u[0] * v[1] - u[1] * v[0];
+    normals.push(xn, yn, zn, xn, yn, zn, xn, yn, zn);
+  }
+
+  return {
+    vertices: new Float32Array(vertices),
+    normals: new Float32Array(normals)
+  }
+
+};
+
 var ShapeGrammar = function(rules) {
   Object.defineProperty(this, 'rules', {
     value: rules,
@@ -301,16 +353,15 @@ var shg = new ShapeGrammar({
     { sym: 'W', transform: [ 0, 0, 0,  0, Math.PI / 2, 0 ],      bound: [ 0, 0, 0,  1, 1, 1 ]},
     { sym: 'W', transform: [ 0, 0, 0,  0, Math.PI, 0 ],                bound: [ 0, 0, 0,  1, 1, 1 ]},
     { sym: 'W', transform: [ 0, 0, 0,  0, Math.PI * 3 / 2, 0 ],  bound: [ 0, 0, 0,  1, 1, 1 ]},
-    { sym: 'f', transform: [ 0, 0, 0,  Math.PI / 2, 0, 0 ],      bound: [ 0, 0, 0,  1, 1, 1 ]},
-    { sym: 'f', transform: [ 0, 0, 0,  -Math.PI / 2, 0, 0 ],     bound: [ 0, 0, 0,  1, 1, 1 ]},
+    { sym: 'f', transform: [ 0, 0, 0,  0, 0, 0 ],      bound: [ 0, 0, 0,  1, 1, 1 ]},
   ],
   'C': [
     { sym: 'D', transform: [ 0, 0, 0,  0, 0, 0 ],          bound: [ .1, .1, .1,  .8, .8, .8 ]},
     { sym: 'W', transform: [ 0, 0, 0,  0, Math.PI / 2, 0 ],      bound: [ .1, .1, .1,  .8, .8, .8 ]},
     { sym: 'W', transform: [ 0, 0, 0,  0, Math.PI, 0 ],                bound: [ .1, .1, .1,  .8, .8, .8 ]},
     { sym: 'W', transform: [ 0, 0, 0,  0, Math.PI * 3 / 2, 0 ],  bound: [ .1, .1, .1,  .8, .8, .8 ]},
-    { sym: 'f', transform: [ 0, 0, 0,  Math.PI / 2, 0, 0 ],      bound: [ .1, .1, .1,  .8, .8, .8 ]},
-    { sym: 'f', transform: [ 0, 0, 0,  -Math.PI / 2, 0, 0 ],     bound: [ 0, 0, 0,  1, 1, 1 ]}
+    { sym: 'f', transform: [ 0, 3.2, 0,  0, 0, 0 ],      bound: [ .1, .1, .1,  .8, .8, .8 ]},
+    { sym: 'f', transform: [ 0, .4,  0, 0, 0 ],     bound: [ 0, 0, 0,  1, 1, 1 ]}
   ],
   'W': [
     { sym: 'w', transform: [ 0, 0, 0, 0, 0, 0 ], bound: [  0, 0, 0,  1, 1, 1 ]},
@@ -325,12 +376,41 @@ var shg = new ShapeGrammar({
   ],
   'f': [
     {
-      render: ShapeGrammar.renderQuad
+      render: function() {
+        var tr = vec3.fromValues(
+            this.transl[0] + this.bounds[0],
+            this.transl[1] + this.bounds[1],
+            this.transl[2] + this.bounds[2]
+          ),
+          sc = vec3.fromValues(
+            this.bounds[3],
+            .1,
+            this.bounds[5]
+          );
+
+        return Cuboid(tr, sc);
+      }
     }
   ],
   'w': [
-    { 
-      render: ShapeGrammar.renderQuad
+    {
+      render: function() {
+        var tr = vec3.fromValues(
+            this.bounds[0],
+            this.bounds[1],
+            this.bounds[2]
+          ),
+          sc = vec3.fromValues(
+            this.bounds[3],
+            this.bounds[4], .1,
+            this.bounds[5]
+          );
+        vec3.transformQuat(tr, tr, this.quat);
+        vec3.transformQuat(sc, sc, this.quat);
+        vec3.add(tr, tr, this.transl);
+
+        return Cuboid(tr, sc);
+      }
     }
   ]
 });
@@ -366,16 +446,6 @@ var shgResult = shg.run([
       scene = new Scene(gl),
       ext = gl.getExtension('EXT_texture_filter_anisotropic');
 
-  /*(function() {
-    var floor = new Mesh(gl, Cuboid([0, -2, 0], [32, 1, 32]));
-    floor.model = mat4.create();
-    scene.add(floor);
-    var geom = Cuboid([0, 2, 0], [3, 3, 3]);
-    var mesh = new Mesh(gl, geom);
-    mesh.model = model;
-    scene.add(mesh);
-  }());*/
-
   (function() {
     var vertices = [], normals = [];
     shgResult.forEach(function(i) {
@@ -394,22 +464,21 @@ var shgResult = shg.run([
 
   mat4.identity(view);
   mat4.translate(view, view, [0, -.5, -8]);
-  mat4.rotateX(view, view, Math.PI / 12);
+  mat4.rotateX(view, view, Math.PI / 6);
 
   scene.projection = proj;
   scene.shadowProjection = shProj;
   scene.view = view;
-  //console.log(scene)
-  mat4.rotateY(model, model, Math.PI / 8);
+  mat4.rotateY(model, model, Math.PI * 9 / 8);
 
   function render() {
 
-    /*lightPos[0] = 16 * Math.cos(render.t / 2);
+    lightPos[0] = 16 * Math.cos(render.t / 2);
     lightPos[1] = 16;
     lightPos[2] = 16 * Math.sin(render.t / 2);
-    vec3.normalize(lightPos, lightPos);*/
+    vec3.normalize(lightPos, lightPos);
 
-    mat4.rotateY(model, model, Math.PI / 512);
+    //mat4.rotateY(model, model, Math.PI / 256);
 
     render.t += 0.02;
 

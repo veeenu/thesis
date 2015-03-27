@@ -17,7 +17,7 @@ void main() {
   
   position = vec4(model * vec4(vertex, 1.));
   //vnormal = normalize(vec4(model * vec4(normal, 1.)).xyz);
-  vnormal = nmatrix * normal;
+  vnormal = nmatrix * normalize(normal);
   luv = (mat4(
       .5, .0, .0, .0,
       .0, .5, .0, .0,
