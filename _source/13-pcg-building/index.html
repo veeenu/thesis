@@ -6,6 +6,7 @@ title: "Procedurally generated building"
 attribute vec3 vertex, normal;
 
 uniform mat4 projection, view, model, ltransf;
+uniform mat3 nmatrix;
 
 varying vec4 position, luv;
 varying vec3 vnormal;
@@ -15,7 +16,8 @@ void main() {
   gl_Position = projection * view * model * vec4(vertex, 1.);
   
   position = vec4(model * vec4(vertex, 1.));
-  vnormal = normalize(vec4(model * vec4(normal, 1.)).xyz);
+  //vnormal = normalize(vec4(model * vec4(normal, 1.)).xyz);
+  vnormal = nmatrix * normal;
   luv = (mat4(
       .5, .0, .0, .0,
       .0, .5, .0, .0,
@@ -41,7 +43,8 @@ float chebyshevIneq(vec2 moments, float t) {
   float variance = moments.y - (moments.x * moments.x);
   variance = max(variance, .02);
   float d = t - moments.x;
-  return variance / (variance + d * d);
+  variance = variance / (variance + d * d);
+  return variance;
 }
 
 float unpack(vec2 color) {
@@ -51,19 +54,20 @@ float unpack(vec2 color) {
 void main() {
 
   vec3 ambientColor = vec3(0.5, 0.5, 0.5);
-  vec3 depth = luv.xyz / luv.w;
+  vec3 depth = luv.xyz;
 
-  float diffuse = max(dot(normalize(lightPos), vnormal), 0.);
+  float diffuse = max(abs(dot(normalize(lightPos), vnormal)), 0.);
   vec4 sample = texture2D(texture, depth.xy);
 
-  vec3 color = ambientColor * .2;
+  vec3 color = ambientColor * .5;
   if(diffuse > 0.)
-    color += ambientColor * diffuse * .8;
+    color += ambientColor * diffuse * .5;
 
-  float illum = chebyshevIneq(vec2(unpack(sample.xy), unpack(sample.zw)), depth.z);
+  //float illum = chebyshevIneq(vec2(unpack(sample.xy), unpack(sample.zw)), depth.z);
+  float illum = clamp(exp(-4. * (depth.z - unpack(sample.xy))), 0., 1.);
+  //illum = 1.;
 
   gl_FragColor = clamp(vec4(color * illum, 1.), 0., 1.);
-  //gl_FragColor = mix(vec4(0., 0., 0., 1.), color, .2 + .8 * diffuse * illum);
 }
 
 </script>
@@ -95,34 +99,4 @@ void main() {
 }
 
 </script>
-
-<script type='application/x-obj' id='cube'>
-v 1.000000 -1.000000 -1.000000
-v 1.000000 -1.000000 1.000000
-v -1.000000 -1.000000 1.000000
-v -1.000000 -1.000000 -1.000000
-v 1.000000 1.000000 -0.999999
-v 0.999999 1.000000 1.000001
-v -1.000000 1.000000 1.000000
-v -1.000000 1.000000 -1.000000
-vn 0.000000 -1.000000 0.000000
-vn 0.000000 1.000000 0.000000
-vn 1.000000 -0.000000 0.000000
-vn -0.000000 -0.000000 1.000000
-vn -1.000000 -0.000000 -0.000000
-vn 0.000000 0.000000 -1.000000
-f 2//1 3//1 4//1
-f 8//2 7//2 6//2
-f 1//3 5//3 6//3
-f 2//4 6//4 7//4
-f 7//5 8//5 4//5
-f 1//6 4//6 8//6
-f 1//1 2//1 4//1
-f 5//2 8//2 6//2
-f 2//3 1//3 6//3
-f 3//4 2//4 7//4
-f 3//5 7//5 4//5
-f 5//6 1//6 8//6
-</script>
 <script src='https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.2.1/gl-matrix-min.js'></script>
-<script src='https://cdnjs.cloudflare.com/ajax/libs/three.js/r71/three.min.js'></script>

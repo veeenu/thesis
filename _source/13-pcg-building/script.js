@@ -133,7 +133,10 @@ Scene.prototype.draw = function(w, h) {
 
   this.graph.forEach((function(program) { return function(i) {
     i.bind(program);
+    var nmatrix = mat3.create();
+    mat3.normalFromMat4(nmatrix, i.modelMatrix);
     gl.uniformMatrix4fv(gl.getUniformLocation(program, 'model'), false, i.modelMatrix);
+    gl.uniformMatrix3fv(gl.getUniformLocation(program, 'nmatrix'), false, nmatrix);
     gl.drawArrays(gl.TRIANGLES, 0, i.count);
 
   }}(this.program)));
@@ -160,6 +163,182 @@ Object.defineProperty(Scene.prototype, "lightPos", {
   }
 });
 
+var ShapeGrammar = function(rules) {
+  Object.defineProperty(this, 'rules', {
+    value: rules,
+    writable: false
+  });
+
+  Object.freeze(this.rules);
+
+};
+
+ShapeGrammar.prototype.run = function(axiom) {
+  
+  var result = [], nontermLeft = false;
+
+  axiom.forEach(function(v) {
+    if('geom' in v) {
+      return result.push(v);
+    }
+
+    nontermLeft = true;
+
+    var productions = this.rules[v.sym];
+    productions.forEach(function(prod) {
+
+      if('sym' in prod) { // Nonterminal
+        var bndD, bndS;
+        bndD = vec3.fromValues(
+          v.bounds[0] + v.bounds[3] * prod.bound[0],
+          v.bounds[1] + v.bounds[4] * prod.bound[1],
+          v.bounds[2] + v.bounds[5] * prod.bound[2]
+        ); 
+        bndS = vec3.fromValues(
+          v.bounds[3] * prod.bound[3],
+          v.bounds[4] * prod.bound[4],
+          v.bounds[5] * prod.bound[5]
+        );
+        var rhs = {
+          sym: prod.sym,
+          transl: v.transl ? vec3.clone(v.transl) : vec3.create(),
+          quat: v.quat ? quat.clone(v.quat) : quat.create()
+        }
+
+        var q = quat.create(),
+            transl = vec3.create();
+
+        quat.rotateX(q, q, prod.transform[3]);
+        quat.rotateY(q, q, prod.transform[4]);
+        quat.rotateZ(q, q, prod.transform[5]);
+        vec3.add(transl, transl, prod.transform.slice(0,3));
+
+        //vec3.transformMat4(bndD, bndD, I);
+        //vec3.transformMat4(bndS, bndS, I);
+        rhs.bounds = [
+          bndD[0], bndD[1], bndD[2],
+          bndS[0], bndS[1], bndS[2]
+        ]
+
+        //mat4.mul(rhs.mat, rhs.mat, I);
+        quat.mul(rhs.quat, rhs.quat, q);
+        vec3.add(rhs.transl, rhs.transl, transl);
+
+        //console.log(rhs.sym, rhs.bounds.map(function(i) { return i.toFixed(1).replace(/^(\d)/, ' $1') }));
+        result.push(rhs);
+      } else if('render' in prod) { // Terminal to render
+        result.push({ geom: prod.render.call(v) });
+      }    
+    });
+  }.bind(this));
+  console.log(result.map(function(i) { return i.sym}).join(' '));
+
+  return nontermLeft ? this.run(result) : result;
+}
+
+ShapeGrammar.renderQuad = function() {
+  var b = this.bounds,
+      mtx = this.mat,
+      q = this.quat,
+      transl = this.transl,
+      nmtx = mat3.create(), 
+      x0 = b[0], x1 = b[3] + x0,
+      y0 = b[1], y1 = b[4] + y0,
+      z0 = b[2], z1 = b[5] + z0,
+      vertices = [], normals = [], u, v, w, nx, ny, nz, nv;
+
+  //mat3.normalFromMat4(nmtx, mtx);
+
+  [
+    [x0, y0, z0],  [x0, y1, z0],  [x1, y1, z0],
+    [x0, y0, z0],  [x1, y1, z0],  [x1, y0, z0]
+  ].forEach(function(i) {
+    var v = vec3.fromValues(i[0], i[1], i[2]);
+    vec3.transformQuat(v, v, q);
+    vec3.add(v, v, transl);
+    vertices.push(v[0], v[1], v[2]);
+  });
+
+  x0 = vertices[0]; x1 = vertices[6];
+  y0 = vertices[1]; y1 = vertices[7];
+
+  u = vec3.fromValues(0,        y1 - y0, 0);
+  v = vec3.fromValues(x1 - x0,  y1 - y0, 0);
+  w = vec3.fromValues(x1 - x0,  0,       0);
+  nx = u[1] * v[2] - u[2] * v[1];
+  ny = u[2] * v[0] - u[0] * v[2];
+  nz = u[0] * v[1] - u[1] * v[0];
+  nv = vec3.fromValues(nx, ny, nz);
+  //vec3.transformMat4(nv, nv, nmtx);
+  vec3.transformQuat(nv, nv, q);
+  vec3.normalize(nv, nv);
+  normals.push(nv[0], nv[1], nv[2]);
+  normals.push(nv[0], nv[1], nv[2]);
+  normals.push(nv[0], nv[1], nv[2]);
+
+  u = vec3.fromValues(x1 - x0,  y1 - y0, 0);
+  v = vec3.fromValues(x1 - x0,  0,       0);
+  w = vec3.fromValues(x1 - x0,  y1 - y0, 0);
+  nx = u[1] * v[2] - u[2] * v[1];
+  ny = u[2] * v[0] - u[0] * v[2];
+  nz = u[0] * v[1] - u[1] * v[0];
+  nv = vec3.fromValues(nx, ny, nz);
+  //vec3.transformMat4(nv, nv, nmtx);
+  vec3.transformQuat(nv, nv, q);
+  vec3.normalize(nv, nv);
+  normals.push(nv[0], nv[1], nv[2]);
+  normals.push(nv[0], nv[1], nv[2]);
+  normals.push(nv[0], nv[1], nv[2]);
+
+  return { vertices: vertices, normals: normals };
+
+};
+
+var shg = new ShapeGrammar({
+  'F': [
+    { sym: 'C', transform: [ 0, 3.6, 0,  0, 0, 0 ],              bound: [ 0, 0, 0,  1, 1, 1 ]},
+    { sym: 'D', transform: [ 0, 0, 0,  0, 0, 0 ],          bound: [ 0, 0, 0,  1, 1, 1 ]},
+    { sym: 'W', transform: [ 0, 0, 0,  0, Math.PI / 2, 0 ],      bound: [ 0, 0, 0,  1, 1, 1 ]},
+    { sym: 'W', transform: [ 0, 0, 0,  0, Math.PI, 0 ],                bound: [ 0, 0, 0,  1, 1, 1 ]},
+    { sym: 'W', transform: [ 0, 0, 0,  0, Math.PI * 3 / 2, 0 ],  bound: [ 0, 0, 0,  1, 1, 1 ]},
+    { sym: 'f', transform: [ 0, 0, 0,  Math.PI / 2, 0, 0 ],      bound: [ 0, 0, 0,  1, 1, 1 ]},
+    { sym: 'f', transform: [ 0, 0, 0,  -Math.PI / 2, 0, 0 ],     bound: [ 0, 0, 0,  1, 1, 1 ]},
+  ],
+  'C': [
+    { sym: 'D', transform: [ 0, 0, 0,  0, 0, 0 ],          bound: [ .1, .1, .1,  .8, .8, .8 ]},
+    { sym: 'W', transform: [ 0, 0, 0,  0, Math.PI / 2, 0 ],      bound: [ .1, .1, .1,  .8, .8, .8 ]},
+    { sym: 'W', transform: [ 0, 0, 0,  0, Math.PI, 0 ],                bound: [ .1, .1, .1,  .8, .8, .8 ]},
+    { sym: 'W', transform: [ 0, 0, 0,  0, Math.PI * 3 / 2, 0 ],  bound: [ .1, .1, .1,  .8, .8, .8 ]},
+    { sym: 'f', transform: [ 0, 0, 0,  Math.PI / 2, 0, 0 ],      bound: [ .1, .1, .1,  .8, .8, .8 ]},
+    { sym: 'f', transform: [ 0, 0, 0,  -Math.PI / 2, 0, 0 ],     bound: [ 0, 0, 0,  1, 1, 1 ]}
+  ],
+  'W': [
+    { sym: 'w', transform: [ 0, 0, 0, 0, 0, 0 ], bound: [  0, 0, 0,  1, 1, 1 ]},
+  ],
+  'D': [
+    { sym: 'P', transform: [ 0, 0, 0, 0, 0, 0 ], bound: [  0, 0, 0,  .3, 1, 1 ]},
+    { sym: 'P', transform: [ 0, 0, 0, 0, 0, 0 ], bound: [ .7, 0, 0,  .3, 1, 1 ]},
+    { sym: 'P', transform: [ 0, 0, 0, 0, 0, 0 ], bound: [ .3, .7, 0,  .4, .3, 1 ]},
+  ],
+  'P': [
+    { sym: 'w', transform: [ 0, 0, 0, 0, 0, 0 ], bound: [ 0, 0, 0, 1, 1, 1 ]}
+  ],
+  'f': [
+    {
+      render: ShapeGrammar.renderQuad
+    }
+  ],
+  'w': [
+    { 
+      render: ShapeGrammar.renderQuad
+    }
+  ]
+});
+
+var shgResult = shg.run([
+  { sym: 'F', bounds: [ -2, -2, -2, 4, 4, 4 ] }
+]);
+
 (function() {
 
   var canvas = document.getElementById('canvas'),
@@ -172,64 +351,10 @@ Object.defineProperty(Scene.prototype, "lightPos", {
 
   canvas.width = w;
   canvas.height = h;
-  c2d.width = c2d.height = 512;
+  c2d.width = c2d.height = 1024;
 
   gl.viewport(0, 0, w, h);
 
-  /**
-   * Cube mesh generation with per-vertex normals
-   */
-  var Cuboid = function(translate, scale) {
-  
-    var verts,  indices,
-        vertices = [], normals = [], uvs = [],
-        tangents = [], bitangents = [],
-        xn, yn, zn, xt, yt, zt, xb, yb, zb;
-    verts = [
-      -1, -1, -1,
-      -1, -1,  1,
-       1, -1,  1,
-       1, -1, -1,
-      -1,  1, -1,
-      -1,  1,  1,
-       1,  1,  1,
-       1,  1, -1
-    ];
-    indices = [
-      0, 2, 1, 0, 3, 2, 4, 5, 6, 4, 6, 7,
-      1, 5, 4, 1, 4, 0, 3, 7, 6, 3, 6, 2,
-      2, 6, 5, 2, 5, 1, 0, 4, 7, 0, 7, 3
-    ];
-
-    for(var k = 0, o = indices.length; k < o;) {
-      var i1 = indices[k++], i2 = indices[k++], i3 = indices[k++],
-          x1 = scale[0] * verts[i1 * 3] + translate[0], 
-          y1 = scale[1] * verts[i1 * 3 + 1] + translate[1], 
-          z1 = scale[2] * verts[i1 * 3 + 2] + translate[2],
-          x2 = scale[0] * verts[i2 * 3] + translate[0], 
-          y2 = scale[1] * verts[i2 * 3 + 1] + translate[1], 
-          z2 = scale[2] * verts[i2 * 3 + 2] + translate[2],
-          x3 = scale[0] * verts[i3 * 3] + translate[0], 
-          y3 = scale[1] * verts[i3 * 3 + 1] + translate[1], 
-          z3 = scale[2] * verts[i3 * 3 + 2] + translate[2];
-
-      vertices.push(x1, y1, z1, x2, y2, z2, x3, y3, z3);
-
-      var u = vec3.fromValues(x2 - x1, y2 - y1, z2 - z1),
-          v = vec3.fromValues(x3 - x1, y3 - y1, z3 - z1),
-          w = vec3.fromValues(x3 - x2, y3 - y2, z3 - z2),
-          xn = u[1] * v[2] - u[2] * v[1],
-          yn = u[2] * v[0] - u[0] * v[2],
-          zn = u[0] * v[1] - u[1] * v[0];
-      normals.push(xn, yn, zn, xn, yn, zn, xn, yn, zn);
-    }
-
-    return {
-      vertices: new Float32Array(vertices),
-      normals: new Float32Array(normals)
-    }
-
-  };
   gl.enable(gl.DEPTH_TEST);
   gl.depthFunc(gl.LEQUAL);
   
@@ -241,39 +366,48 @@ Object.defineProperty(Scene.prototype, "lightPos", {
       scene = new Scene(gl),
       ext = gl.getExtension('EXT_texture_filter_anisotropic');
 
-  var floor = new Mesh(gl, Cuboid([0, -2, 0], [32, 1, 32]));
-  floor.model = mat4.create();
-  scene.add(floor);
-  [-2, -1, 0, 1, 2].forEach(function(x) {
-    [-2, -1, 0, 1, 2].forEach(function(y) {
-      [-2, -1, 0, 1, 2].forEach(function(z) {
-        var geom = Cuboid([4 * x, 4 * y + 8, 4 * z], [1, 1, 1]);
-        var mesh = new Mesh(gl, geom);
-        mesh.model = model;
-        scene.add(mesh);
-      });
-    });
-  });
+  /*(function() {
+    var floor = new Mesh(gl, Cuboid([0, -2, 0], [32, 1, 32]));
+    floor.model = mat4.create();
+    scene.add(floor);
+    var geom = Cuboid([0, 2, 0], [3, 3, 3]);
+    var mesh = new Mesh(gl, geom);
+    mesh.model = model;
+    scene.add(mesh);
+  }());*/
 
+  (function() {
+    var vertices = [], normals = [];
+    shgResult.forEach(function(i) {
+      vertices.push.apply(vertices, i.geom.vertices);
+      normals.push.apply(normals, i.geom.normals);
+    });
+
+    var bldg = new Mesh(gl, { vertices: new Float32Array(vertices), normals: new Float32Array(normals) });
+    bldg.model = model;
+    scene.add(bldg);
+  }());
 
   mat4.perspective(proj, Math.PI / 2, w / h, 0.0001, 1000.0);
-  mat4.ortho(shProj, -48, 48, -48, 48, -48, 48);
+  mat4.ortho(shProj, -8, 8, -8, 8, -8, 8);
+  //mat4.ortho(proj, -3 * w / h, 3 * w / h, -3, 3, -3, 3);
 
   mat4.identity(view);
-  mat4.translate(view, view, [0, 0, -20]);
+  mat4.translate(view, view, [0, -.5, -8]);
   mat4.rotateX(view, view, Math.PI / 12);
 
   scene.projection = proj;
   scene.shadowProjection = shProj;
   scene.view = view;
-  console.log(scene)
+  //console.log(scene)
+  mat4.rotateY(model, model, Math.PI / 8);
 
   function render() {
 
-    lightPos[0] = 16 * Math.cos(render.t / 2);
+    /*lightPos[0] = 16 * Math.cos(render.t / 2);
     lightPos[1] = 16;
     lightPos[2] = 16 * Math.sin(render.t / 2);
-    vec3.normalize(lightPos, lightPos);
+    vec3.normalize(lightPos, lightPos);*/
 
     mat4.rotateY(model, model, Math.PI / 512);
 
