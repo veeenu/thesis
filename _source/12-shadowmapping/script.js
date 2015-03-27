@@ -115,16 +115,20 @@
     return program;
   }
 
-  var mesh2 = new Mesh(Cuboid([0, -2, 0], [32, 1, 32])),
+  window.geoms = [Cuboid([0, -2, 0], [32, 1, 32])];
+  var mesh2 = new Mesh(window.geoms[0]),
       cubes = [];
   [-2, -1, 0, 1, 2].forEach(function(x) {
     [-2, -1, 0, 1, 2].forEach(function(y) {
       [-2, -1, 0, 1, 2].forEach(function(z) {
-        var mesh = new Mesh(Cuboid([4 * x, 4 * y + 8, 4 * z], [1, 1, 1]));
+        var geom = Cuboid([4 * x, 4 * y + 8, 4 * z], [1, 1, 1]);
+        var mesh = new Mesh(geom);
         cubes.push(mesh);
+        window.geoms.push(geom);
       });
     });
   });
+
 
   var program = Shader(document.getElementById('vertex-shader').textContent, 
                        document.getElementById('fragment-shader').textContent),
@@ -223,7 +227,7 @@
     gl.uniformMatrix4fv(gl.getUniformLocation(shadowMapProgram, 'model'), false, model);
     gl.drawArrays(gl.TRIANGLES, 0, mesh2.count);
 
-    //mat4.translate(model, model, [0, 1 + Math.sin(render.t), 0]);
+    mat4.translate(model, model, [0, 1 + Math.sin(render.t), 0]);
     mat4.rotateY(model, model, render.t * .5);
     gl.uniformMatrix4fv(gl.getUniformLocation(shadowMapProgram, 'model'), false, model);
     cubes.forEach(function(cube) {
@@ -252,7 +256,7 @@
     gl.uniformMatrix4fv(gl.getUniformLocation(program, 'model'), false, model);
     gl.drawArrays(gl.TRIANGLES, 0, mesh2.count);
 
-    //mat4.translate(model, model, [0, 1 + Math.sin(render.t), 0]);
+    mat4.translate(model, model, [0, 1 + Math.sin(render.t), 0]);
     mat4.rotateY(model, model, render.t * .5);
     gl.uniformMatrix4fv(gl.getUniformLocation(program, 'model'), false, model);
     cubes.forEach(function(cube) {
@@ -284,3 +288,57 @@
   document.body.appendChild(c2d);
 
 }());
+
+/*(function() {
+
+  var canvas = document.createElement('canvas'),
+      gl = canvas.getContext('webgl');
+
+  canvas.width = 1280;
+  canvas.height = 800;
+
+  var scene = new THREE.Scene(),
+      cam   = new THREE.PerspectiveCamera(90, 1280/800, .0001, 1000),
+      light = new THREE.DirectionalLight(0xffffff, 1.),
+      objects = [],
+      rnd = new THREE.WebGLRenderer({canvas: canvas, antialias: true});
+
+  light.castShadow = true;
+  light.shadowMapWidth = light.shadowMapHeight = 1024;
+  light.shadowCameraLeft = light.shadowCameraBottom = light.shadowCameraNear = -48;
+  light.shadowCameraRight = light.shadowCameraTop = light.shadowCameraFar = 48;
+
+  window.geoms.forEach(function(i) {
+    var bufg = new THREE.BufferGeometry(), mat = new THREE.MeshPhongMaterial({ color: 0x3333cc });
+    bufg.addAttribute('position', new THREE.BufferAttribute(i.vertices, 3));
+    bufg.addAttribute('normal', new THREE.BufferAttribute(i.normals, 3));
+    var obj = new THREE.Mesh(bufg, mat);
+    obj.castShadow = obj.receiveShadow = true
+    objects.push(obj);
+    scene.add(obj);
+  });
+
+  scene.add(light);
+  cam.rotation.set(-Math.PI / 12, 0, 0);
+  cam.position.set(0, 0, 20);
+
+  document.body.appendChild(canvas);
+  rnd.shadowMapEnabled = true;
+  rnd.shadowMapCullFace = THREE.CullFaceBack;
+  rnd.setClearColor(0x000000, 255);
+
+  var render = function() {
+    rnd.clear(true,true,false);
+    rnd.render(scene, cam);
+
+    light.position.set(16 * Math.cos(render.t / 2), 16, 16 * Math.sin(render.t / 2));
+    render.t += 0.05;
+    requestAnimationFrame(render);
+  }
+
+  render.t = 0;
+  render()
+  console.dir(cam);
+
+}());
+*/

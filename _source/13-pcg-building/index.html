@@ -1,6 +1,6 @@
 ---
 layout: proto
-title: "Variance shadow mapping"
+title: "Procedurally generated building"
 ---
 <script type='application/x-vertex-shader' id='vertex-shader'>
 attribute vec3 vertex, normal;
@@ -50,7 +50,7 @@ float unpack(vec2 color) {
 
 void main() {
 
-  vec3 ambientColor = vec3(0.2, 0.2, 0.8);
+  vec3 ambientColor = vec3(0.5, 0.5, 0.5);
   vec3 depth = luv.xyz / luv.w;
 
   float diffuse = max(dot(normalize(lightPos), vnormal), 0.);
@@ -71,11 +71,11 @@ void main() {
 <script type='application/x-vertex-shader' id='vertex-shadow'>
 attribute vec3 vertex, normal;
 
-uniform mat4 projection, view, model;
+uniform mat4 ltransf, model;
 
 void main() {
   
-  gl_Position = projection * view * model * vec4(vertex, 1.);
+  gl_Position = ltransf * model * vec4(vertex, 1.);
 }
 
 </script>
