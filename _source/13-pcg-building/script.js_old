@@ -73,7 +73,7 @@ var Scene = function(gl) {
                                  document.getElementById('fragment-shadow').textContent);
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, this.shFb);
-  this.shFb.size = 2048;
+  this.shFb.size = 1024;
   gl.bindTexture(gl.TEXTURE_2D, this.shTex);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -142,10 +142,6 @@ Scene.prototype.draw = function(w, h) {
   }}(this.program)));
 }
 
-Scene.prototype.setView = function(view) {
-  mat4.copy(this.matrices.view, view);
-}
-
 Object.defineProperty(Scene.prototype, "projection", {
   set: function(p) {
     mat4.copy(this.matrices.projection, p);
@@ -167,34 +163,28 @@ Object.defineProperty(Scene.prototype, "lightPos", {
   }
 });
 
-var Cuboid = function(mtx, excludeFaces) {
+var Cuboid = function(mtx) {
   var verts,  indices,
       vertices = [], normals = [], uvs = [],
       tangents = [], bitangents = [],
       xn, yn, zn, xt, yt, zt, xb, yb, zb;
   verts = [
-    -.5, -.5, -.5,
-    -.5, -.5,  .5,
-     .5, -.5,  .5,
-     .5, -.5, -.5,
-    -.5,  .5, -.5,
-    -.5,  .5,  .5,
-     .5,  .5,  .5,
-     .5,  .5, -.5
+    -.5, -.5, -.05,
+    -.5, -.5,  .05,
+     .5, -.5,  .05,
+     .5, -.5, -.05,
+    -.5,  .5, -.05,
+    -.5,  .5,  .05,
+     .5,  .5,  .05,
+     .5,  .5, -.05
   ];
   indices = [
     0, 2, 1, 0, 3, 2, 4, 5, 6, 4, 6, 7,
     1, 5, 4, 1, 4, 0, 3, 7, 6, 3, 6, 2,
     2, 6, 5, 2, 5, 1, 0, 4, 7, 0, 7, 3
   ];
-  // Bottom, top, left, right, back, front
-  // 0,      1,   2,    3,     4,    5
-  excludeFaces = excludeFaces || [];
 
   for(var k = 0, o = indices.length; k < o;) {
-    if(excludeFaces.indexOf(~~(k / 6)) !== -1) {
-      k += 3; continue;
-    }
     var i1 = indices[k++], i2 = indices[k++], i3 = indices[k++],
         v1 = vec3.fromValues(verts[i1 * 3], verts[i1 * 3 + 1], verts[i1 * 3 + 2]),
         v2 = vec3.fromValues(verts[i2 * 3], verts[i2 * 3 + 1], verts[i2 * 3 + 2]),
@@ -223,15 +213,59 @@ var Cuboid = function(mtx, excludeFaces) {
 
 }
 
-var ShapeGrammar = function(rules) {
-  for(var i in rules) {
-    rules[i].forEach(function(rhs) {
-      rhs.R = rhs.R || [ 0, 0, 0 ];
-      rhs.T = rhs.T || [ 0, 0, 0 ];
-      rhs.S = rhs.S || [ 1, 1, 1 ];
-    });
+/*var Cuboid = function(translate, scale) {
+
+  var verts,  indices,
+      vertices = [], normals = [], uvs = [],
+      tangents = [], bitangents = [],
+      xn, yn, zn, xt, yt, zt, xb, yb, zb;
+  verts = [
+    0, 0, 0,
+    0, 0, 1,
+    1, 0, 1,
+    1, 0, 0,
+    0, 1, 0,
+    0, 1, 1,
+    1, 1, 1,
+    1, 1, 0
+  ];
+  indices = [
+    0, 2, 1, 0, 3, 2, 4, 5, 6, 4, 6, 7,
+    1, 5, 4, 1, 4, 0, 3, 7, 6, 3, 6, 2,
+    2, 6, 5, 2, 5, 1, 0, 4, 7, 0, 7, 3
+  ];
+
+  for(var k = 0, o = indices.length; k < o;) {
+    var i1 = indices[k++], i2 = indices[k++], i3 = indices[k++],
+        x1 = scale[0] * verts[i1 * 3] + translate[0], 
+        y1 = scale[1] * verts[i1 * 3 + 1] + translate[1], 
+        z1 = scale[2] * verts[i1 * 3 + 2] + translate[2],
+        x2 = scale[0] * verts[i2 * 3] + translate[0], 
+        y2 = scale[1] * verts[i2 * 3 + 1] + translate[1], 
+        z2 = scale[2] * verts[i2 * 3 + 2] + translate[2],
+        x3 = scale[0] * verts[i3 * 3] + translate[0], 
+        y3 = scale[1] * verts[i3 * 3 + 1] + translate[1], 
+        z3 = scale[2] * verts[i3 * 3 + 2] + translate[2];
+
+    vertices.push(x1, y1, z1, x2, y2, z2, x3, y3, z3);
+
+    var u = vec3.fromValues(x2 - x1, y2 - y1, z2 - z1),
+        v = vec3.fromValues(x3 - x1, y3 - y1, z3 - z1),
+        w = vec3.fromValues(x3 - x2, y3 - y2, z3 - z2),
+        xn = u[1] * v[2] - u[2] * v[1],
+        yn = u[2] * v[0] - u[0] * v[2],
+        zn = u[0] * v[1] - u[1] * v[0];
+    normals.push(xn, yn, zn, xn, yn, zn, xn, yn, zn);
   }
 
+  return {
+    vertices: new Float32Array(vertices),
+    normals: new Float32Array(normals)
+  }
+
+};*/
+
+var ShapeGrammar = function(rules) {
   Object.defineProperty(this, 'rules', {
     value: rules,
     writable: false
@@ -241,7 +275,7 @@ var ShapeGrammar = function(rules) {
 
 };
 
-ShapeGrammar.prototype.run = function(axiom, params) {
+ShapeGrammar.prototype.run = function(axiom) {
   
   var result = [], nontermLeft = false;
 
@@ -253,34 +287,24 @@ ShapeGrammar.prototype.run = function(axiom, params) {
     nontermLeft = true;
 
     var productions = this.rules[v.sym];
-    if(typeof productions[0] === 'function')
-      productions = productions[0].apply({ v: v, params: params[v.sym] || null }, productions.slice(1));
-
     productions.forEach(function(prod) {
 
       if('sym' in prod) { // Nonterminal
-        if('prob' in prod && Math.random() > prod.prob)
-          return;
-
         var rhs = {
           sym: prod.sym,
           translation:  v.translation ? vec3.clone(v.translation) : vec3.create(),
           rotation:     v.rotation    ? quat.clone(v.rotation)    : quat.create(),
-          scale:        v.scale       ? vec3.clone(v.scale)       : vec3.create(),
-          param:        prod.param || null
+          scale:        v.scale       ? vec3.clone(v.scale)       : vec3.create()
         }
 
-        var q = quat.create(), t = vec3.create();
+        var q = quat.create();
 
         quat.rotateX(q, q, prod.R[0]);
         quat.rotateY(q, q, prod.R[1]);
         quat.rotateZ(q, q, prod.R[2]);
 
-        vec3.copy(t, prod.T);
-        vec3.mul(t, t, rhs.scale);
-
         quat.mul(rhs.rotation, rhs.rotation, q);
-        vec3.add(rhs.translation, rhs.translation, t);
+        vec3.add(rhs.translation, rhs.translation, prod.T);
         vec3.mul(rhs.scale, rhs.scale, prod.S);
 
         result.push(rhs);
@@ -291,76 +315,24 @@ ShapeGrammar.prototype.run = function(axiom, params) {
   }.bind(this));
   console.log(result.map(function(i) { return i.sym}).join(' '));
 
-  return nontermLeft ? this.run(result, params || []) : result;
+  return nontermLeft ? this.run(result) : result;
 }
-
-/**
- * Front: 0   Left:  2   Top:    4
- * Back:  1   Right: 3   Bottom: 5
- */
 
 var shg = new ShapeGrammar({
   'F': [
-    { sym: 'w', T: [  0, -.45, 0 ], R: [ 0, Math.PI / 2,  0 ], S: [ 1, .1, 1 ] },
-    { sym: 'B' }
-  ],
-  'B': [
-    { sym: 'w', T: [    0, 0,  .45 ], R: [ 0, Math.PI,      0 ], S: [ 1, 1, .1 ] },
-    { sym: 'w', T: [ -.45, 0,    0 ], R: [ 0, Math.PI / 2,  0 ], S: [ 1, 1, .1 ] },
-    { sym: 'w', T: [  .45, 0,    0 ], R: [ 0, Math.PI / 2,  0 ], S: [ 1, 1, .1 ] },
-
-    //{ sym: 'w', T: [  0, .45,  0 ], R: [ 0, Math.PI / 2,  0 ], S: [ 1, .1, 1 ] },
-
-    { sym: 'D', T: [ 0, 0, 0 ], R: [ 0, 0, 0 ], S: [ 1, 1, 1 ] },
-  ],
-  'D': [
-    function(leftBuf, rightBuf, topBuf, btmBuf) {
-      topBuf.S[1] = btmBuf.S[1] = leftBuf.S[0] = rightBuf.S[0] = this.params.bufw;
-      leftBuf.T[0] = -(rightBuf.T[0] = -(1 - this.params.bufw) / 2);
-      topBuf.T[1] = -(btmBuf.T[1] = -(1 - this.params.bufw) / 2);
-      topBuf.S[0] = btmBuf.S[0] = 1 - this.params.bufw * 2;
-
-      var out = [leftBuf, rightBuf, topBuf, btmBuf],
-          sepW = (1 - this.params.bufw) / this.params.subdivisionsX;
-          sepH = (1 - this.params.bufw) / this.params.subdivisionsY;
-
-      for(var y = 0; y < this.params.subdivisionsY - 1; y++) {
-        console.log(sepH * y)
-        var newSym = { 
-          sym: 'w', 
-          T: [ btmBuf.T[0], btmBuf.T[1] + sepH * (y + 1), btmBuf.T[2] ],
-          //T: [ topBuf.T[0], sepH * y + this.params.subw, topBuf.T[2] ],
-          R: [ 0, 0, 0 ],
-          S: [ topBuf.S[0], this.params.subw, topBuf.S[2] ]
-        };
-        for(var x = 0; x < this.params.subdivisionsX - 1; x++) {
-          var newSymX = {
-            sym: 'w', 
-            T: [ rightBuf.T[0] + sepW * (x + 1), newSym.T[1] + this.params.subw, topBuf.T[2] ],
-            R: [ 0, 0, 0 ],
-            S: [ this.params.subw, sepH, topBuf.S[2] ]
-          }
-          out.push(newSymX);
-        }
-        out.push(newSym);
-      }
-
-      return out;
-    },
-    { sym: 'w', T: [ -.35, 0, -.55 ], R: [ 0, 0, 0 ], S: [ .3, 1, .1] },
-    { sym: 'w', T: [ .35, 0, -.55 ], R: [ 0, 0, 0 ], S: [ .3, 1, .1] },
-    { sym: 'w', T: [ 0, .35, -.55 ], R: [ 0, 0, 0 ], S: [ .4, .3, .1] },
-    { sym: 'w', T: [ 0, -.45, -.55 ], R: [ 0, 0, 0 ], S: [ .4, .1, .1] },
+    { sym: 'w', T: [ 0,    0,  .5 ], R: [ 0, 0,            0 ], S: [ 1, 1, 1 ] },
+    { sym: 'w', T: [ 0,    0, -.5 ], R: [ 0, Math.PI,      0 ], S: [ 1, 1, 1 ] },
+    { sym: 'w', T: [ -.45, 0, 0 ],   R: [ 0, Math.PI / 2,  0 ], S: [ 1, 1, .9 ] },
+    { sym: 'w', T: [  .45, 0, 0 ],   R: [ 0, Math.PI / 2,  0 ], S: [ 1, 1, .9 ] }
   ],
   'w': [
     {
       render: function() {
+        console.log(this)
         var mat = mat4.create(), mat1 = mat4.create();
         mat4.scale(mat, mat, this.scale);
         mat4.fromRotationTranslation(mat1, this.rotation, this.translation);
-        mat4.mul(mat, mat1, mat);
-        // Bottom, top, right, left, back, front
-        // 0,      1,   2,     3,    5,    4
+        mat4.mul(mat, mat, mat1);
 
         return new Cuboid(mat);
       }
@@ -368,18 +340,87 @@ var shg = new ShapeGrammar({
   ]
 })
 
+/*
+var shg = new ShapeGrammar({
+  'A': [
+    { 'sym': 'w', transform: [ 0, 0, 0,  0, 0, 0 ], bound: [ 0, 0, 0,  1, 1, 1 ]},
+    { 'sym': 'w', transform: [ 0, 0, 0,  0, Math.PI / 2, 0 ], bound: [ 0, 0, 0,  1, 1, 1 ]},
+    { 'sym': 'w', transform: [ 0, 0, 0,  -Math.PI / 2, 0, 0 ], bound: [ 0, 0, 0,  1, 1, 1 ]},
+  ],
+  'F': [
+    { sym: 'C', transform: [ 0, 3.6, 0,  0, 0, 0 ],              bound: [ 0, 0, 0,  1, 1, 1 ]},
+    { sym: 'D', transform: [ 0, 0, 0,  0, 0, 0 ],          bound: [ 0, 0, 0,  1, 1, 1 ]},
+    { sym: 'W', transform: [ 0, 0, 0,  0, Math.PI / 2, 0 ],      bound: [ 0, 0, 0,  1, 1, 1 ]},
+    { sym: 'W', transform: [ 0, 0, 0,  0, Math.PI, 0 ],                bound: [ 0, 0, 0,  1, 1, 1 ]},
+    { sym: 'W', transform: [ 0, 0, 0,  0, Math.PI * 3 / 2, 0 ],  bound: [ 0, 0, 0,  1, 1, 1 ]},
+    { sym: 'f', transform: [ 0, 0, 0,  0, 0, 0 ],      bound: [ 0, 0, 0,  1, 1, 1 ]},
+  ],
+  'C': [
+    { sym: 'D', transform: [ 0, 0, 0,  0, 0, 0 ],          bound: [ .1, .1, .1,  .8, .8, .8 ]},
+    { sym: 'W', transform: [ 0, 0, 0,  0, Math.PI / 2, 0 ],      bound: [ .1, .1, .1,  .8, .8, .8 ]},
+    { sym: 'W', transform: [ 0, 0, 0,  0, Math.PI, 0 ],                bound: [ .1, .1, .1,  .8, .8, .8 ]},
+    { sym: 'W', transform: [ 0, 0, 0,  0, Math.PI * 3 / 2, 0 ],  bound: [ .1, .1, .1,  .8, .8, .8 ]},
+    { sym: 'f', transform: [ 0, 3.2, 0,  0, 0, 0 ],      bound: [ .1, .1, .1,  .8, .8, .8 ]},
+    { sym: 'f', transform: [ 0, .4,  0, 0, 0 ],     bound: [ 0, 0, 0,  1, 1, 1 ]}
+  ],
+  'W': [
+    { sym: 'w', transform: [ 0, 0, 0, 0, 0, 0 ], bound: [  0, 0, 0,  1, 1, 1 ]},
+  ],
+  'D': [
+    { sym: 'P', transform: [ 0, 0, 0, 0, 0, 0 ], bound: [  0, 0, 0,  .3, 1, 1 ]},
+    { sym: 'P', transform: [ 0, 0, 0, 0, 0, 0 ], bound: [ .7, 0, 0,  .3, 1, 1 ]},
+    { sym: 'P', transform: [ 0, 0, 0, 0, 0, 0 ], bound: [ .3, .7, 0,  .4, .3, 1 ]},
+  ],
+  'P': [
+    { sym: 'w', transform: [ 0, 0, 0, 0, 0, 0 ], bound: [ 0, 0, 0, 1, 1, 1 ]}
+  ],
+  'f': [
+    {
+      render: function() {
+        var tr = vec3.fromValues(
+            this.transl[0] + this.bounds[0],
+            this.transl[1] + this.bounds[1],
+            this.transl[2] + this.bounds[2]
+          ),
+          sc = vec3.fromValues(
+            this.bounds[3],
+            .1,
+            this.bounds[5]
+          );
+
+        return Cuboid(tr, sc);
+      }
+    }
+  ],
+  'w': [
+    {
+      render: function() {
+        var tr = vec3.fromValues(
+            this.bounds[0],
+            this.bounds[1],
+            this.bounds[2]
+          ),
+          sc = vec3.fromValues(
+            this.bounds[3],
+            this.bounds[4], .1,
+            this.bounds[5]
+          ), mat = mat4.create();
+        vec3.transformQuat(tr, tr, this.quat);
+        vec3.transformQuat(sc, sc, this.quat);
+        vec3.add(tr, tr, this.transl);
+
+        mat4.fromRotationTranslation(mat, this.quat, this.transl);
+        mat4.scale(mat, mat, vec3.fromValues(this.bounds[3], this.bounds[4], .1))
+
+        return Cuboid(mat);
+      }
+    }
+  ]
+});*/
+
 var shgResult = shg.run([
-  { sym: 'F', translation: [ 0, 0, 0 ], scale: [ 4, 4, 4 ] },
-  { sym: 'F', translation: [ 0, 4, 0 ], scale: [ 4, 4, 4 ] },
-  { sym: 'F', translation: [ 0, 8, 0 ], scale: [ 3.5, 4, 3.5 ] },
-], {
-  'D': {
-    subdivisionsX: 4,
-    subdivisionsY: 4,
-    subw: .05,
-    bufw: .15
-  }
-});
+  { sym: 'F', translation: [ 0, 0, 0 ], scale: [ 4, 4, 4 ] }
+]);
 
 console.log(shgResult);
 
@@ -414,34 +455,22 @@ console.log(shgResult);
   (function() {
     var vertices = [], normals = [], 
         objV = '', objN = '', objF = '';
-    shgResult.forEach(function(ii) {
-      vertices.push.apply(vertices, ii.geom.vertices);
-      normals.push.apply(normals, ii.geom.normals);
+    shgResult.forEach(function(i) {
+      vertices.push.apply(vertices, i.geom.vertices);
+      normals.push.apply(normals, i.geom.normals);
     });
 
-    // Vertex welding. ~23ms CPU, useful?
-    /*for(var i = 0; i < vertices.length; i += 3) {
-      var vI = vertices.slice(i, i + 3);
-      for(var j = i + 1; j < vertices.length; j += 3) {
-        var vJ = vertices.slice(j, j + 3);
-        if(vec3.dist(vI, vJ) < 0.1) {
-          vertices[i]     = vJ[0];
-          vertices[i + 1] = vJ[1];
-          vertices[i + 2] = vJ[2];
-        }
-      }
-    }*/
     var bldg = new Mesh(gl, { vertices: new Float32Array(vertices), normals: new Float32Array(normals) });
     bldg.model = model;
     scene.add(bldg);
   }());
 
   mat4.perspective(proj, Math.PI / 2, w / h, 0.0001, 1000.0);
-  mat4.ortho(shProj, -16, 16, -16, 16, -16, 16);
+  mat4.ortho(shProj, -8, 8, -8, 8, -8, 8);
   //mat4.ortho(proj, -3 * w / h, 3 * w / h, -3, 3, -3, 3);
 
   mat4.identity(view);
-  mat4.translate(view, view, [0, -5, -10]);
+  mat4.translate(view, view, [0, -.5, -8]);
   mat4.rotateX(view, view, Math.PI / 6);
 
   scene.projection = proj;
@@ -452,8 +481,8 @@ console.log(shgResult);
   canvas.addEventListener('mousedown', function(evt) {
     
     var omm = function(evt) {
-      //mat4.translate(view, view, [0, 0, -evt.movementY]);
-      mat4.rotateY(view, view, evt.movementX / 128);
+      mat4.rotateY(model, model, evt.movementX / 128);
+      //mat4.rotateX(model, model, -evt.movementY / 128);
     }, omu = function(evt) {
       canvas.removeEventListener('mousemove', omm);
       canvas.removeEventListener('mouseup', omu);
@@ -466,11 +495,10 @@ console.log(shgResult);
 
   function render() {
 
-    /*lightPos[0] = 16 * Math.cos(render.t / 2);
+    lightPos[0] = 16 * Math.cos(render.t / 2);
     lightPos[1] = 16;
-    lightPos[2] = 16 * Math.sin(render.t / 2);*/
-    //vec3.normalize(lightPos, lightPos);
-    scene.view = view;
+    lightPos[2] = 16 * Math.sin(render.t / 2);
+    vec3.normalize(lightPos, lightPos);
 
     //mat4.rotateY(model, model, Math.PI / 256);
 
