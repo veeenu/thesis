@@ -301,11 +301,11 @@ ShapeGrammar.prototype.run = function(axiom, params) {
 
 var shg = new ShapeGrammar({
   'F': [
-    { sym: 'w', T: [  0, -.45, 0 ], R: [ 0, Math.PI / 2,  0 ], S: [ 1, .1, 1 ] },
+    { sym: 'w', T: [  0, -.45, 0 ], R: [ 0, 0, 0 ], S: [ 1, .1, 1 ] },
     { sym: 'B' }
   ],
   'B': [
-    { sym: 'w', T: [    0, 0,  .45 ], R: [ 0, Math.PI,      0 ], S: [ 1, 1, .1 ] },
+    { sym: 'w', T: [    0, 0,  -.45 ], R: [ 0, 0, 0 ], S: [ 1, 1, .1 ] },
     { sym: 'w', T: [ -.45, 0,    0 ], R: [ 0, Math.PI / 2,  0 ], S: [ 1, 1, .1 ] },
     { sym: 'w', T: [  .45, 0,    0 ], R: [ 0, Math.PI / 2,  0 ], S: [ 1, 1, .1 ] },
 
@@ -314,43 +314,35 @@ var shg = new ShapeGrammar({
     { sym: 'D', T: [ 0, 0, 0 ], R: [ 0, 0, 0 ], S: [ 1, 1, 1 ] },
   ],
   'D': [
-    function(leftBuf, rightBuf, topBuf, btmBuf) {
-      topBuf.S[1] = btmBuf.S[1] = leftBuf.S[0] = rightBuf.S[0] = this.params.bufw;
-      leftBuf.T[0] = -(rightBuf.T[0] = -(1 - this.params.bufw) / 2);
-      topBuf.T[1] = -(btmBuf.T[1] = -(1 - this.params.bufw) / 2);
-      topBuf.S[0] = btmBuf.S[0] = 1 - this.params.bufw * 2;
-
-      var out = [leftBuf, rightBuf, topBuf, btmBuf],
-          sepW = (1 - this.params.bufw) / this.params.subdivisionsX;
-          sepH = (1 - this.params.bufw) / this.params.subdivisionsY;
-
-      for(var y = 0; y < this.params.subdivisionsY - 1; y++) {
-        console.log(sepH * y)
-        var newSym = { 
-          sym: 'w', 
-          T: [ btmBuf.T[0], btmBuf.T[1] + sepH * (y + 1), btmBuf.T[2] ],
-          //T: [ topBuf.T[0], sepH * y + this.params.subw, topBuf.T[2] ],
-          R: [ 0, 0, 0 ],
-          S: [ topBuf.S[0], this.params.subw, topBuf.S[2] ]
-        };
-        for(var x = 0; x < this.params.subdivisionsX - 1; x++) {
-          var newSymX = {
-            sym: 'w', 
-            T: [ rightBuf.T[0] + sepW * (x + 1), newSym.T[1] + this.params.subw, topBuf.T[2] ],
-            R: [ 0, 0, 0 ],
-            S: [ this.params.subw, sepH, topBuf.S[2] ]
-          }
-          out.push(newSymX);
+    function() {
+     
+      var dfcV = (1 - this.params.bufw) / 2,
+          subdWindow = 1 - this.params.bufw * 2,
+          subdWindowInner = subdWindow + this.params.subw;
+          subdWidth = subdWindowInner / this.params.subdivisionsX,
+          subdHeight = subdWindowInner / this.params.subdivisionsY,
+          topBuf    = { sym: 'w', T: [ 0, dfcV, .55 ], R: [ 0, 0, 0 ], S: [ 1, this.params.bufw, .1 ]},
+          bottomBuf = { sym: 'w', T: [ 0, -dfcV, .55 ], R: [ 0, 0, 0 ], S: [ 1, this.params.bufw, .1 ]},
+          leftBuf   = { sym: 'w', T: [ -dfcV, 0, .55 ], R: [ 0, 0, 0 ], S: [ this.params.bufw, subdWindow, .1 ]},
+          rightBuf  = { sym: 'w', T: [ dfcV, 0, .55 ], R: [ 0, 0, 0 ], S: [ this.params.bufw, subdWindow, .1 ]},
+          aaa = { sym: 'w', T: [ 0, 0, .45 ], R: [ 0, 0, 0 ], S: [ subdWindow, subdWindow, .1]}
+          out = [topBuf, bottomBuf, leftBuf, rightBuf] 
+          
+      for(var y = 1; y <= this.params.subdivisionsY; y++) {
+        var horizBar = { sym: 'w', T: [ 0, -subdWindowInner / 2 + y * subdHeight, .55 ], R: [ 0, 0, 0 ], S: [ subdWindow, this.params.subw, .1 ]};
+        for(var x = 1; x < this.params.subdivisionsX; x++) {
+          var vertBar = { sym: 'w', T: [ -subdWindowInner / 2 + x * subdWidth, horizBar.T[1] - subdHeight / 2, .55 ], R: [ 0, 0, 0 ], S: [ this.params.subw, subdHeight - this.params.subw, .1 ]};
+          out.push(vertBar);
         }
-        out.push(newSym);
+        if(y < this.params.subdivisionsY) out.push(horizBar);
       }
 
       return out;
-    },
-    { sym: 'w', T: [ -.35, 0, -.55 ], R: [ 0, 0, 0 ], S: [ .3, 1, .1] },
-    { sym: 'w', T: [ .35, 0, -.55 ], R: [ 0, 0, 0 ], S: [ .3, 1, .1] },
-    { sym: 'w', T: [ 0, .35, -.55 ], R: [ 0, 0, 0 ], S: [ .4, .3, .1] },
-    { sym: 'w', T: [ 0, -.45, -.55 ], R: [ 0, 0, 0 ], S: [ .4, .1, .1] },
+    }
+    /*{ sym: 'w', T: [ -.35, 0, .55 ], R: [ 0, 0, 0 ], S: [ .3, 1, .1] },
+    { sym: 'w', T: [ .35, 0, .55 ], R: [ 0, 0, 0 ], S: [ .3, 1, .1] },
+    { sym: 'w', T: [ 0, .35, .55 ], R: [ 0, 0, 0 ], S: [ .4, .3, .1] },
+    { sym: 'w', T: [ 0, -.45, .55 ], R: [ 0, 0, 0 ], S: [ .4, .1, .1] },*/
   ],
   'w': [
     {
@@ -372,10 +364,11 @@ var shgResult = shg.run([
   { sym: 'F', translation: [ 0, 0, 0 ], scale: [ 4, 4, 4 ] },
   { sym: 'F', translation: [ 0, 4, 0 ], scale: [ 4, 4, 4 ] },
   { sym: 'F', translation: [ 0, 8, 0 ], scale: [ 3.5, 4, 3.5 ] },
+  { sym: 'w', translation: [ 0, 9.925, .175 ], rotation: [0, 0, 0, 0], scale: [ 2.9, .15, 3.15 ] },
 ], {
   'D': {
     subdivisionsX: 4,
-    subdivisionsY: 4,
+    subdivisionsY: 3,
     subw: .05,
     bufw: .15
   }
@@ -438,22 +431,22 @@ console.log(shgResult);
 
   mat4.perspective(proj, Math.PI / 2, w / h, 0.0001, 1000.0);
   mat4.ortho(shProj, -16, 16, -16, 16, -16, 16);
-  //mat4.ortho(proj, -3 * w / h, 3 * w / h, -3, 3, -3, 3);
+  //mat4.ortho(proj, -12 * w / h, 12 * w / h, -12, 12, -12, 12);
 
   mat4.identity(view);
-  mat4.translate(view, view, [0, -5, -10]);
-  mat4.rotateX(view, view, Math.PI / 6);
+  mat4.translate(view, view, [0, -5, -12]);
+  //mat4.rotateX(view, view, Math.PI / 6);
 
   scene.projection = proj;
   scene.shadowProjection = shProj;
   scene.view = view;
-  mat4.rotateY(model, model, Math.PI * 9 / 8);
+  //mat4.rotateY(model, model, Math.PI * 9 / 8);
 
   canvas.addEventListener('mousedown', function(evt) {
     
     var omm = function(evt) {
       //mat4.translate(view, view, [0, 0, -evt.movementY]);
-      mat4.rotateY(view, view, evt.movementX / 128);
+      mat4.rotateY(model, model, evt.movementX / 128);
     }, omu = function(evt) {
       canvas.removeEventListener('mousemove', omm);
       canvas.removeEventListener('mouseup', omu);
