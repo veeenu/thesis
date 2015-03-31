@@ -267,10 +267,11 @@ ShapeGrammar.prototype.run = function(axiom, params) {
           translation:  v.translation ? vec3.clone(v.translation) : vec3.create(),
           rotation:     v.rotation    ? quat.clone(v.rotation)    : quat.create(),
           scale:        v.scale       ? vec3.clone(v.scale)       : vec3.create(),
+          //mat:          v.mat         ? mat4.clone(v.mat)         : mat4.create(),
           param:        prod.param || null
         }
 
-        var q = quat.create(), t = vec3.create();
+        var q = quat.create(), t = vec3.create(), s = vec3.create();
 
         quat.rotateX(q, q, prod.R[0]);
         quat.rotateY(q, q, prod.R[1]);
@@ -305,13 +306,16 @@ var shg = new ShapeGrammar({
     { sym: 'B' }
   ],
   'B': [
-    { sym: 'w', T: [    0, 0,  -.45 ], R: [ 0, 0, 0 ], S: [ 1, 1, .1 ] },
+    /*{ sym: 'w', T: [    0, 0,  -.45 ], R: [ 0, 0, 0 ], S: [ 1, 1, .1 ] },
     { sym: 'w', T: [ -.45, 0,    0 ], R: [ 0, Math.PI / 2,  0 ], S: [ 1, 1, .1 ] },
-    { sym: 'w', T: [  .45, 0,    0 ], R: [ 0, Math.PI / 2,  0 ], S: [ 1, 1, .1 ] },
+    { sym: 'w', T: [  .45, 0,    0 ], R: [ 0, Math.PI / 2,  0 ], S: [ 1, 1, .1 ] },*/
 
     //{ sym: 'w', T: [  0, .45,  0 ], R: [ 0, Math.PI / 2,  0 ], S: [ 1, .1, 1 ] },
 
-    { sym: 'D', T: [ 0, 0, 0 ], R: [ 0, 0, 0 ], S: [ 1, 1, 1 ] },
+    { sym: 'D', T: [ 0, 0, .45 ], R: [ 0, 0, 0 ], S: [ 1, 1, 1 ] },
+    { sym: 'D', T: [ -.45, 0, 0 ], R: [ 0, Math.PI / 2, 0 ], S: [ 1, 1, 1 ] },
+    { sym: 'D', T: [ .45, 0, 0 ], R: [ 0, Math.PI / 2, 0 ], S: [ 1, 1, 1 ] },
+    { sym: 'D', T: [ 0, 0, -.45 ], R: [ 0, Math.PI, 0 ], S: [ 1, 1, 1 ] },
   ],
   'D': [
     function() {
@@ -321,17 +325,27 @@ var shg = new ShapeGrammar({
           subdWindowInner = subdWindow + this.params.subw;
           subdWidth = subdWindowInner / this.params.subdivisionsX,
           subdHeight = subdWindowInner / this.params.subdivisionsY,
-          topBuf    = { sym: 'w', T: [ 0, dfcV, .55 ], R: [ 0, 0, 0 ], S: [ 1, this.params.bufw, .1 ]},
-          bottomBuf = { sym: 'w', T: [ 0, -dfcV, .55 ], R: [ 0, 0, 0 ], S: [ 1, this.params.bufw, .1 ]},
-          leftBuf   = { sym: 'w', T: [ -dfcV, 0, .55 ], R: [ 0, 0, 0 ], S: [ this.params.bufw, subdWindow, .1 ]},
-          rightBuf  = { sym: 'w', T: [ dfcV, 0, .55 ], R: [ 0, 0, 0 ], S: [ this.params.bufw, subdWindow, .1 ]},
-          aaa = { sym: 'w', T: [ 0, 0, .45 ], R: [ 0, 0, 0 ], S: [ subdWindow, subdWindow, .1]}
+          topBuf    = { sym: 'w', T: [ 0, dfcV, 0 ], R: [ 0, 0, 0 ], S: [ 1, this.params.bufw, .1 ]},
+          bottomBuf = { sym: 'w', T: [ 0, -dfcV, 0 ], R: [ 0, 0, 0 ], S: [ 1, this.params.bufw, .1 ]},
+          leftBuf   = { sym: 'w', T: [ -dfcV, 0, 0 ], R: [ 0, 0, 0 ], S: [ this.params.bufw, subdWindow, .1 ]},
+          rightBuf  = { sym: 'w', T: [ dfcV, 0, 0 ], R: [ 0, 0, 0 ], S: [ this.params.bufw, subdWindow, .1 ]};
           out = [topBuf, bottomBuf, leftBuf, rightBuf] 
+
+      out.forEach(function(v) {
+        vec3.transformQuat(v.T, v.T, this.v.rotation);
+      }.bind(this));
           
       for(var y = 1; y <= this.params.subdivisionsY; y++) {
-        var horizBar = { sym: 'w', T: [ 0, -subdWindowInner / 2 + y * subdHeight, .55 ], R: [ 0, 0, 0 ], S: [ subdWindow, this.params.subw, .1 ]};
+        var horizBar = { sym: 'w', T: [ 0, -subdWindowInner / 2 + y * subdHeight, 0 ], R: [ 0, 0, 0 ], S: [ subdWindow, this.params.subw, .1 ]};
+        vec3.transformQuat(horizBar.T, horizBar.T, this.v.rotation);
         for(var x = 1; x < this.params.subdivisionsX; x++) {
-          var vertBar = { sym: 'w', T: [ -subdWindowInner / 2 + x * subdWidth, horizBar.T[1] - subdHeight / 2, .55 ], R: [ 0, 0, 0 ], S: [ this.params.subw, subdHeight - this.params.subw, .1 ]};
+          var vertBar = { 
+            sym: 'w', 
+            T: [ -subdWindowInner / 2 + x * subdWidth, horizBar.T[1] - subdHeight / 2, 0 ], 
+            R: [ 0, 0, 0 ], 
+            S: [ this.params.subw, subdHeight - this.params.subw, .1 ]
+          };
+          vec3.transformQuat(vertBar.T, vertBar.T, this.v.rotation);
           out.push(vertBar);
         }
         if(y < this.params.subdivisionsY) out.push(horizBar);
@@ -339,10 +353,6 @@ var shg = new ShapeGrammar({
 
       return out;
     }
-    /*{ sym: 'w', T: [ -.35, 0, .55 ], R: [ 0, 0, 0 ], S: [ .3, 1, .1] },
-    { sym: 'w', T: [ .35, 0, .55 ], R: [ 0, 0, 0 ], S: [ .3, 1, .1] },
-    { sym: 'w', T: [ 0, .35, .55 ], R: [ 0, 0, 0 ], S: [ .4, .3, .1] },
-    { sym: 'w', T: [ 0, -.45, .55 ], R: [ 0, 0, 0 ], S: [ .4, .1, .1] },*/
   ],
   'w': [
     {
@@ -364,13 +374,14 @@ var shgResult = shg.run([
   { sym: 'F', translation: [ 0, 0, 0 ], scale: [ 4, 4, 4 ] },
   { sym: 'F', translation: [ 0, 4, 0 ], scale: [ 4, 4, 4 ] },
   { sym: 'F', translation: [ 0, 8, 0 ], scale: [ 3.5, 4, 3.5 ] },
-  { sym: 'w', translation: [ 0, 9.925, .175 ], rotation: [0, 0, 0, 0], scale: [ 2.9, .15, 3.15 ] },
+  { sym: 'F', translation: [ 0, 12, 0 ], scale: [ 3, 4, 3 ] },
+  { sym: 'w', translation: [ 0, 13.925, 0 ], rotation: [0, 0, 0, 0], scale: [ 2.4, .15, 2.4 ] }
 ], {
   'D': {
-    subdivisionsX: 4,
-    subdivisionsY: 3,
-    subw: .05,
-    bufw: .15
+    subdivisionsX: 8,
+    subdivisionsY: 4,
+    subw: .025,
+    bufw: .1
   }
 });
 
