@@ -7,6 +7,7 @@ attribute vec2 UV;
 attribute vec3 vertex, normal;
 
 uniform mat4 projection, view, model;
+uniform mat3 nmat;
 
 varying vec3 position, vnormal;
 varying vec2 uv;
@@ -16,7 +17,8 @@ void main() {
   gl_Position = projection * view * model * vec4(vertex, 1.);
   
   position = vec4(model * vec4(vertex, 1.)).xyz;
-  vnormal = vec4(model * vec4(normal, 1.)).xyz;
+  //vnormal = vec4(model * vec4(normal, 1.)).xyz;
+  vnormal = nmat * normal;
   uv = UV;
 
 }
@@ -42,8 +44,8 @@ vec3 getNormal() {
   float depthX = texture2D(texture, uv).r,
         depthY = texture2D(texture, uv).g;
 
-  dPdx -= 30. * depthX * normal;
-  dPdy -= 30. * depthY * normal;
+  dPdx -= depthX * normal;
+  dPdy -= depthY * normal;
 
   return normalize(cross(dPdx, dPdy));
 }

@@ -190,6 +190,7 @@
   var proj = mat4.create(),
       view = mat4.create(),
       model = mat4.create(),
+      nmat = mat3.create(),
       lightPos = vec3.fromValues(3, 3, -1);
 
   mat4.perspective(proj, Math.PI * 2 / 3, w / h, 0.0001, 1000.0);
@@ -206,7 +207,11 @@
 
     gl.clear(gl.DEPTH_BUFFER_BIT | gl.COLOR_BUFFER_BIT);
 
+    var n4 = mat4.clone(view);
+    mat4.mul(n4, n4, model);
+    mat3.normalFromMat4(nmat, n4);
     gl.uniformMatrix4fv(gl.getUniformLocation(program, 'model'), false, model);
+    gl.uniformMatrix3fv(gl.getUniformLocation(program, 'nmat'), false, nmat);
     gl.uniform3fv(gl.getUniformLocation(program, 'lightPos'), lightPos);
     gl.drawArrays(gl.TRIANGLES, 0, mesh.vertices.length / 3);
 

@@ -81,6 +81,7 @@ var City = function(seed) {
         continue;
       
       polys.push(poly);
+      console.log(poly)
       this.blocks.push(new Block(poly, seed));
     }
   }
