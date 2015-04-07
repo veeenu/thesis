@@ -1,7 +1,8 @@
 var PRNG  = new (require('PRNG')),
     Geom  = require('Geom'),
     Roads = require('./Roads.js'),
-    Block = require('./Block.js');
+    Block = require('./Block.js'),
+    ShapeGrammar = require('../lib/ShapeGrammar.js');
 
 var traverse = (function() {
 
@@ -81,7 +82,6 @@ var City = function(seed) {
         continue;
       
       polys.push(poly);
-      console.log(poly)
       this.blocks.push(new Block(poly, seed));
     }
   }

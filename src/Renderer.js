@@ -2,6 +2,7 @@ var fs        = require('fs');
 var PRNG      = new (require('PRNG')),
     Textures  = require('./generators/Textures.js'),
     glMatrix  = require('gl-matrix'),
+    BuildingSHG = require('./lib/BuildingSHG.js'),
     vertSrc, fragSrc;
 
 vertSrc = fs.readFileSync(__dirname + '/shaders/vertex.glsl', 'utf-8');
@@ -75,9 +76,8 @@ var Renderer = function(gl, city) {
       ubuf = gl.createBuffer();
 
   gl.enableVertexAttribArray(gl.getAttribLocation(this.program, 'vertex'));
-  gl.enableVertexAttribArray(gl.getAttribLocation(this.program, 'uv'));
+  //gl.enableVertexAttribArray(gl.getAttribLocation(this.program, 'uv'));
   gl.enableVertexAttribArray(gl.getAttribLocation(this.program, 'normal'));
-  gl.enableVertexAttribArray(gl.getAttribLocation(this.program, 'color'));
 
   gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.geometry.vertices),
@@ -85,22 +85,16 @@ var Renderer = function(gl, city) {
   gl.vertexAttribPointer(gl.getAttribLocation(this.program, 'vertex'), 3, 
                          gl.FLOAT, false, 0, 0);
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, ubuf);
+  /*gl.bindBuffer(gl.ARRAY_BUFFER, ubuf);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.geometry.uvs),
                 gl.STATIC_DRAW);
   gl.vertexAttribPointer(gl.getAttribLocation(this.program, 'uv'), 3, 
-                         gl.FLOAT, false, 0, 0);
+                         gl.FLOAT, false, 0, 0);*/
 
   gl.bindBuffer(gl.ARRAY_BUFFER, nbuf);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.geometry.normals),
                 gl.STATIC_DRAW);
   gl.vertexAttribPointer(gl.getAttribLocation(this.program, 'normal'), 3, 
-                         gl.FLOAT, false, 0, 0);
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, cbuf);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.geometry.colors),
-                gl.STATIC_DRAW);
-  gl.vertexAttribPointer(gl.getAttribLocation(this.program, 'color'), 3, 
                          gl.FLOAT, false, 0, 0);
 
   gl.enable(gl.DEPTH_TEST);
@@ -151,16 +145,48 @@ Renderer.computeGeometry = function(city) {
               Math.random(), Math.random(), Math.random()
             );
       glMatrix.vec3.normalize(col, col);
+      var centroid, size;
+     
+      centroid = lot.reduce(function(c, cur) {
+        c.x += cur.x;
+        c.y += cur.y;
+        return c;
+      }, { x: 0, y: 0 });
 
+      size = lot.reduce(function(c, cur) {
+        if(c.xm > cur.x)
+          c.xm = cur.x;
+        if(c.ym > cur.y)
+          c.ym = cur.y;
+        if(c.xM < cur.x)
+          c.xM = cur.x;
+        if(c.yM < cur.y)
+          c.yM = cur.y;
+        return c;
+      }, { xm: Number.POSITIVE_INFINITY, ym: Number.POSITIVE_INFINITY, xM: Number.NEGATIVE_INFINITY, yM: Number.NEGATIVE_INFINITY });
+      centroid.x /= lot.length;
+      centroid.y /= lot.length;
+
+      var bldgGeom = BuildingSHG.create({
+        x: centroid.x, y: centroid.y,
+        width: Math.abs(size.xM - size.xm),
+        depth: Math.abs(size.yM - size.ym)
+      });
+      for(var k in bldgGeom) {
+        vertices.push.apply(vertices, bldgGeom[k].vertices);
+        normals.push.apply(normals, bldgGeom[k].normals);
+      }
+
+      /*h = .25;
       var verts = [
-          lot[0].x, lot[0].y, 0,
-          lot[1].x, lot[1].y, 0,
-          lot[2].x, lot[2].y, 0,
-          lot[3].x, lot[3].y, 0,
-          lot[0].x, lot[0].y, h,
-          lot[1].x, lot[1].y, h,
-          lot[2].x, lot[2].y, h,
-          lot[3].x, lot[3].y, h
+          lot[0].x, 0, lot[0].y,
+          lot[1].x, 0, lot[1].y,
+          lot[2].x, 0, lot[2].y,
+          lot[3].x, 0, lot[3].y,
+          lot[0].x, h, lot[0].y,
+          lot[1].x, h, lot[1].y,
+          lot[2].x, h, lot[2].y,
+          lot[3].x, h, lot[3].y
         ],
         uvh = 8/512, uvz = Math.random() * 3,
         uvx0 = 0 + uvh, uvx1 = .125 - uvh,
@@ -202,7 +228,7 @@ Renderer.computeGeometry = function(city) {
         colors.push.apply(colors, col);
         colors.push.apply(colors, col);
         count += 3;
-      }
+      }*/
 
     }
   }
@@ -211,7 +237,7 @@ Renderer.computeGeometry = function(city) {
     vertices: vertices,
     normals: normals,
     colors: colors,
-    count: count,
+    count: vertices.length / 3, //count,
     uvs: uvs
   }
 }

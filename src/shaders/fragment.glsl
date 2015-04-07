@@ -1,6 +1,6 @@
 precision highp float;
 
-varying vec3 c, fnorm, texCoord;
+varying vec3 fnorm, texCoord;
 varying float dist;
 
 uniform sampler2D tex;

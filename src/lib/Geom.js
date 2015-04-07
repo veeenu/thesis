@@ -1,3 +1,6 @@
+var glMatrix = require('gl-matrix'),
+    vec3 = glMatrix.vec3;
+
 var Geom = {
   // http://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html
   pnpoly: function(poly, x, y) {
@@ -111,6 +114,17 @@ var Geom = {
     p = b2.x + (b1.x - b2.x) * b2.y / (b2.y - b1.y);
 
     return { x: a1.x + p * cos_, y: a1.y + p * sin_ };
+  },
+  triToNormal: function(points) {
+    var vA = vec3.fromValues.apply(vec3, points.slice(3,6)),
+        vB = vec3.fromValues.apply(vec3, points.slice(0,3)),
+        vC = vec3.fromValues.apply(vec3, points.slice(6,9)),
+        norm = vec3.create();
+    vec3.sub(vB, vB, vA);
+    vec3.sub(vC, vC, vA);
+    vec3.cross(norm, vB, vC);
+    vec3.normalize(norm, norm);
+    return norm;
   }
 
 }

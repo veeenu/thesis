@@ -6,7 +6,7 @@ BUILD_GHPAGES			= ../build.js
 BROWSERIFY_FLAGS 	= --debug
 
 watch:
-	watch $(MAKE) all
+	watch "$(MAKE) all"
 
 ghpages: $(BUILD_GHPAGES)
 	@:

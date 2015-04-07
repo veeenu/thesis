@@ -1,5 +1,6 @@
 var PRNG = new (require('PRNG')),
-    Geom = require('Geom');
+    Geom = require('Geom'),
+    ShapeGrammar = require('ShapeGrammar');
 
 var lerp = function(a, b, t) { return (1 - t) * a + t * b; }
 
@@ -65,6 +66,7 @@ var subdivideStrip = function(block, strip) {
 var Building = function(poly, height) {
   this.poly = poly;
   this.height = height;
+
 }
 
 var Block = function(poly, seed) {

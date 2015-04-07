@@ -5,6 +5,7 @@
   "main": "main.js",
   "dependencies": {
     "brfs": "^1.4.0",
+    "earcut": "^1.4.2",
     "gl-matrix": "^2.2.1"
   },
   "devDependencies": {
@@ -13,7 +14,8 @@
   "aliasify": {
     "aliases": {
       "PRNG": "./generators/PRNG",
-      "Geom": "./lib/Geom"
+      "Geom": "./lib/Geom",
+      "ShapeGrammar": "./lib/ShapeGrammar"
     }
   },
   "author": "Andrea Venuta",
