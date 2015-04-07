@@ -209,7 +209,7 @@ console.log(shg);
   }());
 
   mat4.perspective(proj, Math.PI / 2, w / h, 0.0001, 1000.0);
-  mat4.ortho(shProj, -16, 16, -16, 16, -16, 16);
+  mat4.ortho(shProj, -32, 32, -32, 32, -32, 32);
 
   mat4.identity(view);
   mat4.translate(view, view, [0, -3, -6]);
