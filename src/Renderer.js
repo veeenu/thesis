@@ -43,7 +43,7 @@ var Renderer = function(gl, city) {
 
   path.setAttribute('d', attrStr);
 
-  this.incr = 0.005 / count;
+  this.incr = 0.0025 / count;
   this.posFn = (function(count, path) { return function(t) {
     var tl = path.getTotalLength(),
         eye = path.getPointAtLength(tl * (t % 1)),

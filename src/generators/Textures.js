@@ -1,10 +1,11 @@
 var PRNG   = new (require('PRNG')),
     canvas = document.createElement('canvas'),
     ctx    = canvas.getContext('2d'),
-    imgd   = ctx.createImageData(256, 256),
-    w = 256, h = 256;
+    w      = 512, 
+    h      = 512,
+    imgd   = ctx.createImageData(w, h);
 
-canvas.width = canvas.height = 256;
+canvas.width = canvas.height = w;
 
 //canvas.setAttribute('style', 'position: fixed; top: 64px; left: 64px;');
 
@@ -71,9 +72,10 @@ canvas.width = canvas.height = 256;
     return x < edge ? 0. : 1.;
   }
 
-  var size = 256,
-      brickWidth = 30, brickHeight = 14,
-      mortarWidth = 2,
+  var size = w,
+      mortarWidth = w / 128,
+      brickWidth = w / 8 - mortarWidth,
+      brickHeight = w / 16 - mortarWidth,
       bmw = brickWidth + mortarWidth,
       bmh = brickHeight + mortarWidth,
       windowWidth = 1 / 2,
@@ -201,10 +203,10 @@ module.exports = function(gl) {
   var tex = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, tex);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST_MIPMAP_LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR);
   //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  //gl.generateMipmap(gl.TEXTURE_2D);
+  gl.generateMipmap(gl.TEXTURE_2D);
   return tex;
 }

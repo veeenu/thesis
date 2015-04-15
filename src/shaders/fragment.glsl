@@ -19,7 +19,7 @@ void main(void) {
   tp = texCoord.yx;
 
   //vec4 color = texture2D(tex, tp + mod(texCoord.xy * 16.0, .125));
-  vec4 color = texture2D(tex, tp * 4.);
+  vec4 color = texture2D(tex, tp * 8.);
   vec3 lightDir = normalize(vec3(0.5, 1., 0.5));
   float lambert = clamp(dot( fnorm, -lightDir ), 0.0, 1.0);
   float att = min(1.0, 1.0 / (.2 + .6 * dist + .4 * dist * dist));
