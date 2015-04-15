@@ -452,19 +452,24 @@ console.log(shgResult);
   scene.shadowProjection = shProj;
   scene.view = view;
   //mat4.rotateY(model, model, Math.PI * 9 / 8);
+  //
+  var rX = 0; rY = 0;
 
   canvas.addEventListener('mousedown', function(evt) {
     
+    var x = evt.clientX, y = evt.clientY, irx = rX, iry = rY;
     var omm = function(evt) {
-      //mat4.translate(view, view, [0, 0, -evt.movementY]);
-      mat4.rotateY(model, model, evt.movementX / 128);
+      evt.preventDefault();
+      evt.stopPropagation();
+      rY = irx + (x - evt.clientX) / 128;
+      rX = iry + (y - evt.clientY) / 128;
     }, omu = function(evt) {
       canvas.removeEventListener('mousemove', omm);
       canvas.removeEventListener('mouseup', omu);
     }
 
-      canvas.addEventListener('mousemove', omm);
-      canvas.addEventListener('mouseup', omu);
+    canvas.addEventListener('mousemove', omm);
+    canvas.addEventListener('mouseup', omu);
 
   });
 
@@ -477,6 +482,9 @@ console.log(shgResult);
     scene.view = view;
 
     //mat4.rotateY(model, model, Math.PI / 256);
+    mat4.identity(model);
+    mat4.rotateX(model, model, rX);
+    mat4.rotateY(model, model, rY);
 
     render.t += 0.02;
 

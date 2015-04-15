@@ -413,4 +413,4 @@ for(var x = -8; x < 8; x++)
     }));
   }
 
-console.log(shgResult);
+//console.log(shgResult);

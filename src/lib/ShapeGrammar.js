@@ -84,9 +84,41 @@ var SHAPE = {
       normals.push.apply(normals, normal);
     }
 
+    var uvs = [], minX, minY, maxX, maxY;
+
+    minX = minY = Number.POSITIVE_INFINITY;
+    maxX = maxY = Number.NEGATIVE_INFINITY;
+
+    path.points.forEach(function(p, i) {
+      switch(i % 2) {
+        case 0:
+          if(p < minX) minX = p;
+          if(p > maxX) maxX = p;
+          break;
+        case 1:
+          if(p < minY) minY = p;
+          if(p > maxY) maxY = p;
+          break;
+        /*case 2:
+          if(p < minZ) minZ = p;
+          if(p > maxZ) maxZ = p;
+          break;*/
+      }
+    });
+
+    var lX = maxX - minX,
+        lY = maxY - minY;
+
+    for(var i = 0, n = path.points.length; i < n; i += 2) {
+      var u = (path.points[i]     - minX) / lX,
+          v = (path.points[i + 1] - minY) / lY;
+      uvs.push(u, v, 0);
+    }
+
     return {
       vertices: vertices,
-      normals: normals
+      normals: normals,
+      uvs: uvs
     }
   },
   /**
@@ -97,7 +129,7 @@ var SHAPE = {
     var normal = vec3.create(),
         sA = vec3.create(),
         sB = vec3.create(),
-        vertices, normals;
+        vertices, normals, uvs;
 
     vec3.sub(sA, a, b);
     vec3.sub(sB, c, b);
@@ -112,9 +144,19 @@ var SHAPE = {
     normals = [];
     for(var i = 6; i--;) normals.push.apply(normals, normal);
 
+    uvs = [
+      0, 0, 0,
+      1, 0, 0,
+      0, 1, 0,
+      0, 1, 0,
+      1, 0, 0,
+      1, 1, 0
+    ]
+
     return {
       vertices: vertices,
-      normals: normals
+      normals: normals,
+      uvs: uvs
     }
   },
   clone: function(shape) {

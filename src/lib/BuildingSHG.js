@@ -7,9 +7,10 @@ shg.define('Lot', function(SHAPE, lot) {
   
   var out = {};
   SHAPE.stochastic(out, [
-    { p: .33, lhs: 'Floor', rhs: SHAPE.transform({ points: lot.points_circle.slice(), count: 8, size: lot.size }, lot) },
-    { p: .33, lhs: 'Floor', rhs: SHAPE.transform({ points: lot.points_horseshoe.slice(), count: 8, size: lot.size }, lot) },
-    { p: .33, lhs: 'Floor', rhs: SHAPE.transform({ points: lot.points_quad.slice(), count: 8, size: lot.size }, lot) }
+    //{ p: .33, lhs: 'Floor', rhs: SHAPE.transform({ points: lot.points_circle.slice(), count: 8, size: lot.size }, lot) },
+    //{ p: .33, lhs: 'Floor', rhs: SHAPE.transform({ points: lot.points_horseshoe.slice(), count: 8, size: lot.size }, lot) },
+    //{ p: .33, lhs: 'Floor', rhs: SHAPE.transform({ points: lot.points_quad.slice(), count: 8, size: lot.size }, lot) }
+    { p: 1, lhs: 'Floor', rhs: SHAPE.transform({ points: lot.points_quad.slice(), count: 8, size: lot.size }, lot) }
   ]);
 
   return out;

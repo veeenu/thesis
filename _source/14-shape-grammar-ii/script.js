@@ -167,7 +167,7 @@ Object.defineProperty(Scene.prototype, "lightPos", {
   }
 });
 
-console.log(shg);
+//console.log(shg);
 
 (function() {
 
@@ -221,11 +221,13 @@ console.log(shg);
 
   canvas.addEventListener('mousedown', function(evt) {
     
+    var x = evt.clientX, y = evt.clientY, irx = rX, iry = rY;
     var omm = function(evt) {
       evt.preventDefault();
       evt.stopPropagation();
-      rY += evt.movementX / 128;
-      rX += evt.movementY / 128;
+      rY = iry + (x - evt.clientX) / 128;
+      rX = irx + (y - evt.clientY) / 128;
+      console.log(rX);
     }, omu = function(evt) {
       canvas.removeEventListener('mousemove', omm);
       canvas.removeEventListener('mouseup', omu);

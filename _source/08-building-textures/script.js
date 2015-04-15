@@ -66,7 +66,57 @@
 
   var imgd = ctx.createImageData(w, h);
 
-  var size = 128;
+  var step = function(edge, x) {
+    return x < edge ? 0. : 1.;
+  }
+
+  var size = 256,
+      brickWidth = 30, brickHeight = 14,
+      mortarWidth = 2,
+      bmw = brickWidth + mortarWidth,
+      bmh = brickHeight + mortarWidth,
+      windowWidth = 1 / 2,
+      windowHeight =  1 / 2,
+      windowLeft = 1 / 4,
+      windowTop = 1 / 4,
+      mwf = mortarWidth * .5 / bmw,
+      mhf = mortarWidth * .5 / bmh;
+
+  var brickColor = function(s, t, noise) {
+    var ss = s / bmw,
+        tt = t / bmh,
+        ssP = ss;
+
+    if((tt * .5) % 1 > .5)
+      ss += .5;
+    var brickX  = ~~ss,
+        brickXf = ~~(ssP + .5),
+        brickY  = ~~tt,
+        brickNo = Math.sin(2 * (brickX + 1)) * Math.sin(2 * (brickY + 1));
+    ss -= ~~ss;
+    tt -= ~~tt;
+    var w = step(mwf, ss) - step(1 - mwf, ss),
+        h = step(mhf, tt) - step(1 - mhf, tt);
+
+    if(
+       brickXf >= 3 && brickXf < 6 &&
+       brickY  >= 4 && brickY < 12
+      ) {
+      return [ 255, 237, 33 ].map(function(i) {
+        return i * (value * .125 + .875);
+      });
+    }
+    else if(w * h) {
+      return [ 128, 0, 0 ].map(function(i) { 
+        return i * (1 + brickNo * .25) * (value * .25 + .75);
+      });
+    }
+    else
+      return [ 128, 128, 128 ].map(function(i) {
+        return i * (value * .25 + .75);
+      });
+  }
+
   for(var x = 0; x < size; x++)
     for(var y = 0; y < size; y++) {
       var value = 0, i,
@@ -77,14 +127,21 @@
               (noise(x / size, y / size, 8  ) + 1) / 8 +
               (noise(x / size, y / size, 16 ) + 1) / 16;
 
-      if(y % (size / 4) < (size/64) ||
+      //imgd.data[pos] = imgd.data[pos + 1] = imgd.data[pos + 2] = value * 128;
+
+      var color = brickColor(x, y, value);
+      [0,1,2].forEach(function(i) {
+        imgd.data[pos + i] = color[i];
+      });
+
+      /*if(y % (size / 4) < (size/64) ||
         ~~(y / (size/4)) % (size/64) < size/64 && x % (size / 3) < size/64 ||
         ~~(y / (size/4)) % (size/64) >=size/64 && (x + size / 4) % (size / 4) < size/64)
         imgd.data[pos] = imgd.data[pos + 1] = imgd.data[pos + 2] = value * 128 + 64;
       else {
         imgd.data[pos] = value * 64 + 96;
         imgd.data[pos + 1] = imgd.data[pos + 2] = 16;
-      }
+      }*/
       imgd.data[pos + 3] = 255;
     }
 

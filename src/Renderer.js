@@ -68,6 +68,30 @@ var Renderer = function(gl, city) {
   gl.useProgram(this.program);
 
   console.log(city, this.geometry)
+
+  var geom = this.geometry;
+  /*(function() {
+  
+    var obj = "o City\n";
+    console.log(geom.vertices.length / 3);
+    for(var i = 0; i < geom.vertices.length; i += 3) {
+      obj += 'v ' + geom.vertices.slice(i, i + 3).join(' ') + "\n";
+    }
+    for(var i = 0; i < geom.normals.length; i += 3) {
+      obj += 'vn ' + geom.normals.slice(i, i + 3).join(' ') + "\n";
+    }
+    for(var i = 0; i < geom.vertices.length / 3; i += 3) {
+      obj += 'f ' + [i + 1, i + 2, i + 3].map(function(ii) { return ii + '//' + ii }).join(' ') + "\n";
+    }
+    var a = document.createElement('a'),
+        blob = new Blob([obj], {type:'application/octet-stream'});
+        url = URL.createObjectURL(blob);
+    a.href = url;
+    a.download = 'tesi.obj';
+    a.click();
+
+  }());*/
+
   this.t = 0;
 
   var vbuf = gl.createBuffer(),
@@ -75,8 +99,9 @@ var Renderer = function(gl, city) {
       cbuf = gl.createBuffer(),
       ubuf = gl.createBuffer();
 
+  Textures(gl); // TODO
   gl.enableVertexAttribArray(gl.getAttribLocation(this.program, 'vertex'));
-  //gl.enableVertexAttribArray(gl.getAttribLocation(this.program, 'uv'));
+  gl.enableVertexAttribArray(gl.getAttribLocation(this.program, 'uv'));
   gl.enableVertexAttribArray(gl.getAttribLocation(this.program, 'normal'));
 
   gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
@@ -85,11 +110,11 @@ var Renderer = function(gl, city) {
   gl.vertexAttribPointer(gl.getAttribLocation(this.program, 'vertex'), 3, 
                          gl.FLOAT, false, 0, 0);
 
-  /*gl.bindBuffer(gl.ARRAY_BUFFER, ubuf);
+  gl.bindBuffer(gl.ARRAY_BUFFER, ubuf);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.geometry.uvs),
                 gl.STATIC_DRAW);
   gl.vertexAttribPointer(gl.getAttribLocation(this.program, 'uv'), 3, 
-                         gl.FLOAT, false, 0, 0);*/
+                         gl.FLOAT, false, 0, 0);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, nbuf);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.geometry.normals),
@@ -101,7 +126,6 @@ var Renderer = function(gl, city) {
   gl.depthFunc(gl.LEQUAL);
   gl.clearColor(0, 0, 0, 1);
 
-  Textures(gl); // TODO
   gl.uniform1i(gl.getUniformLocation(this.program, 'tex'), 0);
 
 }
@@ -175,6 +199,7 @@ Renderer.computeGeometry = function(city) {
       for(var k in bldgGeom) {
         vertices.push.apply(vertices, bldgGeom[k].vertices);
         normals.push.apply(normals, bldgGeom[k].normals);
+        uvs.push.apply(uvs, bldgGeom[k].uvs);
       }
 
       /*h = .25;

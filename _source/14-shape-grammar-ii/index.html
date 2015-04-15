@@ -64,6 +64,7 @@ void main() {
     color += ambientColor * diffuse * .5;
 
   float illum = clamp(exp(-4. * (depth.z - unpack(sample.xy))), 0., 1.);
+  //illum = 1.;
 
   gl_FragColor = clamp(vec4(color * illum, 1.), 0., 1.);
 }
