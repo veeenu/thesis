@@ -1,5 +1,7 @@
 var ShapeGrammar = require('ShapeGrammar'),
     Geom = require('Geom');
+
+var floorHeight = .25;
    
 var shg = new ShapeGrammar();
 
@@ -10,26 +12,44 @@ shg.define('Lot', function(SHAPE, lot) {
     //{ p: .33, lhs: 'Floor', rhs: SHAPE.transform({ points: lot.points_circle.slice(), count: 8, size: lot.size }, lot) },
     //{ p: .33, lhs: 'Floor', rhs: SHAPE.transform({ points: lot.points_horseshoe.slice(), count: 8, size: lot.size }, lot) },
     //{ p: .33, lhs: 'Floor', rhs: SHAPE.transform({ points: lot.points_quad.slice(), count: 8, size: lot.size }, lot) }
-    { p: 1, lhs: 'Floor', rhs: SHAPE.transform({ points: lot.points_quad.slice(), count: 8, size: lot.size }, lot) }
+    { p: 1, lhs: 'Floor0', rhs: SHAPE.transform({ points: lot.points_quad.slice(), count: 8, size: lot.size }, lot) }
   ]);
 
   return out;
     
 });
 
-shg.define('Floor', function(SHAPE, floor) {
+shg.define('Floor0', function(SHAPE, floor) {
 
   floor.count--;
   var out = {
-    't0': SHAPE.extrude(floor, .5),
+    't0': SHAPE.extrude(floor, floorHeight),
     't1': SHAPE.face(floor),
-    't2': SHAPE.face(SHAPE.transform(SHAPE.clone(floor), { t: [0, .5, 0] }))
+    't2': SHAPE.face(SHAPE.transform(SHAPE.clone(floor), { t: [0, floorHeight, 0] }))
   };
 
   if(floor.count > 0)
     SHAPE.stochastic(out, [
-      { p: .4, lhs: 'Floor', rhs: SHAPE.transform(SHAPE.clone(floor), { t: [0, .5, 0] }) },
-      { p: .3, lhs: 'Floor', rhs: SHAPE.transform(SHAPE.inset(SHAPE.clone(floor), floor.size), { t: [0, .5, 0] }) },
+      { p: .8, lhs: 'Floor', rhs: SHAPE.transform(SHAPE.clone(floor), { t: [0, floorHeight, 0] }) },
+      { p: .2, lhs: null }
+    ]);
+
+  return out;
+});
+
+shg.define('Floor', function(SHAPE, floor) {
+
+  floor.count--;
+  var out = {
+    't0': SHAPE.extrude(floor, floorHeight),
+    't1': SHAPE.face(floor),
+    't2': SHAPE.face(SHAPE.transform(SHAPE.clone(floor), { t: [0, floorHeight, 0] }))
+  };
+
+  if(floor.count > 0)
+    SHAPE.stochastic(out, [
+      { p: .4, lhs: 'Floor', rhs: SHAPE.transform(SHAPE.clone(floor), { t: [0, floorHeight, 0] }) },
+      { p: .3, lhs: 'Floor', rhs: SHAPE.transform(SHAPE.inset(SHAPE.clone(floor), floor.size), { t: [0, floorHeight, 0] }) },
       { p: .3, lhs: null }
     ]);
 

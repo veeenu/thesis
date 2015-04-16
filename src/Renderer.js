@@ -99,7 +99,7 @@ var Renderer = function(gl, city) {
       cbuf = gl.createBuffer(),
       ubuf = gl.createBuffer();
 
-  Textures(gl); // TODO
+  Textures.generate(gl); // TODO
   gl.enableVertexAttribArray(gl.getAttribLocation(this.program, 'vertex'));
   gl.enableVertexAttribArray(gl.getAttribLocation(this.program, 'uv'));
   gl.enableVertexAttribArray(gl.getAttribLocation(this.program, 'normal'));

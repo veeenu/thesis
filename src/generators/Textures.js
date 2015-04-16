@@ -1,16 +1,27 @@
-var PRNG   = new (require('PRNG')),
-    canvas = document.createElement('canvas'),
-    ctx    = canvas.getContext('2d'),
-    w      = 512, 
-    h      = 512,
-    imgd   = ctx.createImageData(w, h);
+var PRNG    = new (require('PRNG')),
+    texSize = 512;
 
-canvas.width = canvas.height = w;
+var step = function(edge, x) {
+  return x < edge ? 0. : 1.;
+}
 
-//canvas.setAttribute('style', 'position: fixed; top: 64px; left: 64px;');
+var lerp = function(a, b, t) {
+  return (b * t) + (a * (1 - t));
+}
 
-(function() {
+var fade = function(x) {
+  return x * x * x * (x * (6 * x - 15) + 10);
+}
 
+var mix = function(v1, v2, t) {
+  return [
+    lerp(v1[0], v2[0], t),
+    lerp(v1[1], v2[1], t),
+    lerp(v1[2], v2[2], t)
+  ]
+};
+
+var snoise = (function() {
   var side = 16,
       lattice = (function() {
         var l = [];
@@ -28,15 +39,8 @@ canvas.width = canvas.height = w;
 
       }());
 
-  var lerp = function(a, b, t) {
-    return (b * t) + (a * (1 - t));
-  }
-
-  var fade = function(x) {
-    return x * x * x * (x * (6 * x - 15) + 10);
-  }
-
-  var noise = function(x, y, freq) {
+  return function(x, y, freq) {
+    freq = freq || 1;
     var fx0 = ((freq * x) % 1.0) * side,
         fy0 = ((freq * y) % 1.0) * side,
         fx1, fy1,
@@ -66,147 +70,76 @@ canvas.width = canvas.height = w;
     return lerp(lerp(dot00, dot01, fx0), lerp(dot10, dot11, fx0), fy0);
   }
 
-  var imgd = ctx.createImageData(w, h);
+}());
 
-  var step = function(edge, x) {
-    return x < edge ? 0. : 1.;
+var brickColor = (function() {
+  var bW = .125,
+      bH = .0625,
+      mS = 1 / 128,
+      mWf = mS * .5 / bW,
+      mHf = mS * .5 / bH,
+      brickC  = [.5,  0, .1],
+      mortarC = [.5, .5, .5];
+
+  return function(s, t) {
+    var u = s / bW,
+        v = t / bH,
+        brU, brV;
+
+    if(v * .5 % 1 > .5)
+      u += .5;
+
+    brU = ~~u;
+    brV = ~~v;
+    u -= brU;
+    v -= brV;
+
+    var noiseV = 1 + 
+                 snoise(u * 16, v * 16, 1024) * .0625 +
+                 Math.abs(snoise(u * 256, v * 256, 1024)) * .25,
+        //noiseI = Math.abs(snoise(brU * 64, brV * 64)),
+        brickDamp = 1 + .25 * (Math.sin(2 * (brU + 1)) + Math.sin(2 * (brV + 1)));
+    return mix(mortarC, brickC.map(function(i) { return i * brickDamp }),
+               (step(mWf, u) - step(1 - mWf, u)) *
+               (step(mHf, v) - step(1 - mHf, v))
+              ).map(function(i) { return i * noiseV })
   }
+}());
 
-  var size = w,
-      mortarWidth = w / 128,
-      brickWidth = w / 8 - mortarWidth,
-      brickHeight = w / 16 - mortarWidth,
-      bmw = brickWidth + mortarWidth,
-      bmh = brickHeight + mortarWidth,
-      windowWidth = 1 / 2,
-      windowHeight =  1 / 2,
-      windowLeft = 1 / 4,
-      windowTop = 1 / 4,
-      mwf = mortarWidth * .5 / bmw,
-      mhf = mortarWidth * .5 / bmh;
+var createTexture = function(fn) {
+  var canvas = document.createElement('canvas'),
+      ctx    = canvas.getContext('2d'),
+      imgd   = ctx.createImageData(texSize, texSize);
+  canvas.width = canvas.height = texSize;
 
-  var brickColor = function(s, t, noise) {
-    var ss = s / bmw,
-        tt = t / bmh,
-        ssP = ss;
+  for(var x = 0; x < texSize; x++)
+    for(var y = 0; y < texSize; y++) {
+      var pos = 4 * (y * texSize + x);
 
-    if((tt * .5) % 1 > .5)
-      ss += .5;
-    var brickX  = ~~ss,
-        brickXf = ~~(ssP + .5),
-        brickY  = ~~tt,
-        brickNo = Math.sin(2 * (brickX + 1)) * Math.sin(2 * (brickY + 1));
-    ss -= ~~ss;
-    tt -= ~~tt;
-    var w = step(mwf, ss) - step(1 - mwf, ss),
-        h = step(mhf, tt) - step(1 - mhf, tt);
-
-    if(
-       brickXf >= 3 && brickXf < 6 &&
-       brickY  >= 4 && brickY < 12
-      ) {
-      return [ 255, 237, 33 ].map(function(i) {
-        return i * (value * .125 + .875);
-      });
-    }
-    else if(w * h) {
-      return [ 128, 0, 0 ].map(function(i) { 
-        return i * (1 + brickNo * .25) * (value * .25 + .75);
-      });
-    }
-    else
-      return [ 128, 128, 128 ].map(function(i) {
-        return i * (value * .25 + .75);
-      });
-  }
-
-  for(var x = 0; x < size; x++)
-    for(var y = 0; y < size; y++) {
-      var value = 0, i,
-          pos = 4 * (y * w + x);
-
-      value = (noise(x / size, y / size, 2  ) + 1) / 2 +
-              (noise(x / size, y / size, 4  ) + 1) / 4 +
-              (noise(x / size, y / size, 8  ) + 1) / 8 +
-              (noise(x / size, y / size, 16 ) + 1) / 16;
-
-      //imgd.data[pos] = imgd.data[pos + 1] = imgd.data[pos + 2] = value * 128;
-
-      var color = brickColor(x, y, value);
+      var color = fn(x / texSize, y / texSize);
       [0,1,2].forEach(function(i) {
-        imgd.data[pos + i] = color[i];
+        imgd.data[pos + i] = color[i] * 255;
       });
 
-      /*if(y % (size / 4) < (size/64) ||
-        ~~(y / (size/4)) % (size/64) < size/64 && x % (size / 3) < size/64 ||
-        ~~(y / (size/4)) % (size/64) >=size/64 && (x + size / 4) % (size / 4) < size/64)
-        imgd.data[pos] = imgd.data[pos + 1] = imgd.data[pos + 2] = value * 128 + 64;
-      else {
-        imgd.data[pos] = value * 64 + 96;
-        imgd.data[pos + 1] = imgd.data[pos + 2] = 16;
-      }*/
       imgd.data[pos + 3] = 255;
     }
 
   ctx.putImageData(imgd, 0, 0);
-
-}());
-// #D0C9C9 - mortar
-// #B74E27 - brick
-/*for(var x = 0; x < 64; x++) {
-  for(var y = 0; y < 64; y++) {
-    var pos0 = y * 512 + x,
-        pos1 = y * 512 + (x + 64),
-        pos2 = (y + 64) * 512 + x,
-        pos3 = (y + 64) * 512 + (x + 64),
-        color0, color1, color2, color3,
-        dim = 0.9 + Math.random() * 0.2;
-   
-    if((y + 1) % 16  < 2 ||
-      (~~(y / 16) % 2 == 0 && (x + 1) % 32 < 2) ||
-      (~~(y / 16) % 2 == 1 && (x + 17) % 32 < 2)
-      ) {
-      color0 = color1 = color2 = color3 = 0xD0C9C9;
-      dim = 1;
-    } else {
-      color0 = 0xB74E27;
-      color1 = 0x8DD300;
-      color2 = 0x750495;
-      color3 = 0x353377;
-    }
-
-    imgd.data[4 * pos0]     = ~~(dim * ((color0 >> 16) & 0xFF));
-    imgd.data[4 * pos0 + 1] = ~~(dim * ((color0 >> 8) & 0xFF));
-    imgd.data[4 * pos0 + 2] = ~~(dim * ((color0) & 0xFF));
-    imgd.data[4 * pos0 + 3] = 0xFF;
-    imgd.data[4 * pos1]     = ~~(dim * ((color1 >> 16) & 0xFF));
-    imgd.data[4 * pos1 + 1] = ~~(dim * ((color1 >> 8) & 0xFF));
-    imgd.data[4 * pos1 + 2] = ~~(dim * ((color1) & 0xFF));
-    imgd.data[4 * pos1 + 3] = 0xFF;
-    imgd.data[4 * pos2]     = ~~(dim * ((color2 >> 16) & 0xFF));
-    imgd.data[4 * pos2 + 1] = ~~(dim * ((color2 >> 8) & 0xFF));
-    imgd.data[4 * pos2 + 2] = ~~(dim * ((color2) & 0xFF));
-    imgd.data[4 * pos2 + 3] = 0xFF;
-    imgd.data[4 * pos3]     = ~~(dim * ((color3 >> 16) & 0xFF));
-    imgd.data[4 * pos3 + 1] = ~~(dim * ((color3 >> 8) & 0xFF));
-    imgd.data[4 * pos3 + 2] = ~~(dim * ((color3) & 0xFF));
-    imgd.data[4 * pos3 + 3] = 0xFF;
-
-  }
-}*/
-
-//ctx.putImageData(imgd, 0, 0)
-
-//document.body.appendChild(canvas);
-
-module.exports = function(gl) {
-  var tex = gl.createTexture();
-  gl.bindTexture(gl.TEXTURE_2D, tex);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST_MIPMAP_LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR);
-  //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  gl.generateMipmap(gl.TEXTURE_2D);
-  return tex;
+  return canvas;
 }
+
+
+module.exports = {
+  
+  generate: function(gl) {
+    var tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, createTexture(brickColor));
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR);
+    //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    return tex;
+  }
+};
