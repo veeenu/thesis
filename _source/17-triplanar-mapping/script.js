@@ -234,6 +234,7 @@ var Cuboid = function(mtx, excludeFaces) {
       w      = bcr.width,
       h      = bcr.height;
 
+  console.log(canvas)
   canvas.width = w;
   canvas.height = h;
   c2d.width = c2d.height = 1024;
@@ -274,7 +275,8 @@ var Cuboid = function(mtx, excludeFaces) {
   var rX = 0; rY = 0, zoom = 0;
 
   canvas.addEventListener('mousedown', function(evt) {
-    
+  
+    console.log(evt) 
     var x = evt.clientX, y = evt.clientY, irx = rX, iry = rY;
     var omm = function(evt) {
       evt.preventDefault();
@@ -320,11 +322,11 @@ var Cuboid = function(mtx, excludeFaces) {
   render.t = 0;
   render();
 
-  c2d.style.position = 'absolute';
+  /*c2d.style.position = 'absolute';
   c2d.style.top = canvas.getBoundingClientRect().top + 'px';
   c2d.style.left = canvas.getBoundingClientRect().left + 'px';
   c2d.style.transform = 'scale(0.25, 0.25)';
-  c2d.style.transformOrigin = '0 0';
-  document.body.appendChild(c2d);
+  c2d.style.transformOrigin = '0 0';*/
+  //document.body.appendChild(c2d);
 
 }());
