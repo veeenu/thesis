@@ -292,9 +292,10 @@ var Cuboid = function(mtx, excludeFaces) {
   });
 
   canvas.addEventListener('wheel', function(evt) {
+    console.log(evt)
     evt.preventDefault();
     evt.stopPropagation();
-    var delta = evt.wheelDelta || evt.deltaY || 0;
+    var delta = evt.wheelDeltaY || -evt.deltaY || 0;
     var sign = delta / Math.abs(delta);
     zoom += sign * 10e-3;
   });
