@@ -294,7 +294,8 @@ var Cuboid = function(mtx, excludeFaces) {
   canvas.addEventListener('wheel', function(evt) {
     evt.preventDefault();
     evt.stopPropagation();
-    var sign = evt.wheelDelta / Math.abs(evt.wheelDelta);
+    var delta = evt.wheelDelta || evt.deltaY || 0;
+    var sign = delta / Math.abs(delta);
     zoom += sign * 10e-3;
   });
 
