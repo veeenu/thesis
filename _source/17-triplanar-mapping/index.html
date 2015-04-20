@@ -88,8 +88,9 @@ float snoise(vec2 v) {
   return 130.0 * dot(m, g);
 }
 ////////////////////////////////////////////////////////////////////////////////
-#define textureBrickI(x, p, notp) ((floor(x)*(p))+max(fract(x)-(notp), 0.0))
 
+// Analytical integral antialiasing
+#define textureBrickI(x, p, notp) ((floor(x)*(p))+max(fract(x)-(notp), 0.0))
 vec3 textureBrick(vec2 uv) {
 
   const float bW  = .0625,
@@ -111,7 +112,7 @@ vec3 textureBrick(vec2 uv) {
 
   float noisev = 1. + 
                  snoise(uv * 16.) * .0625 +
-                 abs(snoise(uv * 256.)) * .25;
+                 abs(snoise(uv * 512.)) * .0625;
   float noisei = abs(snoise(64. * vec2(brU, brV)));
   float brickDamp = 1. + .25 * sin(2. * (brU + 1.)) * sin(2. * (brV + 1.));
 
@@ -123,6 +124,80 @@ vec3 textureBrick(vec2 uv) {
              textureBrickI(pos, brickPct, mortarPct)) / fw;
 
   return mix(mortarColor, brickColor * brickDamp, ub.x * ub.y) * noisev;
+}
+
+vec3 textureWindow(vec2 uv) {
+  const float wW = 1. / 12.,
+              wH = 1. / 12.,
+              fS = 1. / 256.,
+              fWf = fS * .5 / wW,
+              fHf = fS * .5 / wH;
+  const vec2 ws = vec2(wW, wH);
+
+  const vec3 windowColor = vec3(.8, .8, .1),
+             frameColor = vec3(.5, .5, .5),
+             avgColor = (windowColor + frameColor) * .5;
+
+  vec2 uuv = fract(uv + vec2(fS));
+
+  float noisev = 1. + 
+                 snoise(uv * 16.) * .0625 +
+                 abs(snoise(uv * 512.)) * .0625;
+  vec2 e, f;
+  vec2 fk = fwidth(uv);
+  vec3 mixColor = vec3(0.,0.,0.);
+  f = (step(ws + fS, uuv) - 
+       step(1. - ws - fS, uuv)) - 10e-3;
+  /*f = (smoothstep(ws + fS + fk, ws + fS - fk, uuv) - 
+       smoothstep(1. - ws - fS + fk, 1. - ws - fS - fk, uuv));*/
+
+  float fuzz = max(fk.x, fk.y);
+  
+  e = 1. - (smoothstep(ws - fS / 2. - fk, ws - fS / 2. + fk, uuv) - 
+            smoothstep(1. - ws + fS / 2. - fk, 1. - ws + fS / 2. + fk, uuv));
+  mixColor = mix(frameColor * noisev, windowColor, e.x * e.y);
+
+  return mix(
+    mixColor,
+    textureBrick(uv),
+    clamp(f.x + f.y, 0., 1.)
+  );
+}
+
+vec3 textureRoad(vec2 uuv) {
+  const float padding = 1. / 32.,
+              tapeW   = 1. / 32.,
+              vertDiv = 4.;
+  const vec3 asphaltColor = vec3(.2, .2, .2),
+             stripColor = vec3(.8, .8, .8);
+
+  vec2 uv = uuv + .5, fk = fwidth(uv);
+  float q = 
+    (
+      smoothstep(padding - fk.x, padding + fk.x, uv.s) - 
+      smoothstep(padding + tapeW - fk.x, padding + tapeW + fk.x, uv.s)
+    ) +
+    (
+      smoothstep(1. - padding - tapeW - fk.x, 1. - padding - tapeW + fk.x, uv.s) - 
+      smoothstep(1. - padding - fk.y, 1. - padding + fk.y, uv.s)
+    ) +
+    (
+      smoothstep(.5 - tapeW * .5 - fk.x, .5 - tapeW * .5 + fk.x, uv.s) - 
+      smoothstep(.5 + tapeW * .5 - fk.x, .5 + tapeW * .5 + fk.x, uv.s)
+    ) * 
+    (
+      smoothstep(.5 - fk.y, .5 + fk.y, mod(.25 + uv.t * vertDiv, 1.))
+    )
+    ;
+
+  float noiseA = 1. +
+                 abs(snoise(uv * 16.))  * .0625 +
+                 abs(snoise(uv * 32.))  * .0625 +
+                 abs(snoise(uv * 128.)) * .125,
+        noiseS = 1. + 
+                 abs(snoise(uv * 128.)) * .125;
+
+  return mix(asphaltColor * noiseA, stripColor * noiseS, q);
 }
 
 vec3 triplanarBlend(vec3 norm) {
@@ -139,8 +214,8 @@ void main() {
 
   vec3 blend = triplanarBlend(vmnormal);
   vec3 tX = textureBrick(mposition.zy * .5),
-       tY = textureBrick(mposition.xz * .5),
-       tZ = textureBrick(mposition.xy * .5);
+       tY = textureRoad(mposition.xz),
+       tZ = textureWindow(mposition.xy * .5);
 
   float diffuse = .3 + clamp(max(dot(normalize(lightPos), vnormal), 0.), 0., .7);
   vec4 sample = texture2D(texture, depth.xy);

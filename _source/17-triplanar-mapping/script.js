@@ -234,7 +234,6 @@ var Cuboid = function(mtx, excludeFaces) {
       w      = bcr.width,
       h      = bcr.height;
 
-  console.log(canvas)
   canvas.width = w;
   canvas.height = h;
   c2d.width = c2d.height = 1024;
@@ -264,7 +263,7 @@ var Cuboid = function(mtx, excludeFaces) {
   //mat4.ortho(proj, -12 * w / h, 12 * w / h, -12, 12, -12, 12);
 
   mat4.identity(view);
-  mat4.translate(view, view, [0, 0, -2]);
+  mat4.translate(view, view, [0, 0, 0]);
   //mat4.rotateX(view, view, Math.PI / 6);
 
   scene.projection = proj;
@@ -272,11 +271,10 @@ var Cuboid = function(mtx, excludeFaces) {
   scene.view = view;
   //mat4.rotateY(model, model, Math.PI * 9 / 8);
   //
-  var rX = 0; rY = 0, zoom = 0;
+  var rX = Math.PI / 4; rY = Math.PI / 4, zoom = 0;
 
   canvas.addEventListener('mousedown', function(evt) {
   
-    console.log(evt) 
     var x = evt.clientX, y = evt.clientY, irx = rX, iry = rY;
     var omm = function(evt) {
       evt.preventDefault();
@@ -294,7 +292,6 @@ var Cuboid = function(mtx, excludeFaces) {
   });
 
   canvas.addEventListener('wheel', function(evt) {
-    console.log(evt)
     evt.preventDefault();
     evt.stopPropagation();
     var delta = evt.wheelDeltaY || -evt.deltaY || 0;
@@ -310,7 +307,7 @@ var Cuboid = function(mtx, excludeFaces) {
     mat4.rotateX(model, model, rX);
     mat4.rotateY(model, model, rY);
     mat4.identity(view);
-    mat4.translate(view, view, [0, 0, -2 + zoom]);
+    mat4.translate(view, view, [0, 0, -1.25 + zoom]);
 
     render.t += 0.02;
 
