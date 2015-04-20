@@ -56,6 +56,8 @@ var Renderer = function(gl, city) {
                         );
   }}(count, path)).bind(this); 
 
+  Textures.generate(gl); // TODO
+
   vsh = gl.createShader(gl.VERTEX_SHADER);
   fsh = gl.createShader(gl.FRAGMENT_SHADER);
   gl.shaderSource(vsh, vertSrc);
@@ -99,7 +101,6 @@ var Renderer = function(gl, city) {
       cbuf = gl.createBuffer(),
       ubuf = gl.createBuffer();
 
-  Textures.generate(gl); // TODO
   gl.enableVertexAttribArray(gl.getAttribLocation(this.program, 'vertex'));
   gl.enableVertexAttribArray(gl.getAttribLocation(this.program, 'uv'));
   gl.enableVertexAttribArray(gl.getAttribLocation(this.program, 'normal'));
@@ -130,7 +131,9 @@ var Renderer = function(gl, city) {
 
 }
 
-Renderer.prototype.render = function(gl) {
+Renderer.prototype.render = function(gl, w, h) {
+
+  gl.viewport(0, 0, w, h);
   this.posFn(this.t);
   gl.uniformMatrix4fv(
     gl.getUniformLocation(this.program, 'projection'), 

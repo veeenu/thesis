@@ -4,7 +4,8 @@
   "description": "",
   "main": "main.js",
   "scripts": {
-    "start": "nodemon --delay 0 -e js,glsl -x npm run build",
+    "__": "nodemon --delay 0 -e js,glsl -x npm run build",
+    "start": "watchify -dv -t aliasify -t brfs -e main.js -o ../build.js",
     "build": "browserify -t aliasify -t brfs -e main.js -o ../build.js"
   },
   "dependencies": {

@@ -111,7 +111,7 @@ vec3 textureRoad(vec2 uv) {
 }
 
 void main() {
-  gl_FragColor = vec4(gf(uv), 1.);
+  gl_FragColor = vec4(textureRoad(uv), 1.);
 }
 
 </script>

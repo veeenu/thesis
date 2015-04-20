@@ -15,7 +15,7 @@ var city      = new City(0),
     renderer  = new Renderer(gl, city);
 
 function r() {
-  renderer.render(gl);
+  renderer.render(gl, w, h);
   requestAnimationFrame(r);
 }
 

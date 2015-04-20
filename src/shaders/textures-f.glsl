@@ -1,9 +1,6 @@
 precision highp float;
 
-varying vec3 fnorm, fvert, texCoord;
-varying float dist;
-
-uniform sampler2D tex;
+varying vec2 uv;
 
 ////////////////////////////////////////////////////////////////////////////////
 // https://github.com/ashima/webgl-noise/blob/master/src/noise2D.glsl         //
@@ -96,53 +93,7 @@ vec3 textureRoad(vec2 uv) {
   return mix(asphaltColor * noiseA, stripColor * noiseS, q);
 }
 
-vec3 textureBrickF(vec2 uv) {
-  const float freq = 1. / 1024.;
-  const vec2 s1 = vec2(-freq, -freq),
-             s2 = vec2(-freq,  freq),
-             s3 = vec2( freq,  freq),
-             s4 = vec2( freq, -freq);
-  vec3 blur = (textureBrick(uv + s1) +
-               textureBrick(uv + s2) +
-               textureBrick(uv + s3) +
-               textureBrick(uv + s4)) * .25;
-  return textureBrick(uv) * .25 + blur * .75;
-}
-
-vec3 triplanarBlend(vec3 norm) {
-  vec3 blend = normalize(max(abs(norm), 10e-5));
-  float b = blend.x + blend.y + blend.z;
-  blend /= vec3(b,b,b);
-  return blend;
-}
-
-void main(void) {
-
-  vec2 tp;
-  /*if(texCoord.z < 0.5)
-    tp = vec2(0., 0.);
-  else if(texCoord.z < 1.5)
-    tp = vec2(.125, 0.);
-  else if(texCoord.z < 2.5)
-    tp = vec2(0., .125);
-  else
-    tp = vec2(.125, .125);*/
-  tp = texCoord.yx;
-
-  //vec4 color = texture2D(tex, tp + mod(texCoord.xy * 16.0, .125));
-  //vec4 color = texture2D(tex, tp); //vec2(tp.x * 2., tp.y));
-  //vec4 color = vec4(textureBrickF(tp), 1.);
-
-  vec3 blend = triplanarBlend(fnorm),
-       tX = texture2D(tex, fvert.zy * 4.).rgb,
-       tY = texture2D(tex, fvert.xz * 4.).rgb,
-       tZ = texture2D(tex, fvert.xy * 4.).rgb,
-       color = blend.x * tX + blend.y * tY + blend.z * tZ;
-
-  vec3 lightDir = normalize(vec3(0.5, 1., 0.5));
-  float lambert = clamp(dot( fnorm, -lightDir ), 0.0, 1.0);
-  float att = min(1.0, 1.0 / (.2 + .6 * dist + .4 * dist * dist));
-
-  gl_FragColor = vec4(color.xyz * (att * .2 + lambert * .6 + 0.2), 1.0);
+void main() {
+  gl_FragColor = vec4(textureBrick(uv), 1.);
 }
 

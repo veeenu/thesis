@@ -70,6 +70,7 @@ var City = function(seed) {
   var polys = [];
 
   this.roads = Roads();
+  console.log(this.roads)
   this.blocks = [];
 
   for(var i = 0; i < this.roads.length; i++) {
