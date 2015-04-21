@@ -1,5 +1,6 @@
 var fs        = require('fs');
 var PRNG      = new (require('PRNG')),
+    Util      = require('./lib/util.js'),
     Textures  = require('./generators/Textures.js'),
     glMatrix  = require('gl-matrix'),
     BuildingSHG = require('./lib/BuildingSHG.js'),
@@ -58,6 +59,7 @@ var Renderer = function(gl, city) {
 
   Textures.generate(gl); // TODO
 
+  gl.getExtension('OES_standard_derivatives');
   vsh = gl.createShader(gl.VERTEX_SHADER);
   fsh = gl.createShader(gl.FRAGMENT_SHADER);
   gl.shaderSource(vsh, vertSrc);
@@ -99,10 +101,12 @@ var Renderer = function(gl, city) {
   var vbuf = gl.createBuffer(),
       nbuf = gl.createBuffer(),
       cbuf = gl.createBuffer(),
+      ebuf = gl.createBuffer(),
       ubuf = gl.createBuffer();
 
   gl.enableVertexAttribArray(gl.getAttribLocation(this.program, 'vertex'));
   gl.enableVertexAttribArray(gl.getAttribLocation(this.program, 'uv'));
+  gl.enableVertexAttribArray(gl.getAttribLocation(this.program, 'extra'));
   gl.enableVertexAttribArray(gl.getAttribLocation(this.program, 'normal'));
 
   gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
@@ -117,6 +121,12 @@ var Renderer = function(gl, city) {
   gl.vertexAttribPointer(gl.getAttribLocation(this.program, 'uv'), 3, 
                          gl.FLOAT, false, 0, 0);
 
+  gl.bindBuffer(gl.ARRAY_BUFFER, ebuf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.geometry.extra),
+                gl.STATIC_DRAW);
+  gl.vertexAttribPointer(gl.getAttribLocation(this.program, 'extra'), 3, 
+                         gl.FLOAT, false, 0, 0);
+
   gl.bindBuffer(gl.ARRAY_BUFFER, nbuf);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.geometry.normals),
                 gl.STATIC_DRAW);
@@ -125,7 +135,7 @@ var Renderer = function(gl, city) {
 
   gl.enable(gl.DEPTH_TEST);
   gl.depthFunc(gl.LEQUAL);
-  gl.clearColor(0, 0, 0, 1);
+  gl.clearColor(.678, .941, 1, 1);
 
   gl.uniform1i(gl.getUniformLocation(this.program, 'tex'), 0);
 
@@ -154,26 +164,42 @@ Renderer.computeGeometry = function(city) {
   var vertices = [],
       normals  = [],
       uvs      = [],
-      indices  = [
-        0, 2, 1, 0, 3, 2, 4, 5, 6, 4, 6, 7,
-        1, 5, 4, 1, 4, 0, 3, 7, 6, 3, 6, 2,
-        2, 6, 5, 2, 5, 1, 0, 4, 7, 0, 7, 3
-      ],
-      colors   = [],
+      extra    = [],
       count = 0,
-      lot, h, col,
+      block, blockq, lot, h, col,
       mI = 0;
 
   for(var i = 0, m = city.blocks.length; i < m; i++) {
-    for(var j = 0, n = city.blocks[i].lots.length; j < n; j++) {
-      lot = city.blocks[i].lots[j];
+    block = city.blocks[i];
+    blockq = block.block;
+    vertices.push.apply(vertices, [
+      blockq[0].x, 0, blockq[0].y,  blockq[1].x, 0, blockq[1].y,  blockq[2].x, 0, blockq[2].y, 
+      blockq[0].x, 0, blockq[0].y,  blockq[2].x, 0, blockq[2].y,  blockq[3].x, 0, blockq[3].y
+    ].map(function(i, idx) {
+      return (idx % 3 === 1 ? i - 10e-5 : i);
+    }));
+    normals.push.apply(normals, [
+      0, 1, 0,  0, 1, 0,  0, 1, 0,
+      0, 1, 0,  0, 1, 0,  0, 1, 0
+    ]);
+    uvs.push.apply(uvs, [
+      0, 0, 3,  0, 1, 3,  1, 1, 3,  
+      0, 0, 3,  1, 1, 3,  1, 0, 3
+    ]);
+    extra.push.apply(extra, [
+      0, 0, 0,  0, 0, 0,  0, 0, 0,
+      0, 0, 0,  0, 0, 0,  0, 0, 0
+    ]);
+     
+    for(var j = 0, n = block.lots.length; j < n; j++) {
+      lot = block.lots[j];
       h = lot.height, lot = lot.poly;
       col = glMatrix.vec3.fromValues(
               Math.random(), Math.random(), Math.random()
             );
       glMatrix.vec3.normalize(col, col);
       var centroid, size;
-     
+
       centroid = lot.reduce(function(c, cur) {
         c.x += cur.x;
         c.y += cur.y;
@@ -196,75 +222,31 @@ Renderer.computeGeometry = function(city) {
 
       var bldgGeom = BuildingSHG.create({
         x: centroid.x, y: centroid.y,
-        width: Math.abs(size.xM - size.xm),
-        depth: Math.abs(size.yM - size.ym)
+        width: Math.abs(size.xM - size.xm) * .9,
+        depth: Math.abs(size.yM - size.ym) * .9
       });
+      var color = [ .68, .53, .46 ];
       for(var k in bldgGeom) {
         vertices.push.apply(vertices, bldgGeom[k].vertices);
         normals.push.apply(normals, bldgGeom[k].normals);
         uvs.push.apply(uvs, bldgGeom[k].uvs);
-      }
-
-      /*h = .25;
-      var verts = [
-          lot[0].x, 0, lot[0].y,
-          lot[1].x, 0, lot[1].y,
-          lot[2].x, 0, lot[2].y,
-          lot[3].x, 0, lot[3].y,
-          lot[0].x, h, lot[0].y,
-          lot[1].x, h, lot[1].y,
-          lot[2].x, h, lot[2].y,
-          lot[3].x, h, lot[3].y
-        ],
-        uvh = 8/512, uvz = Math.random() * 3,
-        uvx0 = 0 + uvh, uvx1 = .125 - uvh,
-        uvy0 = 0 + uvh, uvy1 = .125 - uvh,
-        uvsBase1 = [ uvx0, uvy0, uvz, uvx0, uvy1, uvz, uvx1, uvy1, uvz ],
-        uvsBase2 = [ uvx0, uvy0, uvz, uvx1, uvy1, uvz, uvx1, uvy0, uvz ];
-
-      // Compute normals
-      for(var k = 0, o = indices.length; k < o;) {
-        var i1 = indices[k++], i2 = indices[k++], i3 = indices[k++],
-            x1 = verts[i1 * 3], y1 = verts[i1 * 3 + 1], z1 = verts[i1 * 3 + 2],
-            x2 = verts[i2 * 3], y2 = verts[i2 * 3 + 1], z2 = verts[i2 * 3 + 2],
-            x3 = verts[i3 * 3], y3 = verts[i3 * 3 + 1], z3 = verts[i3 * 3 + 2];
-
-        vertices.push(x1, y1, z1, x2, y2, z2, x3, y3, z3);
-
-        var u = glMatrix.vec3.fromValues(x2 - x1, y2 - y1, z2 - z1),
-            v = glMatrix.vec3.fromValues(x3 - x1, y3 - y1, z3 - z1),
-            w = glMatrix.vec3.fromValues(x3 - x2, y3 - y2, z3 - z2),
-            xn = u[1] * v[2] - u[2] * v[1],
-            yn = u[2] * v[0] - u[0] * v[2],
-            zn = u[0] * v[1] - u[1] * v[0];
-        normals.push(xn, yn, zn, xn, yn, zn, xn, yn, zn);
-
-        var ratio = Math.abs(
-          k % 6 === 0 ?
-            glMatrix.vec3.length(w) / glMatrix.vec3.length(u) 
-            :
-            glMatrix.vec3.length(v) / glMatrix.vec3.length(u) 
-          );
-
-        uvs.push.apply(uvs, (k % 6 === 0 ? uvsBase2 : uvsBase1).map(function(v, i) {
-          if(i % 3 === 0)
-            return v * ratio;
-          return v;
+        extra.push.apply(extra, bldgGeom[k].uvs.map(function(i, idx) {
+          return color[idx % 3];
         }));
-
-        colors.push.apply(colors, col);
-        colors.push.apply(colors, col);
-        colors.push.apply(colors, col);
-        count += 3;
-      }*/
+      }
 
     }
   }
 
+  vertices.push.apply(vertices, city.roadQuads.vertices);
+  normals.push.apply(normals, city.roadQuads.normals);
+  uvs.push.apply(uvs, city.roadQuads.uvs);
+  extra.push.apply(extra, city.roadQuads.extra);
+
   return {
     vertices: vertices,
     normals: normals,
-    colors: colors,
+    extra: extra,
     count: vertices.length / 3, //count,
     uvs: uvs
   }

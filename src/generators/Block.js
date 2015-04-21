@@ -72,8 +72,8 @@ var Building = function(poly, height) {
 var Block = function(poly, seed) {
   PRNG.seed(seed);
   this.poly = poly;
-  this.block = Geom.insetPolygon(this.poly, 0.2);
-  this.lots = subdivideStrip(this.block, Geom.insetPolygon(this.block, 0.3));
+  this.block = Geom.insetPolygon(this.poly, 0.09);
+  this.lots = subdivideStrip(Geom.insetPolygon(this.block, 0.1), Geom.insetPolygon(this.block, 0.3));
 }
 
 module.exports = Block;

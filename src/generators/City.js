@@ -70,14 +70,14 @@ var City = function(seed) {
   var polys = [];
 
   this.roads = Roads();
-  console.log(this.roads)
+  //console.log(this.roads)
   this.blocks = [];
 
   for(var i = 0; i < this.roads.length; i++) {
     for(var j = 0; j < this.roads[i].conns.length; j++) {
       if(!('traversed' in this.roads[i]))
         this.roads[i].traversed = [];
-      this.roads[i].traversed[j] = true;
+      //this.roads[i].traversed[j] = true;
       var poly = traverse(this.roads[i], this.roads[i].conns[j], this.roads);
       if(poly === null || Geom.isPolyIn(poly, polys))
         continue;
@@ -86,6 +86,65 @@ var City = function(seed) {
       this.blocks.push(new Block(poly, seed));
     }
   }
+
+  this.roads.forEach(function(r) {
+    r.traversed = [];
+  });
+
+  var roadQuads = [];
+
+  this.roads.forEach(function(r) {
+    r.conns.forEach(function(r1) {
+      if(r1.traversed.indexOf(r) !== -1)
+        return;
+      roadQuads.push([r, r1]);
+      r.traversed.push(r1);
+      r1.traversed.push(r);
+    });
+  });
+
+  roadQuads = roadQuads.reduce(function(out, i) {
+  
+    var aa = i[0], bb = i[1],
+        slope = Math.atan2(bb.y - aa.y, bb.x - aa.x),
+        dx = .1 * Math.sin(slope), dy = .1 * Math.cos(slope),
+        b = bb, a = aa,
+        //a = { x: aa.x + dy, y: aa.y + dx },
+        //b = { x: bb.x - dy, y: bb.y - dx },
+        len = Math.sqrt( Math.pow(b.y - a.y, 2) + Math.pow(b.x - a.x, 2) );
+
+     var vertices = [
+       a.x - dx, 0, a.y - dy,  b.x - dx, 0, b.y - dy,  b.x + dx, 0, b.y + dy,
+       a.x - dx, 0, a.y - dy,  b.x + dx, 0, b.y + dy,  a.x + dx, 0, a.y + dy
+     ];
+
+     out.vertices.push.apply(out.vertices, vertices);
+     out.normals.push.apply(out.normals, [
+       0, 1, 0, 0, 1, 0, 0, 1, 0,
+       0, 1, 0, 0, 1, 0, 0, 1, 0
+     ]);
+     out.uvs.push.apply(out.uvs, [
+       0, 0, 2,  0, 1, 2,  1, 1, 2,  
+       0, 0, 2,  1, 1, 2,  1, 0, 2
+     ].map(function(i, idx) {
+       switch(idx % 3) {
+         case 0: return i; break;
+         case 1: return i * len; break;
+         default: return i;
+       }
+      return i;
+     }))
+
+     out.extra.push.apply(out.extra, [
+       0, 0, 0,  0, 0, 0,  0, 0, 0,
+       0, 0, 0,  0, 0, 0,  0, 0, 0
+     ]);
+
+     return out;
+  }, { vertices: [], normals: [], uvs: [], extra: [] });
+
+  console.log(roadQuads);
+  this.roadQuads = roadQuads;
 }
 
 module.exports = City;
