@@ -3,6 +3,8 @@ var PRNG      = new (require('PRNG')),
     Util      = require('./lib/util.js'),
     Textures  = require('./generators/Textures.js'),
     glMatrix  = require('gl-matrix'),
+    vec3      = glMatrix.vec3,
+    mat4      = glMatrix.mat4,
     BuildingSHG = require('./lib/BuildingSHG.js'),
     vertSrc, fragSrc;
 
@@ -56,6 +58,8 @@ var Renderer = function(gl, city) {
                          [0,1,0]
                         );
   }}(count, path)).bind(this); 
+
+  //this.posFn(0);
 
   Textures.generate(gl); // TODO
 
@@ -139,12 +143,15 @@ var Renderer = function(gl, city) {
 
   gl.uniform1i(gl.getUniformLocation(this.program, 'tex'), 0);
 
+  this.transf = {
+    x: 0, z: 0, alpha: 0, beta: 0
+  };
 }
 
 Renderer.prototype.render = function(gl, w, h) {
 
   gl.viewport(0, 0, w, h);
-  this.posFn(this.t);
+  //this.posFn(this.t);
   gl.uniformMatrix4fv(
     gl.getUniformLocation(this.program, 'projection'), 
     false, this.proj
@@ -158,6 +165,25 @@ Renderer.prototype.render = function(gl, w, h) {
   gl.drawArrays(gl.TRIANGLES, 0, this.geometry.count);
 
   this.t += this.incr;
+}
+
+Renderer.prototype.move = function(x, z) {
+  this.transf.x += -x * Math.cos(this.transf.alpha) + z * Math.sin(this.transf.alpha);
+  this.transf.z += -x * Math.sin(this.transf.alpha) - z * Math.cos(this.transf.alpha);
+  this.transform();
+}
+
+Renderer.prototype.rotate = function(alpha, beta) {
+  this.transf.alpha += alpha;
+  this.transf.beta += beta;
+  this.transform();
+}
+
+Renderer.prototype.transform = function() {
+  glMatrix.mat4.identity(this.view);
+  glMatrix.mat4.rotateX(this.view, this.view, this.transf.beta);
+  glMatrix.mat4.rotateY(this.view, this.view, this.transf.alpha);
+  glMatrix.mat4.translate(this.view, this.view, [- 24 - this.transf.x, -0.1, - 24 - this.transf.z]);
 }
 
 Renderer.computeGeometry = function(city) {
