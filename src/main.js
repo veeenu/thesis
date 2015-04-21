@@ -71,7 +71,7 @@ document.body.addEventListener('keyup', function(evt) {
       y = evt.clientY;
     }
 
-    renderer.rotate((evt.clientX - x)  * 16 / w,(evt.clientY - y)  * 16 / h);
+    renderer.rotate((evt.clientX - x)  * 16 / w,(evt.clientY - y)  * 8 / h);
     x = evt.clientX;
     y = evt.clientY;
   })

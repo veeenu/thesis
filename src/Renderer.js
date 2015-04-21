@@ -175,7 +175,7 @@ Renderer.prototype.move = function(x, z) {
 
 Renderer.prototype.rotate = function(alpha, beta) {
   this.transf.alpha += alpha;
-  this.transf.beta += beta;
+  this.transf.beta = Math.min(Math.PI / 2, Math.max(this.transf.beta + beta, -Math.PI / 2));
   this.transform();
 }
 
