@@ -20,11 +20,14 @@ var Renderer = function(gl, city) {
   this.program = gl.createProgram();
 
   this.view = glMatrix.mat4.create();
+  this.model = glMatrix.mat4.create();
   this.proj = glMatrix.mat4.create();
 
-  glMatrix.mat4.perspective(this.proj, Math.PI / 2, 
-                            gl.drawingBufferWidth / gl.drawingBufferHeight,
-                            0.0001, 1000.0);
+  mat4.perspective(this.proj, Math.PI / 2, 
+                   gl.drawingBufferWidth / gl.drawingBufferHeight,
+                   0.001, 1000.0);
+
+  mat4.scale(this.model, this.model, [16, 16, 16]);
 
   var path = document.createElementNS('http://www.w3.org/2000/svg', 'path'),
       count = 0, 
@@ -52,14 +55,14 @@ var Renderer = function(gl, city) {
         eye = path.getPointAtLength(tl * (t % 1)),
         center = path.getPointAtLength(tl * ((t + 0.2 / count) % 1));
 
-    glMatrix.mat4.lookAt(this.view, 
-                         [eye.x, 0.1, eye.y], 
-                         [center.x, 0.2, center.y], 
-                         [0,1,0]
-                        );
+    mat4.lookAt(this.view, 
+                [eye.x * 16, 0.1, eye.y * 16], 
+                [center.x * 16, 0.2, center.y * 16], 
+                [0,1,0]
+                );
   }}(count, path)).bind(this); 
 
-  //this.posFn(0);
+  this.posFn(0);
 
   Textures.generate(gl); // TODO
 
@@ -144,14 +147,17 @@ var Renderer = function(gl, city) {
   gl.uniform1i(gl.getUniformLocation(this.program, 'tex'), 0);
 
   this.transf = {
-    x: 0, z: 0, alpha: 0, beta: 0
+    x: path.getPointAtLength(0).x, 
+    z: path.getPointAtLength(0).y,
+    alpha: 0, beta: 0
   };
+  this.transform();
 }
 
 Renderer.prototype.render = function(gl, w, h) {
 
   gl.viewport(0, 0, w, h);
-  //this.posFn(this.t);
+  this.posFn(this.t);
   gl.uniformMatrix4fv(
     gl.getUniformLocation(this.program, 'projection'), 
     false, this.proj
@@ -159,6 +165,10 @@ Renderer.prototype.render = function(gl, w, h) {
   gl.uniformMatrix4fv(
     gl.getUniformLocation(this.program, 'view'), 
     false, this.view
+  );
+  gl.uniformMatrix4fv(
+    gl.getUniformLocation(this.program, 'model'), 
+    false, this.model
   );
 
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -183,7 +193,7 @@ Renderer.prototype.transform = function() {
   glMatrix.mat4.identity(this.view);
   glMatrix.mat4.rotateX(this.view, this.view, this.transf.beta);
   glMatrix.mat4.rotateY(this.view, this.view, this.transf.alpha);
-  glMatrix.mat4.translate(this.view, this.view, [- 24 - this.transf.x, -0.1, - 24 - this.transf.z]);
+  glMatrix.mat4.translate(this.view, this.view, [-this.transf.x, -0.1, -this.transf.z]);
 }
 
 Renderer.computeGeometry = function(city) {
@@ -195,15 +205,20 @@ Renderer.computeGeometry = function(city) {
       block, blockq, lot, h, col,
       mI = 0;
 
+  var availColors = [
+    [ .88, .88, .88 ],
+    [ .66, .66, .66 ],
+    [ 1,   .97, .83 ],
+    [ .68, .53, .46 ]
+  ]
+
   for(var i = 0, m = city.blocks.length; i < m; i++) {
     block = city.blocks[i];
     blockq = block.block;
     vertices.push.apply(vertices, [
       blockq[0].x, 0, blockq[0].y,  blockq[1].x, 0, blockq[1].y,  blockq[2].x, 0, blockq[2].y, 
       blockq[0].x, 0, blockq[0].y,  blockq[2].x, 0, blockq[2].y,  blockq[3].x, 0, blockq[3].y
-    ].map(function(i, idx) {
-      return (idx % 3 === 1 ? i - 10e-5 : i);
-    }));
+    ]);
     normals.push.apply(normals, [
       0, 1, 0,  0, 1, 0,  0, 1, 0,
       0, 1, 0,  0, 1, 0,  0, 1, 0
@@ -251,11 +266,14 @@ Renderer.computeGeometry = function(city) {
         width: Math.abs(size.xM - size.xm) * .9,
         depth: Math.abs(size.yM - size.ym) * .9
       });
-      var color = [ .68, .53, .46 ];
+      var color = availColors[ ~~(Math.random() * availColors.length) ],
+          bldgTxtr = ~~(Math.random() * 2) + 4;
       for(var k in bldgGeom) {
         vertices.push.apply(vertices, bldgGeom[k].vertices);
         normals.push.apply(normals, bldgGeom[k].normals);
-        uvs.push.apply(uvs, bldgGeom[k].uvs);
+        uvs.push.apply(uvs, bldgGeom[k].uvs.map(function(i, idx) {
+          return (idx % 3 === 2 ? bldgTxtr : i)
+        }));
         extra.push.apply(extra, bldgGeom[k].uvs.map(function(i, idx) {
           return color[idx % 3];
         }));
@@ -264,10 +282,50 @@ Renderer.computeGeometry = function(city) {
     }
   }
 
-  vertices.push.apply(vertices, city.roadQuads.vertices);
-  normals.push.apply(normals, city.roadQuads.normals);
-  uvs.push.apply(uvs, city.roadQuads.uvs);
-  extra.push.apply(extra, city.roadQuads.extra);
+  var roadQuads = city.roadQuads.reduce(function(out, i) {
+  
+    var aa = i[0], bb = i[1],
+        slope = Math.atan2(bb.y - aa.y, bb.x - aa.x),
+        dx = .1 * Math.sin(slope), dy = .1 * Math.cos(slope),
+        //b = bb, a = aa,
+        a = { x: aa.x + dy, y: aa.y + dx },
+        b = { x: bb.x - dy, y: bb.y - dx },
+        len = Math.sqrt( Math.pow(b.y - a.y, 2) + Math.pow(b.x - a.x, 2) );
+
+     var vertices = [
+       a.x - dx, 0, a.y - dy,  b.x - dx, 0, b.y - dy,  b.x + dx, 0, b.y + dy,
+       a.x - dx, 0, a.y - dy,  b.x + dx, 0, b.y + dy,  a.x + dx, 0, a.y + dy
+     ];
+
+     out.vertices.push.apply(out.vertices, vertices);
+     out.normals.push.apply(out.normals, [
+       0, 1, 0, 0, 1, 0, 0, 1, 0,
+       0, 1, 0, 0, 1, 0, 0, 1, 0
+     ]);
+     out.uvs.push.apply(out.uvs, [
+       0, 0, 2,  0, 1, 2,  1, 1, 2,  
+       0, 0, 2,  1, 1, 2,  1, 0, 2
+     ].map(function(i, idx) {
+       switch(idx % 3) {
+         case 0: return i; break;
+         case 1: return i * len; break;
+         default: return i;
+       }
+      return i;
+     }))
+
+     out.extra.push.apply(out.extra, [
+       0, 0, 0,  0, 0, 0,  0, 0, 0,
+       0, 0, 0,  0, 0, 0,  0, 0, 0
+     ]);
+
+     return out;
+  }, { vertices: [], normals: [], uvs: [], extra: [] });
+
+  vertices.push.apply(vertices, roadQuads.vertices);
+  normals.push.apply(normals, roadQuads.normals);
+  uvs.push.apply(uvs, roadQuads.uvs);
+  extra.push.apply(extra, roadQuads.extra);
 
   return {
     vertices: vertices,

@@ -107,13 +107,22 @@ var SHAPE = {
     });
 
     var lX = maxX - minX,
-        lY = maxY - minY;
+        lY = maxY - minY,
+        iX = 0, iY = 1;
 
-    for(var i = 0, n = path.points.length; i < n; i += 2) {
+    if(normal[0] > normal[1] && normal[0] > normal[2]) { iX = 2; iY = 1; }
+    else if(normal[1] > normal[0] && normal[1] > normal[2]) { iX = 0; iY = 2; }
+
+    for(var i = 0, n = vertices.length; i < n; i += 3) {
+      var u = (vertices[i + iX] - minX),// / lX,
+          v = (vertices[i + iY] - minY);// / lY;
+      uvs.push(u, v, 0);
+    }
+    /*for(var i = 0, n = path.points.length; i < n; i += 2) {
       var u = (path.points[i]     - minX) / lX,
           v = (path.points[i + 1] - minY) / lY;
       uvs.push(u, v, 0);
-    }
+    }*/
 
     return {
       vertices: vertices,
@@ -129,10 +138,13 @@ var SHAPE = {
     var normal = vec3.create(),
         sA = vec3.create(),
         sB = vec3.create(),
+        lX, lY,
         vertices, normals, uvs;
 
     vec3.sub(sA, a, b);
     vec3.sub(sB, c, b);
+    lY = vec3.length(sA);
+    lX = vec3.length(sB);
     vec3.cross(normal, sA, sB);
     vec3.normalize(normal, normal);
 
@@ -144,14 +156,25 @@ var SHAPE = {
     normals = [];
     for(var i = 6; i--;) normals.push.apply(normals, normal);
 
+    lY /= lX;
+    lX /= lX;
+
     uvs = [
+      0, 0, 0,
+      lX, 0, 0,
+      0, lY, 0,
+      0, lY, 0,
+      lX, 0, 0,
+      lX, lY, 0
+    ];
+    /*uvs = [
       0, 0, 0,
       1, 0, 0,
       0, 1, 0,
       0, 1, 0,
       1, 0, 0,
       1, 1, 0
-    ]
+    ];*/
 
     return {
       vertices: vertices,

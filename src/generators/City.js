@@ -103,47 +103,6 @@ var City = function(seed) {
     });
   });
 
-  roadQuads = roadQuads.reduce(function(out, i) {
-  
-    var aa = i[0], bb = i[1],
-        slope = Math.atan2(bb.y - aa.y, bb.x - aa.x),
-        dx = .1 * Math.sin(slope), dy = .1 * Math.cos(slope),
-        b = bb, a = aa,
-        //a = { x: aa.x + dy, y: aa.y + dx },
-        //b = { x: bb.x - dy, y: bb.y - dx },
-        len = Math.sqrt( Math.pow(b.y - a.y, 2) + Math.pow(b.x - a.x, 2) );
-
-     var vertices = [
-       a.x - dx, 0, a.y - dy,  b.x - dx, 0, b.y - dy,  b.x + dx, 0, b.y + dy,
-       a.x - dx, 0, a.y - dy,  b.x + dx, 0, b.y + dy,  a.x + dx, 0, a.y + dy
-     ];
-
-     out.vertices.push.apply(out.vertices, vertices);
-     out.normals.push.apply(out.normals, [
-       0, 1, 0, 0, 1, 0, 0, 1, 0,
-       0, 1, 0, 0, 1, 0, 0, 1, 0
-     ]);
-     out.uvs.push.apply(out.uvs, [
-       0, 0, 2,  0, 1, 2,  1, 1, 2,  
-       0, 0, 2,  1, 1, 2,  1, 0, 2
-     ].map(function(i, idx) {
-       switch(idx % 3) {
-         case 0: return i; break;
-         case 1: return i * len; break;
-         default: return i;
-       }
-      return i;
-     }))
-
-     out.extra.push.apply(out.extra, [
-       0, 0, 0,  0, 0, 0,  0, 0, 0,
-       0, 0, 0,  0, 0, 0,  0, 0, 0
-     ]);
-
-     return out;
-  }, { vertices: [], normals: [], uvs: [], extra: [] });
-
-  console.log(roadQuads);
   this.roadQuads = roadQuads;
 }
 

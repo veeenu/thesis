@@ -79,6 +79,34 @@ vec3 textureBrick(vec2 uv, vec3 brickColor) {
   return mix(mortarColor, brickColor * brickDamp, ub.x * ub.y) * noisev;
 }
 
+vec3 textureWindow2(vec2 uuv, vec3 brickColor) {
+  const vec2 patternPct   = vec2(.3, .5),
+             patternStart = vec2(.35, .25), //(1. - patternPct) * .25,
+             patternEnd   = patternStart + patternPct,
+             framePct     = vec2(1. / 64., 1. / 64.),
+             frameStart   = patternStart + framePct,
+             frameEnd     = patternEnd   - framePct;
+  const vec3 windowColor  = vec3(.8, .94, .99),
+             frameColor   = vec3(.5, .5, .5);
+
+  vec2 uv   = mod(8. * uuv, 1.),
+       fk   = fwidth(uv),
+       patQ = (smoothstep(patternStart - fk, patternStart + fk, uv) -
+              smoothstep(patternEnd - fk, patternEnd + fk, uv)) *
+              (smoothstep(vec2(0.), fk, uv) * (1. - smoothstep(1. - fk, vec2(1.), uv))), // Remove edges
+       patF = (smoothstep(frameEnd - fk, frameEnd + fk, uv) - smoothstep(frameStart - fk, frameStart + fk, uv));
+  float noisep = 1. + 
+                snoise(-uv * 2.) * .25,
+        noisev = 1. + 
+                 snoise(uuv * 16.) * .0625 +
+                 abs(snoise(uuv * 512.)) * .0625,
+        noisem = 1. +
+                 snoise(uuv * 4.) * .0625 +
+                 abs(snoise(uuv * 128.)) * .125;
+
+  return mix(brickColor * noisem, mix(frameColor * noisev, windowColor * noisep, patF.x * patF.y), patQ.x * patQ.y);
+}
+
 vec3 textureWindow(vec2 uuv, vec3 brickColor) {
 
   const vec2 patternPct   = vec2(.3, .5),
@@ -170,7 +198,11 @@ void main(void) {
        color = blend.x * tX + blend.y * tY + blend.z * tZ;*/
   vec3 color;
   
-  if(texCoord.z > 2.5)
+  if(texCoord.z > 4.5)
+    color = textureWindow2(mod(texCoord.yx, 1.), fextra);
+  else if(texCoord.z > 3.5)
+    color = textureWindow(mod(texCoord.yx, 1.), fextra);
+  else if(texCoord.z > 2.5)
     color = textureAsphalt(mod(texCoord.xy, 1.));
   else if(texCoord.z > 1.5)
     color = textureRoad(mod(texCoord.xy, 1.));

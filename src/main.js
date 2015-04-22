@@ -23,25 +23,25 @@ document.body.addEventListener('keydown', function(evt) {
     case 'W': 
       if(moveIntervals.W === null)
         moveIntervals.W = setInterval(function() {
-          renderer.move(0, 10e-3); 
+          renderer.move(0, 10e-2); 
         }, 16);
       break;
     case 'A': 
       if(moveIntervals.A === null)
         moveIntervals.A = setInterval(function() {
-          renderer.move(10e-3, 0); 
+          renderer.move(10e-2, 0); 
         }, 16);
       break;
     case 'S': 
       if(moveIntervals.S === null)
         moveIntervals.S = setInterval(function() {
-          renderer.move(0, -10e-3); 
+          renderer.move(0, -10e-2); 
         }, 16);
       break;
     case 'D': 
       if(moveIntervals.D === null)
         moveIntervals.D = setInterval(function() {
-          renderer.move(-10e-3, 0); 
+          renderer.move(-10e-2, 0); 
         }, 16);
       break;
   }
