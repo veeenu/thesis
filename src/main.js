@@ -1,6 +1,7 @@
 var glMatrix = require('gl-matrix'),
     Renderer = require('./Renderer.js'),
     City     = require('./generators/City.js'),
+    Stats    = require('stats-js'),
     canvas   = document.getElementById('thesis-canvas'),
     gl       = canvas.getContext('webgl'),
     bcr      = canvas.getBoundingClientRect(),
@@ -9,7 +10,6 @@ var glMatrix = require('gl-matrix'),
 
 canvas.width  = w;
 canvas.height = h;
-gl.viewport(0, 0, w, h);
 
 var city      = new City(0),
     renderer  = new Renderer(gl, city);
@@ -77,9 +77,23 @@ document.body.addEventListener('keyup', function(evt) {
   })
 }());
 
+var stats = new Stats();
+stats.setMode(0);
+
+stats.domElement.style.position = 'absolute';
+stats.domElement.style.right = '1rem';
+stats.domElement.style.top = '1rem';
+
+canvas.parentNode.appendChild(stats.domElement);
+
 function r() {
+
+  stats.begin();
   renderer.render(gl, w, h);
+  stats.end();
+
   requestAnimationFrame(r);
 }
+gl.viewport(0, 0, w, h);
 
 r();

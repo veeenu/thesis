@@ -14,7 +14,8 @@ a, a:visited {
 
 div#content {
   box-sizing: border-box;
-  h1, h2, h3, h4, h5, p, div {
+  position: relative;
+  h1, h2, h3, h4, h5, p {
     padding: 0rem 2rem;
     margin-top: 0;
   }

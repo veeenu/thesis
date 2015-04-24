@@ -11,7 +11,7 @@ var PRNG      = new (require('PRNG')),
 vertSrc = fs.readFileSync(__dirname + '/shaders/vertex.glsl', 'utf-8');
 fragSrc = fs.readFileSync(__dirname + '/shaders/fragment.glsl', 'utf-8');
 
-var Renderer = function(gl, city) {
+var Renderer = function(gl, city, w, h) {
 
   var vsh, fsh;
 
@@ -78,6 +78,14 @@ var Renderer = function(gl, city) {
   gl.linkProgram(this.program);
   gl.useProgram(this.program);
 
+  [ 'vertex', 'uv', 'normal', 'extra' ].forEach(function(i) {
+    this.program[i] = gl.getAttribLocation(this.program, i);
+  }.bind(this));
+
+  [ 'tex', 'projection', 'view', 'model' ].forEach(function(i) {
+    this.program[i] = gl.getUniformLocation(this.program, i);
+  }.bind(this));
+
   console.log(city, this.geometry)
 
   var geom = this.geometry;
@@ -119,32 +127,28 @@ var Renderer = function(gl, city) {
   gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.geometry.vertices),
                 gl.STATIC_DRAW);
-  gl.vertexAttribPointer(gl.getAttribLocation(this.program, 'vertex'), 3, 
-                         gl.FLOAT, false, 0, 0);
+  gl.vertexAttribPointer(this.program.vertex, 3, gl.FLOAT, false, 0, 0);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, ubuf);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.geometry.uvs),
                 gl.STATIC_DRAW);
-  gl.vertexAttribPointer(gl.getAttribLocation(this.program, 'uv'), 3, 
-                         gl.FLOAT, false, 0, 0);
+  gl.vertexAttribPointer(this.program.uv, 3, gl.FLOAT, false, 0, 0);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, ebuf);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.geometry.extra),
                 gl.STATIC_DRAW);
-  gl.vertexAttribPointer(gl.getAttribLocation(this.program, 'extra'), 3, 
-                         gl.FLOAT, false, 0, 0);
+  gl.vertexAttribPointer(this.program.extra, 3, gl.FLOAT, false, 0, 0);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, nbuf);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.geometry.normals),
                 gl.STATIC_DRAW);
-  gl.vertexAttribPointer(gl.getAttribLocation(this.program, 'normal'), 3, 
-                         gl.FLOAT, false, 0, 0);
+  gl.vertexAttribPointer(this.program.normal, 3, gl.FLOAT, false, 0, 0);
 
   gl.enable(gl.DEPTH_TEST);
   gl.depthFunc(gl.LEQUAL);
   gl.clearColor(.678, .941, 1, 1);
 
-  gl.uniform1i(gl.getUniformLocation(this.program, 'tex'), 0);
+  gl.uniform1i(this.program.tex, 0);
 
   this.transf = {
     x: path.getPointAtLength(0).x, 
@@ -152,24 +156,16 @@ var Renderer = function(gl, city) {
     alpha: 0, beta: 0
   };
   this.transform();
+
+  //gl.viewport(0, 0, w, h);
+  gl.uniformMatrix4fv(this.program.projection, false, this.proj);
+  gl.uniformMatrix4fv(this.program.model, false, this.model);
 }
 
 Renderer.prototype.render = function(gl, w, h) {
 
-  gl.viewport(0, 0, w, h);
   this.posFn(this.t);
-  gl.uniformMatrix4fv(
-    gl.getUniformLocation(this.program, 'projection'), 
-    false, this.proj
-  );
-  gl.uniformMatrix4fv(
-    gl.getUniformLocation(this.program, 'view'), 
-    false, this.view
-  );
-  gl.uniformMatrix4fv(
-    gl.getUniformLocation(this.program, 'model'), 
-    false, this.model
-  );
+  gl.uniformMatrix4fv(this.program.view, false, this.view);
 
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   gl.drawArrays(gl.TRIANGLES, 0, this.geometry.count);

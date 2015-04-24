@@ -11,7 +11,8 @@
   "dependencies": {
     "brfs": "^1.4.0",
     "earcut": "^1.4.2",
-    "gl-matrix": "^2.2.1"
+    "gl-matrix": "^2.2.1",
+    "stats-js": "^1.0.0-alpha1"
   },
   "devDependencies": {
     "aliasify": "^1.5.1",
