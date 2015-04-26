@@ -136,7 +136,7 @@ ShapeGrammar.prototype.run = function(axiom) {
       var r = rlhs[j];
       if( (r.lc   === null || r.lc === lc.sym) &&
           (r.rc   === null || r.rc === rc.sym) &&
-          (r.cond === null || r.cond(symbol, lc, rc)) ) {
+          (r.cond === null || r.cond.call(symbol, lc, rc)) ) {
         rule = r;
       }
     }
@@ -159,28 +159,111 @@ ShapeGrammar.prototype.run = function(axiom) {
 var shg = new ShapeGrammar();
 
 shg.define('GndFloor', null, null, null, function() {
-  var ret = SHAPE.extrudeAll(this.points, .3, this.points.map(function(i, idx) { return idx === 0 ? 'FrontDoor' : 'Facade'} )),//['Facade', 'FrontDoor', 'Facade', 'Facade' ]),
+  var ret = SHAPE.extrudeAll(this.points, this.floorHeight,
+                             this.points.map(function(i, idx) { return idx === 0 ? 'FrontDoor' : 'Facade'} )),
       floorFace = {
         sym: 'TPolyFloor',
         points: this.points
-        /*x0: this.points[0].x, y0: this.points[0].y, z0: this.points[0].z,
-        x1: this.points[1].x, y1: this.points[1].y, z1: this.points[1].z,
-        x2: this.points[2].x, y2: this.points[2].y, z2: this.points[2].z,
-        x3: this.points[3].x, y3: this.points[3].y, z3: this.points[3].z*/
+      },
+      ceilFace = {
+        sym: 'TPolyFloor',
+        points: this.points.map(function(i) {
+          return { x: i.x, y: i.y + this.floorHeight * (this.floors + 1) + this.ledgeHeight, z: i.z }
+        }.bind(this))
+      },
+      gceilFace = {
+        sym: 'TPolyFloor',
+        points: this.points.map(function(i) {
+          return { x: i.x, y: i.y + this.floorHeight, z: i.z }
+        }.bind(this))
       };
 
+  for(var i = 0; i < this.floors; i++) {
+    var fs = this.points.reduce(function(o, cur) {
+      o.points.push({
+        x: cur.x, y: cur.y + this.ledgeHeight + o.floorHeight * (i + 1), z: cur.z
+      });
+      return o;
+    }.bind(this), { sym: 'Floor', floorHeight: this.floorHeight, points: [] });
+    ret.push(fs);
+  }
+
   ret.push(floorFace);
+  ret.push(ceilFace);
+  ret.push(gceilFace);
+  var insp = Geom.insetPolygon(this.points.map(function(i) { 
+               return { x: i.x, y: i.z }
+             }), this.ledgeInset).map(function(i, idx) {
+               return {
+                 x: i.x,
+                 y: this.points[idx].y + this.floorHeight,
+                 z: i.y
+               }
+             }.bind(this)),
+      ceilp = insp.map(function(i) {
+        return { x: i.x, y: i.y + this.floorHeight * this.floors + this.ledgeHeight, z: i.z };
+      }.bind(this));
+
+  ret.push({
+    sym: 'Ledge',
+    ledgeHeight: this.ledgeHeight,
+    points: insp
+  })
+  ret.push({
+    sym: 'Ledge',
+    ledgeHeight: this.ledgeHeight,
+    points: ceilp,
+    hasCeil: true
+  })
+  return ret;
+});
+
+shg.define('Floor', null, null, null, function() {
+  var ret = SHAPE.extrudeAll(this.points, this.floorHeight,
+                             this.points.map(function(i, idx) { return 'Facade' } )),
+      floorFace = {
+        sym: 'TPolyFloor',
+        points: this.points
+      };
+  ret.push(floorFace);
+  return ret;
+});
+
+shg.define('Ledge', null, null, null, function() {
+  var ret = SHAPE.extrudeAll(this.points, this.ledgeHeight,
+                             this.points.map(function(i, idx) { return 'TQuad' } )),
+      ceilFace = this.hasCeil ? {
+        sym: 'TPolyFloor',
+        points: this.points.map(function(i) { 
+          return { x: i.x, y: i.y + this.ledgeHeight, z: i.z }
+        }.bind(this))
+      } : null;
+  if(ceilFace !== null)
+    ret.push(ceilFace);
   return ret;
 });
 
 shg.define('Facade', null, null, null, function() {
 
-  return SHAPE.fit('x', this, 'Tile', 1);
+  return SHAPE.fit('x', this, 'Tile', .7);
 });
 
-shg.define('FrontDoor', null, null, null, function() {
-  return SHAPE.split(this, [ .25, .5, .25 ], [1], [ 'Facade', 'Door', 'Facade' ]);
-});
+shg.define('FrontDoor', null, null, 
+           function(i) { 
+             var dx = this.x3 - this.x0, dz = this.z3 - this.z0,
+                 len = Math.sqrt(dx * dx + dz * dz);
+             return len > 1;
+           }, function() {
+             return SHAPE.split(this, [ .25, .5, .25 ], [1], [ 'Facade', 'Door', 'Facade' ]);
+           });
+shg.define('FrontDoor', null, null, 
+           function(i) { 
+             var dx = this.x3 - this.x0, dz = this.z3 - this.z0,
+                 len = Math.sqrt(dx * dx + dz * dz);
+             return len <= 1;
+           }, function() {
+             return SHAPE.split(this, [1], [1], [ 'Door' ]);
+           });
 
 shg.define('Tile', null, null, null, function() {
 
@@ -193,10 +276,10 @@ shg.define('Tile', null, null, null, function() {
 
 shg.define('Door', null, null, null, function() {
 
-  return SHAPE.split(this, [ .2, .6, .2 ], [ .3, .7 ], [
-    'TQuad', 'TQuad', 'TQuad',
-    'TQuad', 'TDoor',  'TQuad'
-  ]);
+ return SHAPE.split(this, [ .2, .6, .2 ], [ .3, .7 ], [
+   'TQuad', 'TQuad', 'TQuad',
+   'TQuad', 'TDoor',  'TQuad'
+ ]);
 });
 
 shg.define('TQuad', null, null, null, function() {
@@ -245,7 +328,6 @@ shg.define('TPolyFloor', null, null, null, function() {
         return color[idx % 3];
       });
 
-  console.log(vertices);
   return { sym: null, vertices: vertices, normals: normals, colors: colors };
 });
 
@@ -276,7 +358,11 @@ var axiom = {
 
     return r;
 
-  }())
+  }()),
+  floorHeight: .3,
+  floors: 6,
+  ledgeHeight: .05,
+  ledgeInset: -.025
   /*points: [
     { x: -1, y: 0, z: -1 },
     { x: -1, y: 0, z:  1 },
