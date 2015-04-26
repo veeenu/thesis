@@ -27,7 +27,7 @@ var Renderer = function(gl, city, w, h) {
                    gl.drawingBufferWidth / gl.drawingBufferHeight,
                    0.001, 1000.0);
 
-  mat4.scale(this.model, this.model, [16, 16, 16]);
+  mat4.scale(this.model, this.model, [1, 1, 1]);
 
   var path = document.createElementNS('http://www.w3.org/2000/svg', 'path'),
       count = 0, 
@@ -56,8 +56,8 @@ var Renderer = function(gl, city, w, h) {
         center = path.getPointAtLength(tl * ((t + 0.2 / count) % 1));
 
     mat4.lookAt(this.view, 
-                [eye.x * 16, 0.1, eye.y * 16], 
-                [center.x * 16, 0.2, center.y * 16], 
+                [eye.x * 1, 0.1, eye.y * 1], 
+                [center.x * 1, 0.2, center.y * 1], 
                 [0,1,0]
                 );
   }}(count, path)).bind(this); 
@@ -146,7 +146,8 @@ var Renderer = function(gl, city, w, h) {
 
   gl.enable(gl.DEPTH_TEST);
   gl.depthFunc(gl.LEQUAL);
-  gl.clearColor(.678, .941, 1, 1);
+  //gl.clearColor(.678, .941, 1, 1);
+  gl.clearColor(0, 0, 0, 0);
 
   gl.uniform1i(this.program.tex, 0);
 
@@ -189,7 +190,7 @@ Renderer.prototype.transform = function() {
   glMatrix.mat4.identity(this.view);
   glMatrix.mat4.rotateX(this.view, this.view, this.transf.beta);
   glMatrix.mat4.rotateY(this.view, this.view, this.transf.alpha);
-  glMatrix.mat4.translate(this.view, this.view, [-this.transf.x, -0.1, -this.transf.z]);
+  glMatrix.mat4.translate(this.view, this.view, [-this.transf.x, -0.025, -this.transf.z]);
 }
 
 Renderer.computeGeometry = function(city) {
@@ -206,12 +207,29 @@ Renderer.computeGeometry = function(city) {
     [ .66, .66, .66 ],
     [ 1,   .97, .83 ],
     [ .68, .53, .46 ]
-  ]
+  ];
+
+  vertices.push.apply(vertices, [
+    -10, -10e-5, -10, -10, -10e-5, 10, 10, -10e-5, 10,
+    -10, -10e-5, -10, 10, -10e-5, 10, 10, -10e-5, -10
+  ]);
+  normals.push.apply(normals, [
+    0, 1, 0,  0, 1, 0,  0, 1, 0,
+    0, 1, 0,  0, 1, 0,  0, 1, 0
+  ]);
+  uvs.push.apply(uvs, [
+    0, 0, 3,  0, 10, 3,  10, 10, 3,  
+    0, 0, 3,  10, 10, 3,  10, 0, 3
+  ]);
+  extra.push.apply(extra, [
+    0, 0, 0,  0, 0, 0,  0, 0, 0,
+    0, 0, 0,  0, 0, 0,  0, 0, 0
+  ]);
 
   for(var i = 0, m = city.blocks.length; i < m; i++) {
     block = city.blocks[i];
     blockq = block.block;
-    vertices.push.apply(vertices, [
+    /*vertices.push.apply(vertices, [
       blockq[0].x, 0, blockq[0].y,  blockq[1].x, 0, blockq[1].y,  blockq[2].x, 0, blockq[2].y, 
       blockq[0].x, 0, blockq[0].y,  blockq[2].x, 0, blockq[2].y,  blockq[3].x, 0, blockq[3].y
     ]);
@@ -226,7 +244,7 @@ Renderer.computeGeometry = function(city) {
     extra.push.apply(extra, [
       0, 0, 0,  0, 0, 0,  0, 0, 0,
       0, 0, 0,  0, 0, 0,  0, 0, 0
-    ]);
+    ]);*/
      
     for(var j = 0, n = block.lots.length; j < n; j++) {
       lot = block.lots[j];
@@ -267,10 +285,14 @@ Renderer.computeGeometry = function(city) {
       for(var k in bldgGeom) {
         vertices.push.apply(vertices, bldgGeom[k].vertices);
         normals.push.apply(normals, bldgGeom[k].normals);
-        uvs.push.apply(uvs, bldgGeom[k].uvs.map(function(i, idx) {
-          return (idx % 3 === 2 ? bldgTxtr : i)
-        }));
-        extra.push.apply(extra, bldgGeom[k].uvs.map(function(i, idx) {
+        if(bldgGeom[k].uvs)
+          uvs.push.apply(uvs, bldgGeom[k].uvs);
+        else // TODO remove
+          uvs.push.apply(uvs, bldgGeom[k].normals.map(function(i, idx) {
+            return (idx % 3 === 2 ? bldgTxtr : i)
+          }));
+
+        extra.push.apply(extra, bldgGeom[k].normals.map(function(i, idx) {
           return color[idx % 3];
         }));
       }
@@ -281,8 +303,9 @@ Renderer.computeGeometry = function(city) {
   var roadQuads = city.roadQuads.reduce(function(out, i) {
   
     var aa = i[0], bb = i[1],
-        slope = Math.atan2(bb.y - aa.y, bb.x - aa.x),
-        dx = .1 * Math.sin(slope), dy = .1 * Math.cos(slope),
+        slope = Math.atan2(bb.y - aa.y, bb.x - aa.x) + Math.PI / 2,
+        dx = Math.abs(.09 * Math.cos(slope)), 
+        dy = Math.abs(.09 * Math.sin(slope)),
         //b = bb, a = aa,
         a = { x: aa.x + dy, y: aa.y + dx },
         b = { x: bb.x - dy, y: bb.y - dx },

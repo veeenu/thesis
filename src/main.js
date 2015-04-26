@@ -10,6 +10,7 @@ var glMatrix = require('gl-matrix'),
 
 canvas.width  = w;
 canvas.height = h;
+canvas.style.background = 'linear-gradient(to bottom, rgb(0,0,32) 0%, rgb(0,0,96) 100%)';
 
 var city      = new City(0),
     renderer  = new Renderer(gl, city);
@@ -23,25 +24,25 @@ document.body.addEventListener('keydown', function(evt) {
     case 'W': 
       if(moveIntervals.W === null)
         moveIntervals.W = setInterval(function() {
-          renderer.move(0, 10e-2); 
+          renderer.move(0, 10e-3); 
         }, 16);
       break;
     case 'A': 
       if(moveIntervals.A === null)
         moveIntervals.A = setInterval(function() {
-          renderer.move(10e-2, 0); 
+          renderer.move(10e-3, 0); 
         }, 16);
       break;
     case 'S': 
       if(moveIntervals.S === null)
         moveIntervals.S = setInterval(function() {
-          renderer.move(0, -10e-2); 
+          renderer.move(0, -10e-3); 
         }, 16);
       break;
     case 'D': 
       if(moveIntervals.D === null)
         moveIntervals.D = setInterval(function() {
-          renderer.move(-10e-2, 0); 
+          renderer.move(-10e-3, 0); 
         }, 16);
       break;
   }
