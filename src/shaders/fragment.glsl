@@ -80,10 +80,14 @@ TTextureInfo textureBrick(vec2 uv, vec3 brickColor, vec3 pos, vec3 normal) {
   vec3 bU = dFdx(bump) * cross(normal, dFdy(pos)),
        bV = - dFdy(bump) * cross(normal, dFdx(pos)),
        bD = normal + (bU + bV) * .5;
+  /*vec3 ddx = dFdx(pos) - dFdx(bump) * normal,
+       ddy = dFdy(pos) - dFdy(bump) * normal,
+       bD = normalize(cross(ddx, ddy));*/
 
   return TTextureInfo(
     mix(mortarColor, brickColor * brickDamp * noisev, ub.x * ub.y),
-    normalize(faceforward(bD, -bD, normal))
+    //normalize(faceforward(bD, bD, normal))
+    normalize(faceforward(-bD, bD, normal))
   );
 }
 
@@ -96,14 +100,15 @@ TTextureInfo textureWindow(vec2 uv, vec3 windowColor, vec3 pos, vec3 normal) {
   const vec2 patternPct   = vec2(1., 1.),
              patternStart = vec2(0., 0.), //(1. - patternPct) * .25,
              patternEnd   = patternStart + patternPct,
-             framePct     = vec2(1. / 64., 1. / 64.),
+             framePct     = vec2(1. / 32., 1. / 32.),
              frameStart   = patternStart + framePct,
              frameEnd     = patternEnd   - framePct;
   //const vec3 windowColor  = vec3(.8, .94, .99),
   const vec3 frameColor   = vec3(.5, .5, .5);
 
   vec2 fk   = fwidth(uv),
-       patF = (smoothstep(frameEnd, frameEnd + fk, uv) - smoothstep(frameStart, frameStart + fk, uv));
+       uuv  = mod(uv, .5),
+       patF = (smoothstep(frameEnd, frameEnd + fk, uuv) - smoothstep(frameStart, frameStart + fk, uuv));
   float noisep = 1. + 
                 snoise(-uv * .5) * .25;
   float noisev = 1. + 

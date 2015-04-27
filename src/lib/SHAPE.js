@@ -32,35 +32,39 @@ var SHAPE = {
   // Output: [quad]
   // Split from top to bottom
   split: function(quad, xSplits, ySplits, symbols) {
-    var out = [], symI = 0;
+    var out = [], symI = 0, sioa = symbols instanceof Array,
+        x0 = quad.x0, x1 = quad.x1, x2 = quad.x2, x3 = quad.x3,
+        y0 = quad.y0, y1 = quad.y1, y2 = quad.y2, y3 = quad.y3,
+        z0 = quad.z0, z1 = quad.z1, z2 = quad.z2, z3 = quad.z3;
 
     var accY = 0;
     for(var y = 0, Y = ySplits.length; y < Y; y++) {
-      var accX = 0;
+      var accX = 0, accYY = accY + ySplits[y];
       for(var x = 0, X = xSplits.length; x < X; x++) {
-        var xa = SHAPE.lerp(quad.x0, quad.x3, accX),
-            xb = SHAPE.lerp(quad.x0, quad.x3, accX + xSplits[x]),
-            ya = SHAPE.lerp(quad.y0, quad.y1, accY),
-            yb = SHAPE.lerp(quad.y0, quad.y1, accY + ySplits[y]),
-            za = SHAPE.lerp(quad.z0, quad.z3, accX),
-            zb = SHAPE.lerp(quad.z0, quad.z3, accX + xSplits[x]);
+        var accXX = accX + xSplits[x], 
+            xa = SHAPE.lerp(x0, x3, accX),
+            xb = SHAPE.lerp(x0, x3, accXX),
+            ya = SHAPE.lerp(y0, y1, accY),
+            yb = SHAPE.lerp(y0, y1, accYY),
+            za = SHAPE.lerp(z0, z3, accX),
+            zb = SHAPE.lerp(z0, z3, accXX);
 
         out.push({
-          sym: symbols instanceof Array? symbols[symI++] : symbols,
+          sym: sioa ? symbols[symI++] : symbols,
           x0: xa, y0: yb, z0: za,
           x1: xa, y1: ya, z1: za,
           x2: xb, y2: ya, z2: zb,
           x3: xb, y3: yb, z3: zb,
           uvs: [
-            { s: accX,              t: accY + ySplits[y] },
-            { s: accX,              t: accY },
-            { s: accX + xSplits[x], t: accY },
-            { s: accX + xSplits[x], t: accY + ySplits[y] },
+            { s: accX,  t: accYY },
+            { s: accX,  t: accY },
+            { s: accXX, t: accY },
+            { s: accXX, t: accYY },
           ]
         })
-        accX += xSplits[x];
+        accX = accXX;
       }
-      accY += ySplits[y];
+      accY = accYY;
     }
 
     return out;

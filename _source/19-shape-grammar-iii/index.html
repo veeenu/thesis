@@ -3,13 +3,13 @@ layout: proto
 title: "More shape grammar experiments"
 ---
 <script type='application/x-vertex-shader' id='vertex-shader'>
-attribute vec3 vertex, normal, color;
+attribute vec3 vertex, normal;
 
 uniform mat4 projection, view, model, ltransf;
 uniform mat3 nmatrix;
 
 varying vec4 position, luv;
-varying vec3 vnormal, vcolor;
+varying vec3 vnormal;
 
 void main() {
 
@@ -18,7 +18,6 @@ void main() {
   position = vec4(model * vec4(vertex, 1.));
   //vnormal = normalize(vec4(model * vec4(normal, 1.)).xyz);
   vnormal = nmatrix * normalize(normal);
-  vcolor = color;
   luv = (mat4(
       .5, .0, .0, .0,
       .0, .5, .0, .0,
@@ -33,7 +32,7 @@ void main() {
 precision highp float;
 
 varying vec4 position, luv;
-varying vec3 vnormal, vcolor;
+varying vec3 vnormal;
 
 uniform vec3 lightPos;
 uniform sampler2D texture;
@@ -61,7 +60,7 @@ void main() {
   float diffuse = max(dot(normalize(lightPos), faceforward(vnormal, cross(dFdx(position.xyz), dFdy(position.xyz)), vnormal)), 0.);
   vec4 sample = texture2D(texture, depth.xy);
 
-  vec3 color = vcolor * .5;
+  vec3 color = ambientColor * .5;
   if(diffuse > 0.)
     color += ambientColor * diffuse * .5;
 

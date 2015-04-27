@@ -18,31 +18,34 @@ var city      = new City(0),
 var moveIntervals = {
   W: null, A: null, S: null, D: null
 }
+
+
 document.body.addEventListener('keydown', function(evt) {
   var c = String.fromCharCode(evt.keyCode);
+  var speed = 10e-2;
   switch(c) {
     case 'W': 
       if(moveIntervals.W === null)
         moveIntervals.W = setInterval(function() {
-          renderer.move(0, 10e-3); 
+          renderer.move(0, speed); 
         }, 16);
       break;
     case 'A': 
       if(moveIntervals.A === null)
         moveIntervals.A = setInterval(function() {
-          renderer.move(10e-3, 0); 
+          renderer.move(speed, 0); 
         }, 16);
       break;
     case 'S': 
       if(moveIntervals.S === null)
         moveIntervals.S = setInterval(function() {
-          renderer.move(0, -10e-3); 
+          renderer.move(0, -speed); 
         }, 16);
       break;
     case 'D': 
       if(moveIntervals.D === null)
         moveIntervals.D = setInterval(function() {
-          renderer.move(-10e-3, 0); 
+          renderer.move(-speed, 0); 
         }, 16);
       break;
   }

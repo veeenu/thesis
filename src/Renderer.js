@@ -27,7 +27,7 @@ var Renderer = function(gl, city, w, h) {
                    gl.drawingBufferWidth / gl.drawingBufferHeight,
                    0.001, 1000.0);
 
-  mat4.scale(this.model, this.model, [1, 1, 1]);
+  mat4.scale(this.model, this.model, [16, 16, 16]);
 
   var path = document.createElementNS('http://www.w3.org/2000/svg', 'path'),
       count = 0, 
@@ -56,8 +56,8 @@ var Renderer = function(gl, city, w, h) {
         center = path.getPointAtLength(tl * ((t + 0.2 / count) % 1));
 
     mat4.lookAt(this.view, 
-                [eye.x * 1, 0.1, eye.y * 1], 
-                [center.x * 1, 0.2, center.y * 1], 
+                [eye.x * 16, 0.1, eye.y * 16], 
+                [center.x * 16, 0.2, center.y * 16], 
                 [0,1,0]
                 );
   }}(count, path)).bind(this); 
@@ -85,8 +85,6 @@ var Renderer = function(gl, city, w, h) {
   [ 'tex', 'projection', 'view', 'model' ].forEach(function(i) {
     this.program[i] = gl.getUniformLocation(this.program, i);
   }.bind(this));
-
-  console.log(city, this.geometry)
 
   var geom = this.geometry;
   /*(function() {
@@ -165,7 +163,7 @@ var Renderer = function(gl, city, w, h) {
 
 Renderer.prototype.render = function(gl, w, h) {
 
-  this.posFn(this.t);
+  //this.posFn(this.t);
   gl.uniformMatrix4fv(this.program.view, false, this.view);
 
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -209,142 +207,141 @@ Renderer.computeGeometry = function(city) {
     [ .68, .53, .46 ]
   ];
 
+  console.profile('Geom');
+  while(city.blocks.length) {
+    block = city.blocks.shift();
+
+    for(var j = 0, n = block.lots.length; j < n; j++) {
+      lot = block.lots[j];
+      h = lot.height, lot = lot.poly;
+      var cx, cy, xm, xM, ym, yM;
+
+      cx = cy = 0;
+      xm = ym = Number.POSITIVE_INFINITY;
+      xM = yM = Number.NEGATIVE_INFINITY;
+
+      for(var k = 0, K = lot.length; k < K; k++) {
+        var cur = lot[k];
+        cx += cur.x;
+        cy += cur.y;
+
+        if(xm > cur.x)
+          xm = cur.x;
+        if(xM < cur.x)
+          xM = cur.x;
+        if(ym > cur.y)
+          ym = cur.y;
+        if(yM < cur.y)
+          yM = cur.y;
+      }
+      
+      cx /= lot.length;
+      cy /= lot.length;
+
+      var bldgGeom = BuildingSHG.create({
+        x: cx, y: cy,
+        width: Math.abs(xM - xm) * .9,
+        depth: Math.abs(yM - ym) * .9
+      });
+      //bldgGeom.texture = ~~(Math.random() * 2) + 4;
+
+      //var bldgGeom = BuildingSHG.create(lot);
+      var color = color = availColors[ ~~(Math.random() * availColors.length) ];
+      //while(bldgGeom.length) {
+      for(var l = 0, L = bldgGeom.length; l < L; l++) {
+
+        var bg = bldgGeom[l]; //.shift();
+
+        for(var k = 0, K = 18; /*bg.vertices.length;*/ k < K; k++) {
+          /*vertices.push(bg.vertices[k]);
+          normals.push(bg.normals[k]);
+          uvs.push(bg.uvs[k]);*/
+          extra.push(color[k % 3]);
+        }
+
+        bldgGeom[l] = null;
+      }
+
+    }
+  }
+  console.profileEnd();
+
+  var g = BuildingSHG.getGeom();
+  vertices = g.vertices;
+  normals = g.normals;
+  uvs = g.uvs;
+
   vertices.push.apply(vertices, [
-    -10, -10e-5, -10, -10, -10e-5, 10, 10, -10e-5, 10,
-    -10, -10e-5, -10, 10, -10e-5, 10, 10, -10e-5, -10
+    -20, -10e-4, -20,  -20, -10e-4, 20,  20, -10e-4, 20,
+    -20, -10e-4, -20,   20, -10e-4, 20,  20, -10e-4, -20
   ]);
   normals.push.apply(normals, [
     0, 1, 0,  0, 1, 0,  0, 1, 0,
     0, 1, 0,  0, 1, 0,  0, 1, 0
   ]);
   uvs.push.apply(uvs, [
-    0, 0, 3,  0, 10, 3,  10, 10, 3,  
-    0, 0, 3,  10, 10, 3,  10, 0, 3
+    0, 0, 3,  0, 40, 3,  40, 40, 3,  
+    0, 0, 3,  40, 40, 3,  40, 0, 3
   ]);
   extra.push.apply(extra, [
     0, 0, 0,  0, 0, 0,  0, 0, 0,
     0, 0, 0,  0, 0, 0,  0, 0, 0
   ]);
 
-  for(var i = 0, m = city.blocks.length; i < m; i++) {
-    block = city.blocks[i];
-    blockq = block.block;
-    /*vertices.push.apply(vertices, [
-      blockq[0].x, 0, blockq[0].y,  blockq[1].x, 0, blockq[1].y,  blockq[2].x, 0, blockq[2].y, 
-      blockq[0].x, 0, blockq[0].y,  blockq[2].x, 0, blockq[2].y,  blockq[3].x, 0, blockq[3].y
-    ]);
-    normals.push.apply(normals, [
-      0, 1, 0,  0, 1, 0,  0, 1, 0,
-      0, 1, 0,  0, 1, 0,  0, 1, 0
-    ]);
-    uvs.push.apply(uvs, [
-      0, 0, 3,  0, 1, 3,  1, 1, 3,  
-      0, 0, 3,  1, 1, 3,  1, 0, 3
-    ]);
-    extra.push.apply(extra, [
-      0, 0, 0,  0, 0, 0,  0, 0, 0,
-      0, 0, 0,  0, 0, 0,  0, 0, 0
-    ]);*/
-     
-    for(var j = 0, n = block.lots.length; j < n; j++) {
-      lot = block.lots[j];
-      h = lot.height, lot = lot.poly;
-      col = glMatrix.vec3.fromValues(
-              Math.random(), Math.random(), Math.random()
-            );
-      glMatrix.vec3.normalize(col, col);
-      var centroid, size;
+  var roadQuads = city.roadQuads.reduce((function() { 
+    var N, U;
+    N = [
+      0, 1, 0, 0, 1, 0, 0, 1, 0,
+      0, 1, 0, 0, 1, 0, 0, 1, 0
+    ];
+    U = [
+      0, 0, 2,  0, 1, 2,  1, 1, 2,  
+      0, 0, 2,  1, 1, 2,  1, 0, 2
+    ];
+    return function(out, i) {
+  
+      var aa = i[0], bb = i[1],
+          slope = Math.atan2(bb.y - aa.y, bb.x - aa.x) + Math.PI / 2,
+          dx = Math.abs(.09 * Math.cos(slope)), 
+          dy = Math.abs(.09 * Math.sin(slope)),
+          //b = bb, a = aa,
+          a = { x: aa.x + dy, y: aa.y + dx },
+          b = { x: bb.x - dy, y: bb.y - dx },
+          len = Math.sqrt( Math.pow(b.y - a.y, 2) + Math.pow(b.x - a.x, 2) );
 
-      centroid = lot.reduce(function(c, cur) {
-        c.x += cur.x;
-        c.y += cur.y;
-        return c;
-      }, { x: 0, y: 0 });
-
-      size = lot.reduce(function(c, cur) {
-        if(c.xm > cur.x)
-          c.xm = cur.x;
-        if(c.ym > cur.y)
-          c.ym = cur.y;
-        if(c.xM < cur.x)
-          c.xM = cur.x;
-        if(c.yM < cur.y)
-          c.yM = cur.y;
-        return c;
-      }, { xm: Number.POSITIVE_INFINITY, ym: Number.POSITIVE_INFINITY, xM: Number.NEGATIVE_INFINITY, yM: Number.NEGATIVE_INFINITY });
-      centroid.x /= lot.length;
-      centroid.y /= lot.length;
-
-      var bldgGeom = BuildingSHG.create({
-        x: centroid.x, y: centroid.y,
-        width: Math.abs(size.xM - size.xm) * .9,
-        depth: Math.abs(size.yM - size.ym) * .9
+      var vertices = [
+        a.x - dx, 0, a.y - dy,  b.x - dx, 0, b.y - dy,  b.x + dx, 0, b.y + dy,
+        a.x - dx, 0, a.y - dy,  b.x + dx, 0, b.y + dy,  a.x + dx, 0, a.y + dy
+      ], uvs = U.map(function(i, idx) {
+        switch(idx % 3) {
+          case 0: return i; break;
+          case 1: return i * len; break;
+          default: return i;
+        }
+       return i;
       });
-      var color = availColors[ ~~(Math.random() * availColors.length) ],
-          bldgTxtr = ~~(Math.random() * 2) + 4;
-      for(var k in bldgGeom) {
-        vertices.push.apply(vertices, bldgGeom[k].vertices);
-        normals.push.apply(normals, bldgGeom[k].normals);
-        if(bldgGeom[k].uvs)
-          uvs.push.apply(uvs, bldgGeom[k].uvs);
-        else // TODO remove
-          uvs.push.apply(uvs, bldgGeom[k].normals.map(function(i, idx) {
-            return (idx % 3 === 2 ? bldgTxtr : i)
-          }));
 
-        extra.push.apply(extra, bldgGeom[k].normals.map(function(i, idx) {
-          return color[idx % 3];
-        }));
+      for(var k = 0, K = vertices.length; k < K; k++) {
+        out.vertices.push(vertices[k]);
+        out.normals.push(N[k]);
+        out.uvs.push(uvs[k]);
+        out.extra.push(0);
       }
 
+      return out;
     }
+  }()), { vertices: [], normals: [], uvs: [], extra: [] });
+
+  for(var k = 0, K = roadQuads.vertices.length; k < K; k++) {
+    vertices.push(roadQuads.vertices[k]);
+    normals.push(roadQuads.normals[k]);
+    uvs.push(roadQuads.uvs[k]);
+    extra.push(roadQuads.extra[k]);
   }
-
-  var roadQuads = city.roadQuads.reduce(function(out, i) {
-  
-    var aa = i[0], bb = i[1],
-        slope = Math.atan2(bb.y - aa.y, bb.x - aa.x) + Math.PI / 2,
-        dx = Math.abs(.09 * Math.cos(slope)), 
-        dy = Math.abs(.09 * Math.sin(slope)),
-        //b = bb, a = aa,
-        a = { x: aa.x + dy, y: aa.y + dx },
-        b = { x: bb.x - dy, y: bb.y - dx },
-        len = Math.sqrt( Math.pow(b.y - a.y, 2) + Math.pow(b.x - a.x, 2) );
-
-     var vertices = [
-       a.x - dx, 0, a.y - dy,  b.x - dx, 0, b.y - dy,  b.x + dx, 0, b.y + dy,
-       a.x - dx, 0, a.y - dy,  b.x + dx, 0, b.y + dy,  a.x + dx, 0, a.y + dy
-     ];
-
-     out.vertices.push.apply(out.vertices, vertices);
-     out.normals.push.apply(out.normals, [
-       0, 1, 0, 0, 1, 0, 0, 1, 0,
-       0, 1, 0, 0, 1, 0, 0, 1, 0
-     ]);
-     out.uvs.push.apply(out.uvs, [
-       0, 0, 2,  0, 1, 2,  1, 1, 2,  
-       0, 0, 2,  1, 1, 2,  1, 0, 2
-     ].map(function(i, idx) {
-       switch(idx % 3) {
-         case 0: return i; break;
-         case 1: return i * len; break;
-         default: return i;
-       }
-      return i;
-     }))
-
-     out.extra.push.apply(out.extra, [
-       0, 0, 0,  0, 0, 0,  0, 0, 0,
-       0, 0, 0,  0, 0, 0,  0, 0, 0
-     ]);
-
-     return out;
-  }, { vertices: [], normals: [], uvs: [], extra: [] });
-
-  vertices.push.apply(vertices, roadQuads.vertices);
+  /*vertices.push.apply(vertices, roadQuads.vertices);
   normals.push.apply(normals, roadQuads.normals);
   uvs.push.apply(uvs, roadQuads.uvs);
-  extra.push.apply(extra, roadQuads.extra);
+  extra.push.apply(extra, roadQuads.extra);*/
 
   return {
     vertices: vertices,

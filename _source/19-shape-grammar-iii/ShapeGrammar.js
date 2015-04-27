@@ -231,7 +231,20 @@ shg.define('Floor', null, null, null, function() {
 
 shg.define('Ledge', null, null, null, function() {
   var ret = SHAPE.extrudeAll(this.points, this.ledgeHeight,
-                             this.points.map(function(i, idx) { return 'TQuad' } )),
+        this.points.map(function(i, idx) { return 'TQuad' } )
+      ).map(function(i) { 
+        i.texID = 6;
+        var dx = i.x0 - i.x3, dz = i.z0 - i.z3, 
+            dy = Math.abs(i.y1 - i.y0),
+            w = Math.sqrt(dx * dx + dz * dz) / (7 * this.ledgeHeight);
+        i.uvs = [
+          { s: 0, t: .125 },
+          { s: 0, t: 0 },
+          { s: w, t: 0 },
+          { s: w, t: .125 }
+        ]
+        return i; 
+      }.bind(this)),
       ceilFace = this.hasCeil ? {
         sym: 'TPolyFloor',
         points: this.points.map(function(i) { 
@@ -248,43 +261,50 @@ shg.define('Facade', null, null, null, function() {
   return SHAPE.fit('x', this, 'Tile', .7);
 });
 
-shg.define('FrontDoor', null, null, 
-           function(i) { 
-             var dx = this.x3 - this.x0, dz = this.z3 - this.z0,
-                 len = Math.sqrt(dx * dx + dz * dz);
-             return len > 1;
-           }, function() {
-             return SHAPE.split(this, [ .25, .5, .25 ], [1], [ 'Facade', 'Door', 'Facade' ]);
-           });
-shg.define('FrontDoor', null, null, 
-           function(i) { 
-             var dx = this.x3 - this.x0, dz = this.z3 - this.z0,
-                 len = Math.sqrt(dx * dx + dz * dz);
-             return len <= 1;
-           }, function() {
-             return SHAPE.split(this, [1], [1], [ 'Door' ]);
-           });
+shg.define('FrontDoor', null, null, null, function() {
+  var d = SHAPE.fit('x', this, 'Tile', .7), c = ~~(d.length / 2);
+  d[c].sym = 'Door';
+  return d;
+});
 
 shg.define('Tile', null, null, null, function() {
 
-  return SHAPE.split(this, [ .3, .4, .3 ], [ .2, .6, .2 ], [
+  var spl = SHAPE.split(this, [ .3, .4, .3 ], [ .2, .6, .2 ], [
     'TQuad', 'TQuad', 'TQuad',
     'TQuad', 'TWin',  'TQuad',
     'TQuad', 'TQuad', 'TQuad'
-  ]);
+  ]).map(function(i, idx) {
+    if(idx === 4) {
+      i.uvs = [ { s:  0, t:  1 }, { s:  0, t:  0 }, { s:  1, t:  0 }, { s:  1, t:  1 } ];
+    } else {
+      i.texID = 6;
+    }
+    return i;
+  });
+
+
+  return spl;
 });
 
 shg.define('Door', null, null, null, function() {
 
- return SHAPE.split(this, [ .2, .6, .2 ], [ .3, .7 ], [
+ var spl = SHAPE.split(this, [ .1, .8, .1 ], [ .3, .7 ], [
    'TQuad', 'TQuad', 'TQuad',
    'TQuad', 'TDoor',  'TQuad'
- ]);
+ ]).map(function(i, idx) {
+   if(idx !== 4)
+     i.texID = 6;
+   return i;
+ });
+
+  spl[4].uvs = [ { s:  0, t:  1 }, { s:  0, t:  0 }, { s:  1, t:  0 }, { s:  1, t:  1 } ];
+
+  return spl;
 });
 
 shg.define('TQuad', null, null, null, function() {
-  var vertices = [], normals = [],
-      colors = [], normal;
+  var vertices = [], normals = [], uvs = [], normal;
+  this.uvs = this.uvs || [ { s:  0, t:  1 }, { s:  0, t:  0 }, { s:  1, t:  0 }, { s:  1, t:  1 } ];
 
   vertices = [
     this.x0, this.y0, this.z0,
@@ -295,17 +315,17 @@ shg.define('TQuad', null, null, null, function() {
     this.x3, this.y3, this.z3
   ];
 
+  uvs = [ 0, 1, 2, 0, 2, 3 ].reduce(function(o, i) {
+    o.push(this.uvs[i].s, this.uvs[i].t, this.texID || 0);
+    return o;
+  }.bind(this), []);
+
   normal = Geom.triToNormal(vertices);
   for(var i = 0; i < 6; i++) {
     normals.push.apply(normals, normal);
-    colors.push( 
-      'r' in this ? this.r : 1,
-      'g' in this ? this.g : 0, 
-      'b' in this ? this.b : 0
-    );
   }
 
-  return { sym: null, vertices: vertices, normals: normals, colors: colors };
+  return { sym: null, vertices: vertices, normals: normals, uvs: uvs };
 });
 
 shg.define('TPolyFloor', null, null, null, function() {
@@ -322,32 +342,25 @@ shg.define('TPolyFloor', null, null, null, function() {
       normal = Geom.triToNormal(vertices),
       normals = vertices.map(function(i, idx) {
         return normal[idx % 3];
-      }),
-      color = [ 0, 1, 0 ],
-      colors = vertices.map(function(i, idx) {
-        return color[idx % 3];
       });
 
-  return { sym: null, vertices: vertices, normals: normals, colors: colors };
+  return { sym: null, vertices: vertices, normals: normals };
 });
 
 shg.define('TWin', null, null, null, function() {
-  this.r = 0;
-  this.g = 1;
-  this.b = 1;
+  this.texID = Math.random() > .35 ? 4 : 5;
   this.sym = 'TQuad';
 
   return this;
 });
 
 shg.define('TDoor', null, null, null, function() {
-  this.r = 0;
-  this.g = 0;
-  this.b = 1;
+  this.texID = 4;
   this.sym = 'TQuad';
 
   return this;
 });
+
 
 var axiom = {
   sym: 'GndFloor',
@@ -371,13 +384,15 @@ var axiom = {
   ]*/
 };
 
+console.time('Bldg');
 axiom = shg.run(axiom);
+console.timeEnd('Bldg');
 
 shgResult = axiom.reduce(function(sr, cur) {
   
   sr.vertices.push.apply(sr.vertices, cur.vertices);
   sr.normals.push.apply(sr.normals, cur.normals);
-  sr.colors.push.apply(sr.colors, cur.colors);
+  sr.uvs.push.apply(sr.uvs, cur.uvs);
 
   return sr;
-}, { vertices: [], normals: [], colors: [] });
+}, { vertices: [], normals: [], uvs: [] });

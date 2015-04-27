@@ -27,9 +27,6 @@ Mesh.prototype.bind = function(program) {
   gl.bindBuffer(gl.ARRAY_BUFFER, this.nbuf);
   gl.enableVertexAttribArray(gl.getAttribLocation(program, 'normal'));
   gl.vertexAttribPointer(gl.getAttribLocation(program, 'normal'), 3, gl.FLOAT, false, 0, 0);
-  gl.bindBuffer(gl.ARRAY_BUFFER, this.cbuf);
-  gl.enableVertexAttribArray(gl.getAttribLocation(program, 'color'));
-  gl.vertexAttribPointer(gl.getAttribLocation(program, 'color'), 3, gl.FLOAT, false, 0, 0);
 
 }
 

@@ -26,8 +26,8 @@ ShapeGrammar.prototype.run = function(axiom) {
 
   for(var i = 0, n = axiom.length; i < n; i++) {
     var symbol = axiom[i],
-        lc = (i > 0 ?     axiom[i - 1] : null),
-        rc = (i < n - 1 ? axiom[i + 1] : null),
+        //lc = (i > 0 ?     axiom[i - 1] : null),
+        //rc = (i < n - 1 ? axiom[i + 1] : null),
         rlhs, rule = null;
     
     rlhs = this.rules[symbol.sym];
@@ -38,9 +38,9 @@ ShapeGrammar.prototype.run = function(axiom) {
 
     for(var j = 0, J = rlhs.length; j < J && rule === null; j++) {
       var r = rlhs[j];
-      if( (r.lc   === null || r.lc === lc.sym) &&
-          (r.rc   === null || r.rc === rc.sym) &&
-          (r.cond === null || r.cond.call(symbol, lc, rc)) ) {
+      if( /*(r.lc   === null || r.lc === lc.sym) &&
+          (r.rc   === null || r.rc === rc.sym) &&*/
+          (r.cond === null || r.cond.call(symbol/*, lc, rc*/)) ) {
         rule = r;
       }
     }
@@ -52,8 +52,11 @@ ShapeGrammar.prototype.run = function(axiom) {
 
     nonempty = true;
 
-    var res = rule.fn.call(symbol, lc, rc);
-    out.push.apply(out, res instanceof Array? res : [res]);
+    var res = rule.fn.call(symbol/*, lc, rc*/);
+    if(!(res instanceof Array)) res = [res];
+    for(var k = 0, K = res.length; k < K; k++)
+      out.push(res[k]);
+    //out.push.apply(out, res instanceof Array? res : [res]);
 
   }
 

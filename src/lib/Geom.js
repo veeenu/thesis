@@ -116,15 +116,27 @@ var Geom = {
     return { x: a1.x + p * cos_, y: a1.y + p * sin_ };
   },
   triToNormal: function(points) {
-    var vA = vec3.fromValues.apply(vec3, points.slice(3,6)),
-        vB = vec3.fromValues.apply(vec3, points.slice(0,3)),
-        vC = vec3.fromValues.apply(vec3, points.slice(6,9)),
+    /*var vA = vec3.fromValues(vec3, points[3], points[4], points[5]),
+        vB = vec3.fromValues(vec3, points[0], points[1], points[2]),
+        vC = vec3.fromValues(vec3, points[6], points[7], points[8]),
         norm = vec3.create();
     vec3.sub(vB, vB, vA);
     vec3.sub(vC, vC, vA);
     vec3.cross(norm, vB, vC);
     vec3.normalize(norm, norm);
-    return norm;
+    return norm;*/
+
+    /*var vA = vec3.create(), vB = vec3.create();
+    vec3.set(vA, points[0] - points[3], points[1] - points[4], points[2] - points[5]);
+    vec3.set(vB, points[6] - points[3], points[7] - points[4], points[8] - points[5]);
+    vec3.cross(vA, vA, vB);
+    vec3.normalize(vA, vA);
+    return vA;*/
+    var a1 = points[0] - points[3], a2 = points[1] - points[4], a3 = points[2] - points[5],
+        b1 = points[6] - points[3], b2 = points[7] - points[4], b3 = points[8] - points[5];
+
+    return [ a2 * b3 - a3 * b2, a1 * b3 - a3 * b1, a1 * b2 - a2 * b1 ];
+
   }
 
 }
