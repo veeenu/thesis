@@ -1,0 +1,105 @@
+---
+layout: proto
+title: "Shape grammar objects"
+---
+<script type='application/x-vertex-shader' id='vertex-shader'>
+attribute vec3 vertex, normal;
+
+uniform mat4 projection, view, model, ltransf;
+uniform mat3 nmatrix;
+
+varying vec4 position, luv;
+varying vec3 vnormal;
+
+void main() {
+
+  gl_Position = projection * view * model * vec4(vertex, 1.);
+  
+  position = vec4(model * vec4(vertex, 1.));
+  //vnormal = normalize(vec4(model * vec4(normal, 1.)).xyz);
+  vnormal = nmatrix * normalize(normal);
+  luv = (mat4(
+      .5, .0, .0, .0,
+      .0, .5, .0, .0,
+      .0, .0, .5, .0,
+      .5, .5, .5, 1.
+    ) * ltransf * position);
+}
+
+</script>
+<script type='application/x-fragment-shader' id='fragment-shader'> 
+#extension GL_OES_standard_derivatives : enable
+precision highp float;
+
+varying vec4 position, luv;
+varying vec3 vnormal;
+
+uniform vec3 lightPos;
+uniform sampler2D texture;
+
+float chebyshevIneq(vec2 moments, float t) {
+  if(t <= moments.x)
+    return 1.;
+
+  float variance = moments.y - (moments.x * moments.x);
+  variance = max(variance, .02);
+  float d = t - moments.x;
+  variance = variance / (variance + d * d);
+  return variance;
+}
+
+float unpack(vec2 color) {
+  return color.x + (color.y / 255.);
+}
+
+void main() {
+
+  vec3 ambientColor = vec3(0.5, 0.5, 0.5);
+  vec3 depth = luv.xyz;
+
+  float diffuse = max(dot(normalize(lightPos), faceforward(vnormal, cross(dFdx(position.xyz), dFdy(position.xyz)), vnormal)), 0.);
+  vec4 sample = texture2D(texture, depth.xy);
+
+  vec3 color = ambientColor * .5;
+  if(diffuse > 0.)
+    color += ambientColor * diffuse * .5;
+
+  float illum = clamp(exp(-4. * (depth.z - unpack(sample.xy))), 0., 1.);
+  illum = 1.;
+
+  gl_FragColor = clamp(vec4(color * illum, 1.), 0., 1.);
+}
+
+</script>
+
+<script type='application/x-vertex-shader' id='vertex-shadow'>
+attribute vec3 vertex, normal;
+
+uniform mat4 ltransf, model;
+
+void main() {
+  
+  gl_Position = ltransf * model * vec4(vertex, 1.);
+}
+
+</script>
+<script type='application/x-fragment-shader' id='fragment-shadow'> 
+precision highp float;
+
+vec2 pack(float depth) {
+  const vec2 bias = vec2(1. / 255., 0.);
+  vec2 col = vec2(depth, fract(depth * 255.));
+
+  return col - (col.yy * bias);
+}
+
+void main() {
+  float moment = gl_FragCoord.z; 
+  gl_FragColor = vec4(pack(moment), pack(moment * moment));
+}
+
+</script>
+<script src='gl-matrix-min.js'></script>
+<script src='lib.js'></script>
+<script src='earcut.js'></script>
+<script src='meshes.js'></script>
