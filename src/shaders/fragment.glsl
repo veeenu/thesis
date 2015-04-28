@@ -2,7 +2,7 @@
 precision highp float;
 
 varying vec3 fnorm, fvert, fextra, texCoord;
-varying float dist;
+varying float fdepth;
 
 uniform sampler2D tex;
 
@@ -40,13 +40,22 @@ float snoise(vec2 v) {
 }
 ////////////////////////////////////////////////////////////////////////////////
 
+vec3 bumpMap(float bump) {
+
+  vec3 bU = dFdx(bump) * cross(fnorm, normalize(dFdy(fvert))),
+       bV = dFdy(bump) * cross(normalize(dFdx(fvert)), fnorm),
+       bD = fnorm + (bU + bV);
+
+  return normalize(bD);
+}
+
 struct TTextureInfo {
   vec3 color;
   vec3 normal;
 };
 
 #define textureBrickI(x, p, notp) ((floor(x)*(p))+max(fract(x)-(notp), 0.0))
-TTextureInfo textureBrick(vec2 uv, vec3 brickColor, vec3 pos, vec3 normal) {
+TTextureInfo textureBrick(vec2 uv, vec3 brickColor) {
 
   const float bW  = .125,
               bH  = .0625,
@@ -64,9 +73,9 @@ TTextureInfo textureBrick(vec2 uv, vec3 brickColor, vec3 pos, vec3 normal) {
     u += .5;
   brU = floor(u);
 
-  float noisev = 1. + 
-                 snoise(uv * 16.) * .0625 +
-                 abs(snoise(uv * 512.)) * .0625;
+  float noisev = 1. +
+                 //snoise(uv * 16.) * .0625 +
+                 snoise(uv * 64.) * .125;
   float brickDamp = 1. + .125 * sin(2. * (brU + 1.)) * sin(2. * (brV + 1.));
 
   vec2 uuv = vec2(u, v),
@@ -76,18 +85,13 @@ TTextureInfo textureBrick(vec2 uv, vec3 brickColor, vec3 pos, vec3 normal) {
        ub = (textureBrickI(uuv + fw, brickPct, mortarPct) -
              textureBrickI(uuv, brickPct, mortarPct)) / fw;
 
-  float bump = ub.x * ub.y;
-  vec3 bU = dFdx(bump) * cross(normal, dFdy(pos)),
-       bV = - dFdy(bump) * cross(normal, dFdx(pos)),
-       bD = normal + (bU + bV) * .5;
-  /*vec3 ddx = dFdx(pos) - dFdx(bump) * normal,
-       ddy = dFdy(pos) - dFdy(bump) * normal,
-       bD = normalize(cross(ddx, ddy));*/
+  vec3 color = mix(mortarColor, brickColor * brickDamp, ub.x * ub.y);
+
+  float bump = noisev / fdepth + (ub.x * ub.y) - dFdx(ub.x) * dFdy(ub.y);
 
   return TTextureInfo(
-    mix(mortarColor, brickColor * brickDamp * noisev, ub.x * ub.y),
-    //normalize(faceforward(bD, bD, normal))
-    normalize(faceforward(-bD, bD, normal))
+    color,
+    bumpMap(bump)
   );
 }
 
@@ -95,7 +99,7 @@ TTextureInfo textureBrick(vec2 uv, vec3 brickColor, vec3 pos, vec3 normal) {
  * Window texture
 \******************************************************************************/
 
-TTextureInfo textureWindow(vec2 uv, vec3 windowColor, vec3 pos, vec3 normal) {
+TTextureInfo textureWindow(vec2 uv, vec3 windowColor) {
 
   const vec2 patternPct   = vec2(1., 1.),
              patternStart = vec2(0., 0.), //(1. - patternPct) * .25,
@@ -107,7 +111,7 @@ TTextureInfo textureWindow(vec2 uv, vec3 windowColor, vec3 pos, vec3 normal) {
   const vec3 frameColor   = vec3(.5, .5, .5);
 
   vec2 fk   = fwidth(uv),
-       uuv  = mod(uv, .5),
+       uuv  = mod(uv, .5 - 1. / 64.),
        patF = (smoothstep(frameEnd, frameEnd + fk, uuv) - smoothstep(frameStart, frameStart + fk, uuv));
   float noisep = 1. + 
                 snoise(-uv * .5) * .25;
@@ -116,8 +120,8 @@ TTextureInfo textureWindow(vec2 uv, vec3 windowColor, vec3 pos, vec3 normal) {
                  abs(snoise(uv * 512.)) * .0625;
 
   return TTextureInfo(
-    mix(frameColor * noisev, windowColor * noisep, patF.x * patF.y),
-    normal
+    mix(frameColor, windowColor * noisep, patF.x * patF.y),
+    fnorm
   );
 }
 
@@ -182,23 +186,23 @@ vec3 textureAsphalt(vec2 uuv) {
 
 void main(void) {
 
-  vec3 color, normal = normalize(cross(dFdx(fvert), dFdy(fvert)));
+  vec3 color, normal;
   vec2 uuv = mod(texCoord.yx, 1.);
 
   TTextureInfo ti;
   
   if(texCoord.z > 5.1) {
-    ti = textureBrick(mod(texCoord.xy, 1.), fextra, gl_FragCoord.xyz, normal);
+    ti = textureBrick(mod(texCoord.xy, 1.), fextra);
     color = ti.color;
     normal = ti.normal;
   }
   else if(texCoord.z > 4.1) {
-    ti = textureWindow(uuv, vec3(1., 1., .8), gl_FragCoord.xyz, normal);
+    ti = textureWindow(uuv, vec3(1., 1., .8));
     color = ti.color;
     normal = ti.normal;
   }
   else if(texCoord.z > 3.1) {
-    ti = textureWindow(uuv, vec3(.5, .5, .4), gl_FragCoord.xyz, normal);
+    ti = textureWindow(uuv, vec3(.5, .5, .4));
     color = ti.color;
     normal = ti.normal;
   }
@@ -209,10 +213,13 @@ void main(void) {
   else
     color = textureAsphalt(uuv); //textureWindow(uuv, fextra);
 
+  normal = faceforward(normal, gl_FragCoord.xyz, fnorm);
+
   vec3 lightDir = normalize(vec3(0.5, -1., 0.2));
   float lambert = clamp(dot( normal, -lightDir ), 0.0, 1.0);
-  float att = min(1.0, 1.0 / (.2 + .6 * dist + .4 * dist * dist));
+  float att = min(1.0, 1.0 / (.2 + .6 * fdepth + .4 * fdepth * fdepth));
 
   gl_FragColor = vec4(color.xyz * (att * .1 + lambert * .6 + 0.3), 1.0);
+
 }
 
