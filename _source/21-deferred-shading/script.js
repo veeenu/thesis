@@ -30,7 +30,7 @@ var geom = xhr.responseText
         o.normals.push(a.slice(1).map(parseFloat));
         break;
       case 'f':
-        o.faces.push(a.slice(1).map(function(i) { return i.split('//').map(parseFloat) }));
+        o.faces.push(a.slice(1).map(function(i) { return i.split('/').map(parseFloat) }));
         break;
     }
 
@@ -38,15 +38,16 @@ var geom = xhr.responseText
 
   }, { vertices: [], normals: [], faces: [] });
 
+  console.log(geom)
 geom = geom.faces.reduce(function(o, i) {
   var dx;
 
   for(var X = -10; X < 10; X++) for(var Y = -10; Y < 10; Y++) {
     for(var j = 0; j < 3; j++) {
       for(var k = 0; k < 3; k++) {
-        dx = (k === 0 ? X * 5 : (k === 2 ? Y * 10 : 0));
+        dx = (k === 0 ? X * 100 : (k === 2 ? Y * 120 : 0));
         o.vertices.push(this.vertices[ i[j][0] - 1][k] + dx);
-        o.normals.push(this.normals[ i[j][1] - 1][k]);
+        o.normals.push(this.normals[ i[j][2] - 1][k]);
       }
     }
   }
@@ -81,6 +82,8 @@ gl.getExtension('OES_texture_float');
 gl.getExtension('OES_texture_float_linear');
 extDB = gl.getExtension('WEBGL_draw_buffers');
 extTF = gl.getExtension('WEBGL_depth_texture');
+
+console.log(extDB, extTF);
 
 gl.bindTexture(gl.TEXTURE_2D, depthT);
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
@@ -190,9 +193,10 @@ gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([ 1, -1, -1, -1, -1, 1,  1, -1, 
 gl.enableVertexAttribArray(programQ.position);
 gl.vertexAttribPointer(programQ.position, 2, gl.FLOAT, false, 0, 0);
 
-mat4.perspective(projection, Math.PI / 2, w / h, .001, 10000.);
-mat4.scale(view, view, [.001, .001, .001]);
-mat4.translate(view, view, [0, -6, -96]);
+mat4.perspective(projection, Math.PI / 2, w / h, .00001, 10000.);
+mat4.scale(view, view, [.00001, .00001, .00001]);
+mat4.translate(view, view, [0, -100, -100]);
+mat4.rotateX(view, view, Math.PI / 4);
 
 gl.clearColor(0, 0, 0, 1);
 gl.viewport(0, 0, w, h);
@@ -200,7 +204,7 @@ gl.viewport(0, 0, w, h);
 console.log(program, programQ);
 
 var lightPos = vec3.create(),
-    x = 0, y = 0, z = 0, t = 0;
+    x = 60, y = 30, z = 0, t = 0;
 
 /*document.body.addEventListener('keydown', function(evt) {
   switch(evt.keyIdentifier) {
@@ -219,10 +223,13 @@ var r = function() {
 
   stats.begin();
 
-  t += .025;
+  t += .05;
+  z -= 1;
 
-  vec3.set(lightPos, Math.cos(t) * 2, 3, Math.sin(t) * 2);
+  mat4.rotateY(view, view, Math.PI / 1024);
+  vec3.set(lightPos, Math.cos(t) * 400., 20, Math.sin(t) * 400.);
   //vec3.set(lightPos, x, y, z);
+  vec3.transformMat4(lightPos, lightPos, view);
 
   // Framebuffer
   gl.useProgram(program);
@@ -250,7 +257,7 @@ var r = function() {
   gl.useProgram(programQ);
 
   gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, depthT);
+  gl.bindTexture(gl.TEXTURE_2D, depthRGBT);
   gl.activeTexture(gl.TEXTURE1);
   gl.bindTexture(gl.TEXTURE_2D, normalT);
   gl.activeTexture(gl.TEXTURE2);

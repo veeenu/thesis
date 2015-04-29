@@ -62,6 +62,7 @@ void main() {
 </script>
 <script type='application/x-fragment-shader' id='fragment-lighting'> 
 
+#extension GL_OES_standard_derivatives : enable
 precision highp float;
 
 uniform sampler2D depthTex, normalTex, positionTex, colorTex;
@@ -71,6 +72,26 @@ varying vec2 vposition;
 
 //const vec3 lightPos = vec3(1., 0., 1.);
 
+float sample(vec4 p, vec4 n, vec2 uv) {
+  vec3 dstP = texture2D(positionTex, uv).xyz,
+       posV = dstP - p.xyz;
+
+  float intens = max(dot(normalize(posV), n.xyz) - .5, 0.),
+        dist = length(posV),
+        att  = 1. / (2. + (5. * dist));
+  return intens * att;
+}
+
+highp float rand(vec2 co)
+{
+    highp float a = 12.9898;
+    highp float b = 78.233;
+    highp float c = 43758.5453;
+    highp float dt= dot(co.xy ,vec2(a,b));
+    highp float sn= mod(dt,3.14);
+    return fract(sin(sn) * c);
+}
+
 void main() {
 
   vec4  normal = texture2D(normalTex, vposition),
@@ -78,10 +99,37 @@ void main() {
         pos    = texture2D(positionTex, vposition),
         depth  = texture2D(depthTex, vposition);
   
-  vec3 lightDir = lightPos - pos.xyz;
-  float lambert = max(dot(normalize(lightDir), normal.xyz), 0.) / min(1., distance(lightPos, pos.xyz));
+  vec3 lightDir = lightPos - pos.xyz; // - pos.xyz;
+  float dist = length(lightDir),
+        att = 1. / (1. + 200. * dist + 3000. * dist * dist),
+        lambert = max(dot(normalize(lightDir), normal.xyz), 0.);
 
-  gl_FragColor = vec4(color.xyz * lambert, 1.);
+  vec2 fw = vec2(.01, .01);
+  vec2 kernel[4];
+  kernel[0] = vec2(0., 1.);
+  kernel[1] = vec2(1., 0.);
+  kernel[2] = vec2(0., -1.);
+  kernel[3] = vec2(-1., 0.);
+
+  const float sin45 = .707107, sRad = 20.;
+
+  float occlusion = 0., kRad = sRad * (1. - depth.r);
+
+  for(int i = 0; i < 4; ++i) {
+    vec2 k1 = reflect(kernel[i], -.5 + vec2(rand(vposition)));
+    vec2 k2 = vec2(k1.x * sin45 - k1.y * sin45,
+                   k1.x * sin45 + k1.y * sin45);
+    occlusion += sample(pos, normal, vposition + k1 * kRad);
+    occlusion += sample(pos, normal, vposition + k1 * kRad * .75);
+    occlusion += sample(pos, normal, vposition + k1 * kRad * .5);
+    occlusion += sample(pos, normal, vposition + k1 * kRad * .25);
+  }
+  occlusion /= 16.;
+  occlusion = clamp(occlusion, 0., 1.);
+
+  //gl_FragColor = vec4(depth.xyz, 1.);
+  gl_FragColor = vec4(vec3(1. - occlusion), 1.);
+  gl_FragColor = vec4(att * lambert * (color.xyz - occlusion), 1.);
 }
 
 </script>
