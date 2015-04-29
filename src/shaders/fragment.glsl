@@ -6,6 +6,22 @@ varying float fdepth;
 
 uniform sampler2D tex;
 
+const float C1 = 0.429043;
+const float C2 = 0.511664;
+const float C3 = 0.743125;
+const float C4 = 0.886227;
+const float C5 = 0.247708;
+// Constants for Old Town Square lighting
+const vec3 L00  = vec3( 0.871297,  0.875222,  0.864470);
+const vec3 L1m1 = vec3( 0.175058,  0.245335,  0.312891);
+const vec3 L10  = vec3( 0.034675,  0.036107,  0.037362);
+const vec3 L11  = vec3(-0.004629, -0.029448, -0.048028);
+const vec3 L2m2 = vec3(-0.120535, -0.121160, -0.117507);
+const vec3 L2m1 = vec3( 0.003242,  0.003624,  0.007511);
+const vec3 L20  = vec3(-0.028667, -0.024926, -0.020998);
+const vec3 L21  = vec3(-0.077539, -0.086325, -0.091591);
+const vec3 L22  = vec3(-0.161784, -0.191783, -0.219152);
+
 ////////////////////////////////////////////////////////////////////////////////
 // https://github.com/ashima/webgl-noise/blob/master/src/noise2D.glsl         //
 vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
@@ -44,7 +60,7 @@ vec3 bumpMap(float bump) {
 
   vec3 bU = dFdx(bump) * cross(fnorm, normalize(dFdy(fvert))),
        bV = dFdy(bump) * cross(normalize(dFdx(fvert)), fnorm),
-       bD = fnorm + (bU + bV);
+       bD = fnorm + (bU + bV) * 3.;
 
   return normalize(bD);
 }
@@ -121,7 +137,7 @@ TTextureInfo textureWindow(vec2 uv, vec3 windowColor) {
 
   return TTextureInfo(
     mix(frameColor, windowColor * noisep, patF.x * patF.y),
-    fnorm
+    bumpMap(patF.x * patF.y)
   );
 }
 
@@ -219,7 +235,19 @@ void main(void) {
   float lambert = clamp(dot( normal, -lightDir ), 0.0, 1.0);
   float att = min(1.0, 1.0 / (.2 + .6 * fdepth + .4 * fdepth * fdepth));
 
-  gl_FragColor = vec4(color.xyz * (att * .1 + lambert * .6 + 0.3), 1.0);
+  vec3 diffuse =  C1 * L22 * (normal.x * normal.x - normal.y * normal.y) +
+                  C3 * L20 *  normal.z * normal.z +
+                  C4 * L00 -
+                  C5 * L20 +
+                  2.0 * C1 * L2m2 * normal.x * normal.y + 
+                  2.0 * C1 * L21 * normal.x * normal.z + 
+                  2.0 * C1 * L2m1 * normal.y * normal.z + 
+                  2.0 * C2 * L11 * normal.x+
+                  2.0 * C2 * L1m1 * normal.y +
+                  2.0 * C2 * L10 * normal.z;
+
+  gl_FragColor = vec4(color.xyz * diffuse, 1.);
+  //gl_FragColor = vec4(color.xyz * (att * .1 + lambert * .6 + 0.3), 1.0);
 
 }
 

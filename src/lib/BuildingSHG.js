@@ -8,7 +8,8 @@ var shg = new ShapeGrammar(),
       vertices: [],
       normals: [],
       extra: [],
-      uvs: []
+      uvs: [],
+      totalLights: 0
     };
 
 shg.define('GndFloor', null, null, null, function() {
@@ -188,8 +189,12 @@ shg.define('TPolyFloor', null, null, null, function() {
 });
 
 shg.define('TWin', null, null, null, function() {
-  this.texID = Math.random() > .35 ? 4 : 5;
+  var test = Math.random() > .35;
+  this.texID = test ? 4 : 5;
   this.sym = 'TQuad';
+
+  if(!test)
+    context.totalLights++;
 
   return this;
 });

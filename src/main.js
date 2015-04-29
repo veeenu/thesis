@@ -49,6 +49,7 @@ document.body.addEventListener('keydown', function(evt) {
         }, 16);
       break;
   }
+
 });
 
 document.body.addEventListener('keyup', function(evt) {

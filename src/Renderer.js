@@ -164,6 +164,11 @@ var Renderer = function(gl, city, w, h) {
 Renderer.prototype.render = function(gl, w, h) {
 
   //this.posFn(this.t);
+  /*this.transf.x = -13;
+  this.transf.z = 92.47;
+  this.transf.alpha = 1.5875;
+  this.transf.beta = -0.02;
+  this.transform();*/
   gl.uniformMatrix4fv(this.program.view, false, this.view);
 
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -270,6 +275,7 @@ Renderer.computeGeometry = function(city) {
   vertices = g.vertices;
   normals = g.normals;
   uvs = g.uvs;
+  console.log(g.totalLights + ' lights');
 
   vertices.push.apply(vertices, [
     -20, -10e-4, -20,  -20, -10e-4, 20,  20, -10e-4, 20,

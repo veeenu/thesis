@@ -1,0 +1,90 @@
+---
+layout: proto
+title: "Deferred shading"
+---
+<script type='application/x-vertex-shader' id='vertex-deferred'>
+
+uniform mat4 projection, view, model;
+uniform mat3 mnormal;
+
+attribute vec3 vertex, normal;
+
+varying vec4 vposition;
+varying vec3 vnormal;
+varying float vdepth;
+
+void main() {
+  
+  vec4 camPos = view * model * vec4(vertex, 1.);
+  gl_Position = projection * camPos;
+  vnormal = mnormal * normal;
+  vposition = camPos;
+  vdepth = gl_Position.z / gl_Position.w;
+
+}
+
+</script>
+<script type='application/x-fragment-shader' id='fragment-deferred'> 
+#extension GL_EXT_draw_buffers : require
+
+precision highp float;
+
+varying vec4 vposition;
+varying vec3 vnormal;
+varying float vdepth;
+
+const vec3 lightDir = vec3(0., -1., 1.),
+           color    = vec3(1., 0., 0.);
+
+void main() {
+  //float lambert = .3 + max(dot(normalize(lightDir), vnormal), 0.);
+
+  //gl_FragColor = vec4(color * lambert, 1.);
+  gl_FragData[0] = vec4(normalize(vnormal), 1.);
+  gl_FragData[1] = vec4(vposition.xyz, 1.);
+  gl_FragData[2] = vec4(color, 1.);
+  gl_FragData[3] = vec4(vec3(vdepth), 1.);
+}
+
+</script>
+
+<script type='application/x-vertex-shader' id='vertex-lighting'>
+
+attribute vec2 position;
+
+varying vec2 vposition;
+
+void main() {
+  gl_Position = vec4(position, 0., 1.);
+  vposition = .5 + .5 * position;
+}
+
+</script>
+<script type='application/x-fragment-shader' id='fragment-lighting'> 
+
+precision highp float;
+
+uniform sampler2D depthTex, normalTex, positionTex, colorTex;
+uniform vec3 lightPos;
+
+varying vec2 vposition;
+
+//const vec3 lightPos = vec3(1., 0., 1.);
+
+void main() {
+
+  vec4  normal = texture2D(normalTex, vposition),
+        color  = texture2D(colorTex, vposition),
+        pos    = texture2D(positionTex, vposition),
+        depth  = texture2D(depthTex, vposition);
+  
+  vec3 lightDir = lightPos - pos.xyz;
+  float lambert = max(dot(normalize(lightDir), normal.xyz), 0.) / min(1., distance(lightPos, pos.xyz));
+
+  gl_FragColor = vec4(color.xyz * lambert, 1.);
+}
+
+</script>
+
+<script src='stats.min.js'></script>
+<script src='gl-matrix-min.js'></script>
