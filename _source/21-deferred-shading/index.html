@@ -1,6 +1,6 @@
 ---
 layout: proto
-title: "Deferred shading"
+title: "Deferred shading + Screen Space Ambient Occlusion"
 ---
 <script type='application/x-vertex-shader' id='vertex-deferred'>
 
@@ -34,7 +34,7 @@ varying vec3 vnormal;
 varying float vdepth;
 
 const vec3 lightDir = vec3(0., -1., 1.),
-           color    = vec3(1., 0., 0.);
+           color    = vec3(1., 1., 1.);
 
 void main() {
   //float lambert = .3 + max(dot(normalize(lightDir), vnormal), 0.);
@@ -66,7 +66,8 @@ void main() {
 precision highp float;
 
 uniform sampler2D depthTex, normalTex, positionTex, colorTex;
-uniform vec3 lightPos;
+uniform vec3 lightPos[4];
+uniform bool doccl;
 
 varying vec2 vposition;
 
@@ -98,11 +99,21 @@ void main() {
         color  = texture2D(colorTex, vposition),
         pos    = texture2D(positionTex, vposition),
         depth  = texture2D(depthTex, vposition);
+
+  vec3 lambert = vec3(.1), lCols[4];
+  lCols[0] = vec3(1., 0., 0.);
+  lCols[1] = vec3(0., 1., 0.);
+  lCols[2] = vec3(0., 0., 1.);
+  lCols[3] = vec3(1., 1., 1.);
+
+  for(int i = 0; i < 4; ++i) {
+    vec3 lightDir = lightPos[i] - pos.xyz; // - pos.xyz;
+    float dist = length(lightDir),
+          att = 3. / (1. + 1500. * dist + 3000. * dist * dist);
+
+    lambert += lCols[i] * att * max(dot(normalize(lightDir), normal.xyz), 0.);
+  }
   
-  vec3 lightDir = lightPos - pos.xyz; // - pos.xyz;
-  float dist = length(lightDir),
-        att = 1. / (1. + 200. * dist + 3000. * dist * dist),
-        lambert = max(dot(normalize(lightDir), normal.xyz), 0.);
 
   vec2 fw = vec2(.01, .01);
   vec2 kernel[4];
@@ -116,7 +127,7 @@ void main() {
   float occlusion = 0., kRad = sRad * (1. - depth.r);
 
   for(int i = 0; i < 4; ++i) {
-    vec2 k1 = reflect(kernel[i], -.5 + vec2(rand(vposition)));
+    vec2 k1 = reflect(kernel[i], vec2(rand(vposition), rand(-vposition)));
     vec2 k2 = vec2(k1.x * sin45 - k1.y * sin45,
                    k1.x * sin45 + k1.y * sin45);
     occlusion += sample(pos, normal, vposition + k1 * kRad);
@@ -126,10 +137,11 @@ void main() {
   }
   occlusion /= 16.;
   occlusion = clamp(occlusion, 0., 1.);
+  if(doccl) occlusion = 0.;
 
   //gl_FragColor = vec4(depth.xyz, 1.);
-  gl_FragColor = vec4(vec3(1. - occlusion), 1.);
-  gl_FragColor = vec4(att * lambert * (color.xyz - occlusion), 1.);
+  //gl_FragColor = vec4(vec3(1. - occlusion), 1.);
+  gl_FragColor = vec4(lambert * color.xyz - occlusion, 1.);
 }
 
 </script>

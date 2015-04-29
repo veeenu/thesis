@@ -14,7 +14,7 @@ stats.domElement.style.top = '1rem';
 document.body.appendChild(stats.domElement);
 
 var xhr = new XMLHttpRequest();
-xhr.open('GET', 'husky1.obj', false);
+xhr.open('GET', 'greek_vase2.obj', false);
 xhr.send();
 
 var geom = xhr.responseText
@@ -169,7 +169,7 @@ gl.depthFunc(gl.LESS);
   programQ[i] = gl.getAttribLocation(programQ, i);
 });
 
-['depthTex', 'normalTex', 'positionTex', 'colorTex', 'lightPos'].forEach(function(i) {
+['depthTex', 'normalTex', 'positionTex', 'colorTex', 'lightPos', 'doccl'].forEach(function(i) {
   programQ[i] = gl.getUniformLocation(programQ, i);
 });
 
@@ -195,7 +195,7 @@ gl.vertexAttribPointer(programQ.position, 2, gl.FLOAT, false, 0, 0);
 
 mat4.perspective(projection, Math.PI / 2, w / h, .00001, 10000.);
 mat4.scale(view, view, [.00001, .00001, .00001]);
-mat4.translate(view, view, [0, -100, -100]);
+mat4.translate(view, view, [0, -100, -200]);
 mat4.rotateX(view, view, Math.PI / 4);
 
 gl.clearColor(0, 0, 0, 1);
@@ -203,7 +203,7 @@ gl.viewport(0, 0, w, h);
 
 console.log(program, programQ);
 
-var lightPos = vec3.create(),
+var lightPos = [], lp = vec3.create(), doccl = false,
     x = 60, y = 30, z = 0, t = 0;
 
 /*document.body.addEventListener('keydown', function(evt) {
@@ -219,17 +219,38 @@ var lightPos = vec3.create(),
   evt.stopPropagation();
 });*/
 
+document.body.addEventListener('keydown', function(evt) {
+
+  if(evt.which === 79) doccl = !doccl;
+
+});
+
 var r = function() {
 
   stats.begin();
 
-  t += .05;
+  t += .025;
   z -= 1;
 
-  mat4.rotateY(view, view, Math.PI / 1024);
-  vec3.set(lightPos, Math.cos(t) * 400., 20, Math.sin(t) * 400.);
+  lightPos = [];
+
+  vec3.set(lp, Math.cos(t) * 600., 80, Math.sin(t) * 600);
+  vec3.transformMat4(lp, lp, view);
+  lightPos.push.apply(lightPos, lp);
+  vec3.set(lp, Math.cos(t + Math.PI / 2) * 600., 80, Math.sin(t + Math.PI / 2) * 600);
+  vec3.transformMat4(lp, lp, view);
+  lightPos.push.apply(lightPos, lp);
+  vec3.set(lp, Math.cos(t + Math.PI) * 600., 80, Math.sin(t + Math.PI) * 600);
+  vec3.transformMat4(lp, lp, view);
+  lightPos.push.apply(lightPos, lp);
+  vec3.set(lp, Math.cos(t + 3 * Math.PI / 2) * 600., 80, Math.sin(t + 3 * Math.PI / 2) * 600);
+  vec3.transformMat4(lp, lp, view);
+  lightPos.push.apply(lightPos, lp);
+
+  //mat4.rotateY(view, view, Math.PI / 1024);
+  //vec3.set(lightPos, Math.cos(t) * 400., 20, Math.sin(t) * 400.);
   //vec3.set(lightPos, x, y, z);
-  vec3.transformMat4(lightPos, lightPos, view);
+  //vec3.transformMat4(lightPos, lightPos, view);
 
   // Framebuffer
   gl.useProgram(program);
@@ -269,6 +290,7 @@ var r = function() {
   gl.uniform1i(programQ.positionTex, 2);
   gl.uniform1i(programQ.colorTex, 3);
   gl.uniform3fv(programQ.lightPos, lightPos);
+  gl.uniform1i(programQ.doccl, doccl);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, qbuf);
   gl.vertexAttribPointer(programQ.position, 2, gl.FLOAT, false, 0, 0);
