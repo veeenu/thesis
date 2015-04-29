@@ -14,7 +14,7 @@ stats.domElement.style.top = '1rem';
 document.body.appendChild(stats.domElement);
 
 var xhr = new XMLHttpRequest();
-xhr.open('GET', 'husky.obj', false);
+xhr.open('GET', 'husky1.obj', false);
 xhr.send();
 
 var geom = xhr.responseText
