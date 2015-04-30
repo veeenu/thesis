@@ -50,7 +50,7 @@ void main() {
 
   vec3 lightDir = lightPos - vertex;
 
-  float lambert = .2 + max(dot(normal, normalize(-lightPos)), 0.),
+  float lambert = .2 + max(dot(faceforward(normal, -lightDir, normal), normalize(lightDir)), 0.),
         dist = length(lightDir),
         att = min(1., 1. / (1. + 2.5 * dist + 8. * dist * dist));
 
@@ -85,6 +85,6 @@ void main() {
   //color = vec3(1.);
   //occlusion = 0.;
   //gl_FragColor = vec4(vec3(1. - occlusion), 1.);
-  gl_FragColor = vec4(lambert * color, 1.);
+  gl_FragColor = vec4(lambert * att * color, 1.);
   //gl_FragColor = vec4(mix(vec3(depth), color, .3), 1.);
 }

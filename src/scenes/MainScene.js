@@ -192,7 +192,8 @@ gl.bindBuffer(gl.ARRAY_BUFFER, null);
 var t = 0.;
 scene.update = function(timestamp) {
   //vec3.set(scene.lightPos, .38, .2, -.3);
-  vec3.set(scene.lightPos, 1, 1, 1);
+  //vec3.set(scene.lightPos, 1, 1, 1);
+  vec3.set(scene.lightPos, 0,.05,-.05);
   //t += .01;
   mat4.translate(scene.view, scene.view, [0, 0, -.002]);
 }
