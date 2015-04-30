@@ -1,361 +1,236 @@
-var fs        = require('fs');
-var PRNG      = new (require('PRNG')),
-    Util      = require('./lib/util.js'),
-    Textures  = require('./generators/Textures.js'),
-    glMatrix  = require('gl-matrix'),
-    vec3      = glMatrix.vec3,
-    mat4      = glMatrix.mat4,
-    BuildingSHG = require('./lib/BuildingSHG.js'),
-    vertSrc, fragSrc;
+var glslify     = require('glslify');
+var Util        = require('./lib/util.js'),
+    glMatrix    = require('gl-matrix'),
+    vec3        = glMatrix.vec3,
+    mat3        = glMatrix.mat3,
+    mat4        = glMatrix.mat4,
+    Context     = require('Context'),
+    gl          = Context.gl,
+    BuildingSHG = require('./generators/BuildingSHG.js');
 
-vertSrc = fs.readFileSync(__dirname + '/shaders/vertex.glsl', 'utf-8');
-fragSrc = fs.readFileSync(__dirname + '/shaders/fragment.glsl', 'utf-8');
+var programPass  = gl.createProgram(),
+    programLight = gl.createProgram(),
+    vshPass      = gl.createShader(gl.VERTEX_SHADER),
+    fshPass      = gl.createShader(gl.FRAGMENT_SHADER),
+    vshLight     = gl.createShader(gl.VERTEX_SHADER),
+    fshLight     = gl.createShader(gl.FRAGMENT_SHADER),
+    extDrawbuffers, extDepthTexture,
+    vsrcPass, vsrcLight, fsrcPass, fsrcLight;
 
-var Renderer = function(gl, city, w, h) {
+/*vsrcPass  = fs.readFileSync(__dirname + '/shaders/pass-vertex.glsl', 'utf-8');
+fsrcPass  = fs.readFileSync(__dirname + '/shaders/pass-fragment.glsl', 'utf-8');
+vsrcLight = fs.readFileSync(__dirname + '/shaders/light-vertex.glsl', 'utf-8');
+fsrcLight = fs.readFileSync(__dirname + '/shaders/light-fragment.glsl', 'utf-8');*/
+vsrcPass  = glslify(__dirname + '/shaders/pass-vertex.glsl', 'utf-8');
+fsrcPass  = glslify(__dirname + '/shaders/pass-fragment.glsl', 'utf-8');
+vsrcLight = glslify(__dirname + '/shaders/light-vertex.glsl', 'utf-8');
+fsrcLight = glslify(__dirname + '/shaders/light-fragment.glsl', 'utf-8');
 
-  var vsh, fsh;
+gl.clearColor(0, 0, 0, 0);
+gl.enable(gl.DEPTH_TEST);
+gl.depthFunc(gl.LESS);
+gl.getExtension('OES_standard_derivatives');
+gl.getExtension('OES_texture_float');
+gl.getExtension('OES_texture_float_linear');
+extDrawbuffers = gl.getExtension('WEBGL_draw_buffers');
+extDepthTexture = gl.getExtension('WEBGL_depth_texture');
 
-  this.gl = gl;
-  this.geometry = Renderer.computeGeometry(city);
-  this.program = gl.createProgram();
+/*******************************************************************************
+ * Geometry pass shader compilation & linking
+ *******************************************************************************/
+gl.shaderSource(vshPass, vsrcPass);
+gl.shaderSource(fshPass, fsrcPass);
+gl.compileShader(vshPass);
+gl.compileShader(fshPass);
+gl.attachShader(programPass, vshPass);
+gl.attachShader(programPass, fshPass);
+gl.linkProgram(programPass);
 
-  this.view = glMatrix.mat4.create();
-  this.model = glMatrix.mat4.create();
-  this.proj = glMatrix.mat4.create();
+/*******************************************************************************
+ * Light pass shader compilation & linking
+ *******************************************************************************/
+gl.shaderSource(vshLight, vsrcLight);
+gl.shaderSource(fshLight, fsrcLight);
+gl.compileShader(vshLight);
+gl.compileShader(fshLight);
+gl.attachShader(programLight, vshLight);
+gl.attachShader(programLight, fshLight);
+gl.linkProgram(programLight);
 
-  mat4.perspective(this.proj, Math.PI / 2, 
-                   gl.drawingBufferWidth / gl.drawingBufferHeight,
-                   0.001, 1000.0);
+console.log('VP:', gl.getShaderInfoLog(vshPass),
+            'FP:', gl.getShaderInfoLog(fshPass),
+            'VL:', gl.getShaderInfoLog(vshLight),
+            'FL:', gl.getShaderInfoLog(fshLight));
 
-  mat4.scale(this.model, this.model, [16, 16, 16]);
+/*******************************************************************************
+ * Texture MRTs setup.
+ * Layout:    
+ * Target 0: | Pos.x  | Pos.y  | Pos.z  | Depth  |
+ * Target 1: | Norm.x | Norm.y | Norm.z | ?      |
+ * Target 2: | Col.r  | Col.g  | Col.b  | ?      |
+ *******************************************************************************/
 
-  var path = document.createElementNS('http://www.w3.org/2000/svg', 'path'),
-      count = 0, 
-      curp = city.roads[Math.floor(PRNG.random() * city.roads.length)],
-      newp = curp, oldp = curp, firstp = curp,
-      attrStr = 'M' + curp.x + ',' + curp.y + ' ';
+var target0     = gl.createTexture(),
+    target1     = gl.createTexture(),
+    target2     = gl.createTexture(),
+    depthTex    = gl.createTexture(),
+    framebuffer = gl.createFramebuffer(),
+    drawbuffers;
 
-  while(true) {
-    do {
-      newp = curp.conns[ Math.floor(curp.conns.length * PRNG.random()) ];
-    } while(newp.x === oldp.x && newp.y === oldp.y);
-    oldp = curp;
-    curp = newp;
-    attrStr += 'L' + curp.x + ',' + curp.y + ' ';
-    if(curp === firstp)
-      break;
-    count++;
-  }
+gl.bindTexture(gl.TEXTURE_2D, depthTex);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT, Context.w, Context.h, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_SHORT, null);
+    
+[target0, target1, target2].forEach(function(target) {
+  gl.bindTexture(gl.TEXTURE_2D, target);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, Context.w, Context.h, 0, gl.RGBA, gl.FLOAT, null);
+});
 
-  path.setAttribute('d', attrStr);
+gl.bindTexture(gl.TEXTURE_2D, null);
 
-  this.incr = 0.0025 / count;
-  this.posFn = (function(count, path) { return function(t) {
-    var tl = path.getTotalLength(),
-        eye = path.getPointAtLength(tl * (t % 1)),
-        center = path.getPointAtLength(tl * ((t + 0.2 / count) % 1));
+gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
 
-    mat4.lookAt(this.view, 
-                [eye.x * 16, 0.1, eye.y * 16], 
-                [center.x * 16, 0.2, center.y * 16], 
-                [0,1,0]
-                );
-  }}(count, path)).bind(this); 
+try {
+  drawbuffers = [
+    extDrawbuffers.COLOR_ATTACHMENT0_WEBGL,
+    extDrawbuffers.COLOR_ATTACHMENT1_WEBGL,
+    extDrawbuffers.COLOR_ATTACHMENT2_WEBGL
+  ];
+  extDrawbuffers.drawBuffersWEBGL(drawbuffers);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, depthTex, 0);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, drawbuffers[0], gl.TEXTURE_2D, target0, 0);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, drawbuffers[1], gl.TEXTURE_2D, target1, 0);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, drawbuffers[2], gl.TEXTURE_2D, target2, 0);
+} catch(e) {}
 
-  this.posFn(0);
 
-  Textures.generate(gl); // TODO
+gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-  gl.getExtension('OES_standard_derivatives');
-  vsh = gl.createShader(gl.VERTEX_SHADER);
-  fsh = gl.createShader(gl.FRAGMENT_SHADER);
-  gl.shaderSource(vsh, vertSrc);
-  gl.shaderSource(fsh, fragSrc);
-  gl.compileShader(vsh);
-  gl.compileShader(fsh);
-  gl.attachShader(this.program, vsh);
-  gl.attachShader(this.program, fsh);
-  gl.linkProgram(this.program);
-  gl.useProgram(this.program);
+/*******************************************************************************
+ * Setup global matrices and VBOs
+ *******************************************************************************/
+var quadBuf      = gl.createBuffer(),
+    projection   = mat4.create();
 
-  [ 'vertex', 'uv', 'normal', 'extra' ].forEach(function(i) {
-    this.program[i] = gl.getAttribLocation(this.program, i);
-  }.bind(this));
+// Quad data directly in screen space coordinates
+gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([ 1, -1, -1, -1, -1, 1,  1, -1, -1, 1, 1, 1 ]), gl.STATIC_DRAW);
+gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
-  [ 'tex', 'projection', 'view', 'model' ].forEach(function(i) {
-    this.program[i] = gl.getUniformLocation(this.program, i);
-  }.bind(this));
+mat4.perspective(projection, Math.PI / 2, Context.aspectRatio, .001, 1000.);
 
-  var geom = this.geometry;
-  /*(function() {
-  
-    var obj = "o City\n";
-    console.log(geom.vertices.length / 3);
-    for(var i = 0; i < geom.vertices.length; i += 3) {
-      obj += 'v ' + geom.vertices.slice(i, i + 3).join(' ') + "\n";
-    }
-    for(var i = 0; i < geom.normals.length; i += 3) {
-      obj += 'vn ' + geom.normals.slice(i, i + 3).join(' ') + "\n";
-    }
-    for(var i = 0; i < geom.vertices.length / 3; i += 3) {
-      obj += 'f ' + [i + 1, i + 2, i + 3].map(function(ii) { return ii + '//' + ii }).join(' ') + "\n";
-    }
-    var a = document.createElement('a'),
-        blob = new Blob([obj], {type:'application/octet-stream'});
-        url = URL.createObjectURL(blob);
-    a.href = url;
-    a.download = 'tesi.obj';
-    a.click();
+/*******************************************************************************
+ * Uniforms and attributes setup
+ *******************************************************************************/
 
-  }());*/
+['vertex', 'normal', 'uv', 'extra'].forEach(function(i) {
+  programPass[i] = gl.getAttribLocation(programPass, i);
+});
 
-  this.t = 0;
+['projection', 'viewmodel', 'normalM'].forEach(function(i) {
+  programPass[i] = gl.getUniformLocation(programPass, i);
+});
 
-  var vbuf = gl.createBuffer(),
-      nbuf = gl.createBuffer(),
-      cbuf = gl.createBuffer(),
-      ebuf = gl.createBuffer(),
-      ubuf = gl.createBuffer();
+['position'].forEach(function(i) {
+  programLight[i] = gl.getAttribLocation(programLight, i);
+});
 
-  gl.enableVertexAttribArray(gl.getAttribLocation(this.program, 'vertex'));
-  gl.enableVertexAttribArray(gl.getAttribLocation(this.program, 'uv'));
-  gl.enableVertexAttribArray(gl.getAttribLocation(this.program, 'extra'));
-  gl.enableVertexAttribArray(gl.getAttribLocation(this.program, 'normal'));
+['target0', 'target1', 'target2', 'lightPos'].forEach(function(i) {
+  programLight[i] = gl.getUniformLocation(programLight, i);
+});
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, vbuf);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.geometry.vertices),
-                gl.STATIC_DRAW);
-  gl.vertexAttribPointer(this.program.vertex, 3, gl.FLOAT, false, 0, 0);
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, ubuf);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.geometry.uvs),
-                gl.STATIC_DRAW);
-  gl.vertexAttribPointer(this.program.uv, 3, gl.FLOAT, false, 0, 0);
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, ebuf);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.geometry.extra),
-                gl.STATIC_DRAW);
-  gl.vertexAttribPointer(this.program.extra, 3, gl.FLOAT, false, 0, 0);
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, nbuf);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.geometry.normals),
-                gl.STATIC_DRAW);
-  gl.vertexAttribPointer(this.program.normal, 3, gl.FLOAT, false, 0, 0);
-
-  gl.enable(gl.DEPTH_TEST);
-  gl.depthFunc(gl.LEQUAL);
-  //gl.clearColor(.678, .941, 1, 1);
-  gl.clearColor(0, 0, 0, 0);
-
-  gl.uniform1i(this.program.tex, 0);
-
-  this.transf = {
-    x: path.getPointAtLength(0).x, 
-    z: path.getPointAtLength(0).y,
-    alpha: 0, beta: 0
-  };
-  this.transform();
-
-  //gl.viewport(0, 0, w, h);
-  gl.uniformMatrix4fv(this.program.projection, false, this.proj);
-  gl.uniformMatrix4fv(this.program.model, false, this.model);
-}
-
-Renderer.prototype.render = function(gl, w, h) {
-
-  //this.posFn(this.t);
-  /*this.transf.x = -13;
-  this.transf.z = 92.47;
-  this.transf.alpha = 1.5875;
-  this.transf.beta = -0.02;
-  this.transform();*/
-  gl.uniformMatrix4fv(this.program.view, false, this.view);
+/*******************************************************************************
+ * Procedures that setup/cleanup buffers and matrices for the shader
+ *******************************************************************************/
+programPass.activate = function(scene) {
+  gl.useProgram(programPass);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
 
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  gl.drawArrays(gl.TRIANGLES, 0, this.geometry.count);
 
-  this.t += this.incr;
+  //
+  // VBO setup
+  //
+  gl.bindBuffer(gl.ARRAY_BUFFER, scene.vBuf);
+  gl.vertexAttribPointer(programPass.vertex, 3, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, scene.nBuf);
+  gl.vertexAttribPointer(programPass.normal, 3, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, scene.uBuf);
+  gl.vertexAttribPointer(programPass.uv,     3, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, scene.eBuf);
+  gl.vertexAttribPointer(programPass.extra,  3, gl.FLOAT, false, 0, 0);
+  //
+  // Uniforms setup
+  //
+  var viewmodel = mat4.create(), normalM = mat3.create();
+  mat4.mul(viewmodel, scene.view, scene.model);
+  mat3.normalFromMat4(normalM, viewmodel);
+
+  gl.uniformMatrix4fv(programPass.projection, false, projection);
+  gl.uniformMatrix4fv(programPass.viewmodel, false, viewmodel);
+  gl.uniformMatrix3fv(programPass.normalM, false, normalM);
+
+  gl.enableVertexAttribArray(programPass.vertex);
+  gl.enableVertexAttribArray(programPass.normal);
+  gl.enableVertexAttribArray(programPass.uv);
+  gl.enableVertexAttribArray(programPass.extra);
+
+  gl.drawArrays(gl.TRIANGLES, 0, scene.count);
 }
 
-Renderer.prototype.move = function(x, z) {
-  this.transf.x += -x * Math.cos(this.transf.alpha) + z * Math.sin(this.transf.alpha);
-  this.transf.z += -x * Math.sin(this.transf.alpha) - z * Math.cos(this.transf.alpha);
-  this.transform();
-}
-
-Renderer.prototype.rotate = function(alpha, beta) {
-  this.transf.alpha += alpha;
-  this.transf.beta = Math.min(Math.PI / 2, Math.max(this.transf.beta + beta, -Math.PI / 2));
-  this.transform();
-}
-
-Renderer.prototype.transform = function() {
-  glMatrix.mat4.identity(this.view);
-  glMatrix.mat4.rotateX(this.view, this.view, this.transf.beta);
-  glMatrix.mat4.rotateY(this.view, this.view, this.transf.alpha);
-  glMatrix.mat4.translate(this.view, this.view, [-this.transf.x, -0.025, -this.transf.z]);
-}
-
-Renderer.computeGeometry = function(city) {
-  var vertices = [],
-      normals  = [],
-      uvs      = [],
-      extra    = [],
-      count = 0,
-      block, blockq, lot, h, col,
-      mI = 0;
-
-  var availColors = [
-    [ .88, .88, .88 ],
-    [ .66, .66, .66 ],
-    [ 1,   .97, .83 ],
-    [ .68, .53, .46 ]
-  ];
-
-  console.profile('Geom');
-  while(city.blocks.length) {
-    block = city.blocks.shift();
-
-    for(var j = 0, n = block.lots.length; j < n; j++) {
-      lot = block.lots[j];
-      h = lot.height, lot = lot.poly;
-      var cx, cy, xm, xM, ym, yM;
-
-      cx = cy = 0;
-      xm = ym = Number.POSITIVE_INFINITY;
-      xM = yM = Number.NEGATIVE_INFINITY;
-
-      for(var k = 0, K = lot.length; k < K; k++) {
-        var cur = lot[k];
-        cx += cur.x;
-        cy += cur.y;
-
-        if(xm > cur.x)
-          xm = cur.x;
-        if(xM < cur.x)
-          xM = cur.x;
-        if(ym > cur.y)
-          ym = cur.y;
-        if(yM < cur.y)
-          yM = cur.y;
-      }
-      
-      cx /= lot.length;
-      cy /= lot.length;
-
-      var bldgGeom = BuildingSHG.create({
-        x: cx, y: cy,
-        width: Math.abs(xM - xm) * .9,
-        depth: Math.abs(yM - ym) * .9
-      });
-      //bldgGeom.texture = ~~(Math.random() * 2) + 4;
-
-      //var bldgGeom = BuildingSHG.create(lot);
-      var color = color = availColors[ ~~(Math.random() * availColors.length) ];
-      //while(bldgGeom.length) {
-      for(var l = 0, L = bldgGeom.length; l < L; l++) {
-
-        var bg = bldgGeom[l]; //.shift();
-
-        for(var k = 0, K = 18; /*bg.vertices.length;*/ k < K; k++) {
-          /*vertices.push(bg.vertices[k]);
-          normals.push(bg.normals[k]);
-          uvs.push(bg.uvs[k]);*/
-          extra.push(color[k % 3]);
-        }
-
-        bldgGeom[l] = null;
-      }
-
-    }
-  }
-  console.profileEnd();
-
-  var g = BuildingSHG.getGeom();
-  vertices = g.vertices;
-  normals = g.normals;
-  uvs = g.uvs;
-  console.log(g.totalLights + ' lights');
-
-  vertices.push.apply(vertices, [
-    -20, -10e-4, -20,  -20, -10e-4, 20,  20, -10e-4, 20,
-    -20, -10e-4, -20,   20, -10e-4, 20,  20, -10e-4, -20
-  ]);
-  normals.push.apply(normals, [
-    0, 1, 0,  0, 1, 0,  0, 1, 0,
-    0, 1, 0,  0, 1, 0,  0, 1, 0
-  ]);
-  uvs.push.apply(uvs, [
-    0, 0, 3,  0, 40, 3,  40, 40, 3,  
-    0, 0, 3,  40, 40, 3,  40, 0, 3
-  ]);
-  extra.push.apply(extra, [
-    0, 0, 0,  0, 0, 0,  0, 0, 0,
-    0, 0, 0,  0, 0, 0,  0, 0, 0
-  ]);
-
-  var roadQuads = city.roadQuads.reduce((function() { 
-    var N, U;
-    N = [
-      0, 1, 0, 0, 1, 0, 0, 1, 0,
-      0, 1, 0, 0, 1, 0, 0, 1, 0
-    ];
-    U = [
-      0, 0, 2,  0, 1, 2,  1, 1, 2,  
-      0, 0, 2,  1, 1, 2,  1, 0, 2
-    ];
-    return function(out, i) {
+programPass.deactivate = function() {
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   
-      var aa = i[0], bb = i[1],
-          slope = Math.atan2(bb.y - aa.y, bb.x - aa.x) + Math.PI / 2,
-          dx = Math.abs(.09 * Math.cos(slope)), 
-          dy = Math.abs(.09 * Math.sin(slope)),
-          //b = bb, a = aa,
-          a = { x: aa.x + dy, y: aa.y + dx },
-          b = { x: bb.x - dy, y: bb.y - dx },
-          len = Math.sqrt( Math.pow(b.y - a.y, 2) + Math.pow(b.x - a.x, 2) );
-
-      var vertices = [
-        a.x - dx, 0, a.y - dy,  b.x - dx, 0, b.y - dy,  b.x + dx, 0, b.y + dy,
-        a.x - dx, 0, a.y - dy,  b.x + dx, 0, b.y + dy,  a.x + dx, 0, a.y + dy
-      ], uvs = U.map(function(i, idx) {
-        switch(idx % 3) {
-          case 0: return i; break;
-          case 1: return i * len; break;
-          default: return i;
-        }
-       return i;
-      });
-
-      for(var k = 0, K = vertices.length; k < K; k++) {
-        out.vertices.push(vertices[k]);
-        out.normals.push(N[k]);
-        out.uvs.push(uvs[k]);
-        out.extra.push(0);
-      }
-
-      return out;
-    }
-  }()), { vertices: [], normals: [], uvs: [], extra: [] });
-
-  for(var k = 0, K = roadQuads.vertices.length; k < K; k++) {
-    vertices.push(roadQuads.vertices[k]);
-    normals.push(roadQuads.normals[k]);
-    uvs.push(roadQuads.uvs[k]);
-    extra.push(roadQuads.extra[k]);
-  }
-  /*vertices.push.apply(vertices, roadQuads.vertices);
-  normals.push.apply(normals, roadQuads.normals);
-  uvs.push.apply(uvs, roadQuads.uvs);
-  extra.push.apply(extra, roadQuads.extra);*/
-
-  return {
-    vertices: vertices,
-    normals: normals,
-    extra: extra,
-    count: vertices.length / 3, //count,
-    uvs: uvs
-  }
+  gl.disableVertexAttribArray(programPass.vertex);
+  gl.disableVertexAttribArray(programPass.normal);
+  gl.disableVertexAttribArray(programPass.uv);
+  gl.disableVertexAttribArray(programPass.extra);
 }
 
-module.exports = Renderer;
+programLight.activate = function(scene) {
+  gl.useProgram(programLight);
+
+  //
+  // Uniform setup
+  //
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, target0);
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_2D, target1);
+  gl.activeTexture(gl.TEXTURE2);
+  gl.bindTexture(gl.TEXTURE_2D, target2);
+  //
+  // VBO setup
+  //
+  gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
+  gl.vertexAttribPointer(programLight.position, 2, gl.FLOAT, false, 0, 0);
+
+  gl.uniform1i(programLight.target0, 0);
+  gl.uniform1i(programLight.target1, 1);
+  gl.uniform1i(programLight.target2, 2);
+  gl.uniform3fv(programLight.lightPos, scene.lightPos);
+
+  gl.enableVertexAttribArray(programLight.position);
+
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
+}
+
+programLight.deactivate = function() {
+  gl.disableVertexAttribArray(programLight.position);
+}
+
+module.exports = {
+  render: function(scene) {
+    programPass.activate(scene);
+    programPass.deactivate();
+    programLight.activate(scene);
+    programLight.deactivate();
+  }
+}

@@ -1,21 +1,13 @@
 var glMatrix = require('gl-matrix'),
+    Context  = require('Context'),
+    canvas   = Context.canvas,
+    gl       = Context.gl,
     Renderer = require('./Renderer.js'),
     City     = require('./generators/City.js'),
     Stats    = require('stats-js'),
-    canvas   = document.getElementById('thesis-canvas'),
-    gl       = canvas.getContext('webgl'),
-    bcr      = canvas.getBoundingClientRect(),
-    w        = bcr.width,
-    h        = bcr.height;
+    mainScene = require('./scenes/MainScene.js');
 
-canvas.width  = w;
-canvas.height = h;
-canvas.style.background = 'linear-gradient(to bottom, rgb(0,0,32) 0%, rgb(0,0,96) 100%)';
-
-var city      = new City(0),
-    renderer  = new Renderer(gl, city);
-
-var moveIntervals = {
+/*var moveIntervals = {
   W: null, A: null, S: null, D: null
 }
 
@@ -80,7 +72,7 @@ document.body.addEventListener('keyup', function(evt) {
     x = evt.clientX;
     y = evt.clientY;
   })
-}());
+}());*/
 
 var stats = new Stats();
 stats.setMode(0);
@@ -94,11 +86,12 @@ canvas.parentNode.appendChild(stats.domElement);
 function r() {
 
   stats.begin();
-  renderer.render(gl, w, h);
+  Renderer.render(mainScene);
+  mainScene.update();
   stats.end();
 
   requestAnimationFrame(r);
 }
-gl.viewport(0, 0, w, h);
+gl.viewport(0, 0, Context.w, Context.h);
 
 r();

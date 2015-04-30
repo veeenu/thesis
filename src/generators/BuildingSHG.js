@@ -1,5 +1,5 @@
 var ShapeGrammar = require('ShapeGrammar'),
-    SHAPE = require('./SHAPE.js'),
+    SHAPE = require('../lib/SHAPE.js'),
     earcut = require('earcut'),
     Geom = require('Geom');
 
