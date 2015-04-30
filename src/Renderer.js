@@ -1,4 +1,5 @@
-var glslify     = require('glslify');
+var fs          = require('fs');
+//var glslify     = require('glslify');
 var Util        = require('./lib/util.js'),
     glMatrix    = require('gl-matrix'),
     vec3        = glMatrix.vec3,
@@ -17,14 +18,14 @@ var programPass  = gl.createProgram(),
     extDrawbuffers, extDepthTexture,
     vsrcPass, vsrcLight, fsrcPass, fsrcLight;
 
-/*vsrcPass  = fs.readFileSync(__dirname + '/shaders/pass-vertex.glsl', 'utf-8');
+vsrcPass  = fs.readFileSync(__dirname + '/shaders/pass-vertex.glsl', 'utf-8');
 fsrcPass  = fs.readFileSync(__dirname + '/shaders/pass-fragment.glsl', 'utf-8');
 vsrcLight = fs.readFileSync(__dirname + '/shaders/light-vertex.glsl', 'utf-8');
-fsrcLight = fs.readFileSync(__dirname + '/shaders/light-fragment.glsl', 'utf-8');*/
-vsrcPass  = glslify(__dirname + '/shaders/pass-vertex.glsl', 'utf-8');
+fsrcLight = fs.readFileSync(__dirname + '/shaders/light-fragment.glsl', 'utf-8');
+/*vsrcPass  = glslify(__dirname + '/shaders/pass-vertex.glsl', 'utf-8');
 fsrcPass  = glslify(__dirname + '/shaders/pass-fragment.glsl', 'utf-8');
 vsrcLight = glslify(__dirname + '/shaders/light-vertex.glsl', 'utf-8');
-fsrcLight = glslify(__dirname + '/shaders/light-fragment.glsl', 'utf-8');
+fsrcLight = glslify(__dirname + '/shaders/light-fragment.glsl', 'utf-8');*/
 
 gl.clearColor(0, 0, 0, 0);
 gl.enable(gl.DEPTH_TEST);

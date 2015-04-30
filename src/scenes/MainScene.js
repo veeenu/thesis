@@ -176,8 +176,8 @@ var scene = {
   count: geom.vertices.length / 3
 };
 
-mat4.translate(scene.view, scene.view, [0, 0., 0]);
-mat4.rotateY(scene.view, scene.view, Math.PI * 3 / 4);
+mat4.translate(scene.view, scene.view, [2., -0.1, 0]);
+mat4.rotateY(scene.view, scene.view, Math.PI * 16 / 16);
 
 gl.bindBuffer(gl.ARRAY_BUFFER, scene.vBuf);
 gl.bufferData(gl.ARRAY_BUFFER, geom.vertices, gl.STATIC_DRAW);
@@ -191,7 +191,8 @@ gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
 var t = 0.;
 scene.update = function(timestamp) {
-  vec3.set(scene.lightPos, .38, .2, -.3);
+  //vec3.set(scene.lightPos, .38, .2, -.3);
+  vec3.set(scene.lightPos, 1, 1, 1);
   //t += .01;
   mat4.translate(scene.view, scene.view, [0, 0, -.002]);
 }
