@@ -156,7 +156,7 @@ programPass.activate = function(scene) {
 
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-  //
+  /*//
   // VBO setup
   //
   gl.bindBuffer(gl.ARRAY_BUFFER, scene.vBuf);
@@ -166,7 +166,7 @@ programPass.activate = function(scene) {
   gl.bindBuffer(gl.ARRAY_BUFFER, scene.uBuf);
   gl.vertexAttribPointer(programPass.uv,     3, gl.FLOAT, false, 0, 0);
   gl.bindBuffer(gl.ARRAY_BUFFER, scene.eBuf);
-  gl.vertexAttribPointer(programPass.extra,  3, gl.FLOAT, false, 0, 0);
+  gl.vertexAttribPointer(programPass.extra,  3, gl.FLOAT, false, 0, 0);*/
   //
   // Uniforms setup
   //
@@ -183,7 +183,20 @@ programPass.activate = function(scene) {
   gl.enableVertexAttribArray(programPass.uv);
   gl.enableVertexAttribArray(programPass.extra);
 
-  gl.drawArrays(gl.TRIANGLES, 0, scene.count);
+  scene.meshes.forEach(function(mesh) {
+    gl.bindBuffer(gl.ARRAY_BUFFER, mesh.vBuf);
+    gl.vertexAttribPointer(programPass.vertex, 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, mesh.nBuf);
+    gl.vertexAttribPointer(programPass.normal, 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, mesh.uBuf);
+    gl.vertexAttribPointer(programPass.uv,     3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, mesh.eBuf);
+    gl.vertexAttribPointer(programPass.extra,  3, gl.FLOAT, false, 0, 0);
+    gl.drawArrays(gl.TRIANGLES, 0, mesh.count);
+  
+  });
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, null);
 }
 
 programPass.deactivate = function() {

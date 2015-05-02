@@ -23,6 +23,9 @@
   },
   "aliasify": {
     "aliases": {
+      "QuadTree": "./lib/QuadTree",
+      "Loader": "./lib/Loader",
+      "Mesh": "./lib/Mesh",
       "Context": "./Context",
       "PRNG": "./generators/PRNG",
       "Geom": "./lib/Geom",

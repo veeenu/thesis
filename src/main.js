@@ -3,6 +3,7 @@ var glMatrix = require('gl-matrix'),
     canvas   = Context.canvas,
     gl       = Context.gl,
     Renderer = require('./Renderer.js'),
+    Loader   = require('Loader'),
     City     = require('./generators/City.js'),
     Stats    = require('stats-js'),
     mainScene = require('./scenes/MainScene.js');
@@ -91,6 +92,7 @@ function r() {
   stats.end();
 
   requestAnimationFrame(r);
+  Loader.render();
 }
 gl.viewport(0, 0, Context.w, Context.h);
 

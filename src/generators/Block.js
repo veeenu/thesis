@@ -75,6 +75,34 @@ var Block = function(poly, seed) {
   this.poly = poly;
   this.block = Geom.insetPolygon(this.poly, 0.05);
   this.lots = subdivideStrip(Geom.insetPolygon(this.block, 0.1), Geom.insetPolygon(this.block, 0.4));
+
+  var cd = poly.reduce(function(o, i) {
+  
+    o.cx += i.x;
+    o.cy += i.y;
+
+    if(o.xm > i.x)
+      o.xm = i.x;
+    if(o.xM < i.x)
+      o.xM = i.x;
+    if(o.ym > i.y)
+      o.ym = i.y;
+    if(o.yM < i.y)
+      o.yM = i.y;
+
+    return o;
+
+  }, { 
+    xm: Number.POSITIVE_INFINITY, 
+    ym: Number.POSITIVE_INFINITY, 
+    xM: Number.NEGATIVE_INFINITY, 
+    yM: Number.NEGATIVE_INFINITY, 
+    cx: 0, cy: 0
+  });
+
+  this.x = cd.cx / poly.length;
+  this.y = cd.cy / poly.length;
+  this.w = Math.max(Math.abs(cd.xM - cd.xm), Math.abs(cd.yM - cd.ym));
 }
 
 module.exports = Block;

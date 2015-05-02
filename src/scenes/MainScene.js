@@ -3,87 +3,128 @@ var glMatrix = require('gl-matrix'),
     vec3     = glMatrix.vec3,
     mat4     = glMatrix.mat4,
     gl       = Context.gl,
+    Mesh     = require('Mesh'),
+    QuadTree = require('QuadTree'),
+    Loader   = require('Loader'),
     BuildingSHG = require('../generators/BuildingSHG.js'),
     City = require('../generators/City.js');
 
-var computeGeometry = function(city) {
+var computeBlockMesh = function(block, availColors) {
+  var vertices = [],
+      normals  = [],
+      uvs      = [],
+      extra    = [],
+      count    = 0;
+
+  for(var j = 0, n = block.lots.length; j < n; j++) {
+    var lot, h, cx, cy, xm, xM, ym, yM;
+    lot = block.lots[j];
+    h = lot.height, lot = lot.poly;
+
+    cx = cy = 0;
+    xm = ym = Number.POSITIVE_INFINITY;
+    xM = yM = Number.NEGATIVE_INFINITY;
+
+    for(var k = 0, K = lot.length; k < K; k++) {
+      var cur = lot[k];
+      cx += cur.x;
+      cy += cur.y;
+
+      xm = Math.min(xm, cur.x);
+      xM = Math.max(xM, cur.x);
+      ym = Math.min(ym, cur.y);
+      yM = Math.max(yM, cur.y);
+
+    }
+    
+    cx /= lot.length;
+    cy /= lot.length;
+
+    var bldg = BuildingSHG.create({
+      x: cx, y: cy,
+      width: Math.abs(xM - xm) * .9,
+      depth: Math.abs(yM - ym) * .9
+    }), 
+    bldgGeom = bldg.geom, 
+    color = bldg.color;
+
+    for(var l = 0, L = bldgGeom.length; l < L; l++) {
+
+      var bg = bldgGeom[l]; //.shift();
+
+      for(var k = 0; k < 18; k++) {
+        vertices.push(bg.vertices[k]);
+        normals.push(bg.normals[k]);
+        uvs.push(bg.uvs[k]);
+        extra.push(color[k % 3]);
+      }
+
+      bldgGeom[l] = null;
+    }
+
+  }
+
+  return {
+    mesh: new Mesh(vertices, normals, uvs, extra),
+    x: block.x,
+    y: block.y,
+    w: block.w
+  };
+}
+
+var city = new City(0),
+    geom = {
+      quadtree: null,
+      fixedMeshes: []
+    };
+
+(function() {
   var vertices = [],
       normals  = [],
       uvs      = [],
       extra    = [],
       count = 0,
       block, blockq, lot, h, col,
-      mI = 0;
+      mI = 0,
+      meshes = [],
+      blocks = [],
+      qtree;
 
-  var availColors = [
-    [ .88, .88, .88 ],
-    [ .66, .66, .66 ],
-    [ 1,   .97, .83 ],
-    [ .68, .53, .46 ]
-  ];
+  var blocksProgress = 0, blocksCount = city.blocks.length;
 
-  console.profile('Geom');
   while(city.blocks.length) {
     block = city.blocks.shift();
-
-    for(var j = 0, n = block.lots.length; j < n; j++) {
-      lot = block.lots[j];
-      h = lot.height, lot = lot.poly;
-      var cx, cy, xm, xM, ym, yM;
-
-      cx = cy = 0;
-      xm = ym = Number.POSITIVE_INFINITY;
-      xM = yM = Number.NEGATIVE_INFINITY;
-
-      for(var k = 0, K = lot.length; k < K; k++) {
-        var cur = lot[k];
-        cx += cur.x;
-        cy += cur.y;
-
-        if(xm > cur.x)
-          xm = cur.x;
-        if(xM < cur.x)
-          xM = cur.x;
-        if(ym > cur.y)
-          ym = cur.y;
-        if(yM < cur.y)
-          yM = cur.y;
-      }
-      
-      cx /= lot.length;
-      cy /= lot.length;
-
-      var bldgGeom = BuildingSHG.create({
-        x: cx, y: cy,
-        width: Math.abs(xM - xm) * .9,
-        depth: Math.abs(yM - ym) * .9
-      });
-
-      var color = color = availColors[ ~~(Math.random() * availColors.length) ];
-      //while(bldgGeom.length) {
-      for(var l = 0, L = bldgGeom.length; l < L; l++) {
-
-        var bg = bldgGeom[l]; //.shift();
-
-        for(var k = 0; k < 18; k++) {
-          /*vertices.push(bg.vertices[k]);
-          normals.push(bg.normals[k]);
-          uvs.push(bg.uvs[k]);*/
-          extra.push(color[k % 3]);
-        }
-
-        bldgGeom[l] = null;
-      }
-
-    }
+    setTimeout(function() {
+      blocks.push(computeBlockMesh(this));
+      blocksProgress++;
+      Loader.progress('Blocks', blocksProgress / blocksCount);
+    }.bind(block), 0);
   }
-  console.profileEnd();
 
-  var g = BuildingSHG.getGeom();
-  vertices = g.vertices;
-  normals = g.normals;
-  uvs = g.uvs;
-  console.log(g.totalLights + ' lights');
+  Loader.subscribe('Blocks', (function(geom, blocks) { return function() {
+    var xm, ym, xM, yM;
+    xm = ym = Number.POSITIVE_INFINITY;
+    xM = yM = Number.NEGATIVE_INFINITY;
+
+    blocks.forEach(function(i) {
+      xm = Math.min(xm, i.x - i.w);
+      xM = Math.max(xM, i.x + i.w);
+      ym = Math.min(ym, i.y - i.w);
+      yM = Math.max(yM, i.y + i.w);
+    });
+
+    var qx = Math.abs(xM - xm) / 2,
+        qy = Math.abs(yM - ym) / 2;
+
+    qtree = new QuadTree(qx, qy, Math.max(qx, qy));
+
+    blocks.forEach(function(i) {
+      qtree.insert(i);
+    });
+
+    geom.quadtree = qtree;
+
+  }}(geom, blocks)));
 
   vertices.push.apply(vertices, [
     -20, -10e-4, -20,  -20, -10e-4, 20,  20, -10e-4, 20,
@@ -153,53 +194,41 @@ var computeGeometry = function(city) {
     extra.push(roadQuads.extra[k]);
   }
 
-  return {
-    vertices: new Float32Array(vertices),
-    normals: new Float32Array(normals),
-    extra: new Float32Array(extra),
-    count: vertices.length / 3,
-    uvs: new Float32Array(uvs)
-  }
-}
+  geom.fixedMeshes = [new Mesh(vertices, normals, uvs, extra)];
 
-var city = new City(0),
-    geom = computeGeometry(city);
+}());
 
 var scene = {
-  vBuf:  gl.createBuffer(),
-  nBuf:  gl.createBuffer(),
-  uBuf:  gl.createBuffer(),
-  eBuf:  gl.createBuffer(),
+  meshes: [],
   lightPos: vec3.create(),
   view:  mat4.create(),
   model: mat4.create(),
-  count: geom.vertices.length / 3
+  count: 0
 };
 
-mat4.translate(scene.view, scene.view, [2., -0.1, 0]);
-mat4.rotateY(scene.view, scene.view, Math.PI * 16 / 16);
+console.log(geom)
 
-gl.bindBuffer(gl.ARRAY_BUFFER, scene.vBuf);
-gl.bufferData(gl.ARRAY_BUFFER, geom.vertices, gl.STATIC_DRAW);
-gl.bindBuffer(gl.ARRAY_BUFFER, scene.nBuf);
-gl.bufferData(gl.ARRAY_BUFFER, geom.normals, gl.STATIC_DRAW);
-gl.bindBuffer(gl.ARRAY_BUFFER, scene.uBuf);
-gl.bufferData(gl.ARRAY_BUFFER, geom.uvs, gl.STATIC_DRAW);
-gl.bindBuffer(gl.ARRAY_BUFFER, scene.eBuf);
-gl.bufferData(gl.ARRAY_BUFFER, geom.extra, gl.STATIC_DRAW);
-gl.bindBuffer(gl.ARRAY_BUFFER, null);
+var t = 0., pushFn = function(o, i) { o.push(i); return o; },
+    x = 0, z = 0;
 
-var t = 0.;
 scene.update = function(timestamp) {
-  //vec3.set(scene.lightPos, .38, .2, -.3);
-  //vec3.set(scene.lightPos, 1, 1, 1);
   vec3.set(scene.lightPos, 0,.05,-.05);
-  //t += .01;
-  mat4.translate(scene.view, scene.view, [0, 0, -.002]);
-}
+  mat4.identity(scene.view);
+  mat4.rotateY(scene.view, scene.view, Math.PI);
+  var X = 6 + Math.cos(x) * 4, Z = 4 * Math.sin(x) + 6;
 
-window.setLight = function(a,b,c) {
-  vec3.set(scene.lightPos, a,b,c);
+  mat4.translate(scene.view, scene.view, [ -X, -.05, -Z ]);
+
+  if(geom.quadtree !== null) {
+    scene.meshes = geom.fixedMeshes.reduce(pushFn, []);
+
+    scene.meshes = geom.quadtree
+      .query(X, Z, 4)
+      .map(function(i) { return i.mesh })
+      .reduce(pushFn, scene.meshes);
+  }
+  //console.log(scene.meshes.reduce(function(o, i) { o += i.count; return o; }, 0));
+
 }
 
 module.exports = scene;

@@ -79,12 +79,13 @@ void main() {
   occlusion /= 16.;
   //occlusion = clamp(occlusion, 0., 1.);
 
-  //gl_FragColor = vec4(normal, 1.);
+  //gl_FragColor = vec4(normalize(vertex), 1.);
   //gl_FragColor = vec4(color * lambert, 1.);
   color = clamp(color - occlusion, 0., 1.);
   //color = vec3(1.);
   //occlusion = 0.;
   //gl_FragColor = vec4(vec3(1. - occlusion), 1.);
+  att = 1.;
   gl_FragColor = vec4(lambert * att * color, 1.);
   //gl_FragColor = vec4(mix(vec3(depth), color, .3), 1.);
 }

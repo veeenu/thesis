@@ -96,18 +96,14 @@ shg.define('FrontDoor', null, null, null, function() {
 shg.define('Tile', null, null, null, function() {
 
   var spl = SHAPE.split(this, [ .3, .4, .3 ], [ .7, .3 ], [
-//    'TQuad', 'TQuad', 'TQuad',
     'TQuad', 'TWin',  'TQuad',
     'TQuad', 'TQuad', 'TQuad'
   ]);
 
   spl[0].texID = spl[4].texID = spl[2].texID = 
     spl[3].texID = spl[5].texID = 6;
-    //spl[6].texID = spl[7].texID = spl[8].texID = 6;
   spl[1].uvs = null;
   
-  /*var spl = this;
-  spl.sym = 'TWin';*/
 
   return spl;
 });
@@ -160,13 +156,14 @@ shg.define('TQuad', null, null, null, function() {
 
   normal = Geom.triToNormal(vertices);
   for(var i = 0; i < 18; i++) {
-    context.vertices.push(vertices[i])
+    normals.push(normal[i % 3]);
+    /*context.vertices.push(vertices[i])
     context.normals.push(normal[i % 3]);
-    context.uvs.push(uvs[i]);
+    context.uvs.push(uvs[i]);*/
     //normals.push.apply(normals, normal);
   }
 
-  return { sym: null }; //, vertices: vertices, normals: normals, uvs: uvs };
+  return { sym: null , vertices: vertices, normals: normals, uvs: uvs };
 });
 
 shg.define('TPolyFloor', null, null, null, function() {
@@ -189,12 +186,10 @@ shg.define('TPolyFloor', null, null, null, function() {
 });
 
 shg.define('TWin', null, null, null, function() {
-  var test = Math.random() > .35;
-  this.texID = test ? 4 : 5;
+  var hasLight = Math.random() > .25;
+  this.texID = hasLight ? 4 : 5;
   this.sym = 'TQuad';
-
-  if(!test)
-    context.totalLights++;
+  this.hasLight = hasLight;
 
   return this;
 });
@@ -205,6 +200,13 @@ shg.define('TDoor', null, null, null, function() {
 
   return this;
 });
+
+var availColors = [
+  [ .88, .88, .88 ],
+  [ .66, .66, .66 ],
+  [ 1,   .97, .83 ],
+  [ .68, .53, .46 ]
+];
 
 module.exports = {
   shg: shg,
@@ -226,8 +228,10 @@ module.exports = {
       ]
     };
 
+    var color = availColors[ ~~(Math.random() * availColors.length) ];
+
     var ret = shg.run(axiom);
-    return ret;
+    return { geom: ret, color: color };
   },
   getGeom: function() {
     return context;

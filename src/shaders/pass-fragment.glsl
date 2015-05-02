@@ -204,12 +204,12 @@ void main() {
     normal = ti.normal;
   }
   else if(texUV.z > 4.1) {
-    ti = textureWindow(vPosition.xyz, vNormal, vDepth, mod(texUV.yx, 1.), vec3(1., 1., .8));
+    ti = textureWindow(vPosition.xyz, vNormal, vDepth, mod(texUV.yx, 1.), vec3(1., 1., .7));
     color = ti.color;
     normal = ti.normal;
   }
   else if(texUV.z > 3.1) {
-    ti = textureWindow(vPosition.xyz, vNormal, vDepth, mod(texUV.yx, 1.), vec3(.5, .5, .4));
+    ti = textureWindow(vPosition.xyz, vNormal, vDepth, mod(texUV.yx, 1.), vec3(.3, .3, .3));
     color = ti.color;
     normal = ti.normal;
   }
