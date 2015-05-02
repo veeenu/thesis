@@ -28,7 +28,6 @@ vsrcLight = glslify(__dirname + '/shaders/light-vertex.glsl', 'utf-8');
 fsrcLight = glslify(__dirname + '/shaders/light-fragment.glsl', 'utf-8');*/
 
 gl.clearColor(0, 0, 0, 0);
-gl.enable(gl.DEPTH_TEST);
 gl.depthFunc(gl.LESS);
 gl.getExtension('OES_standard_derivatives');
 gl.getExtension('OES_texture_float');
@@ -143,7 +142,7 @@ mat4.perspective(projection, Math.PI / 2, Context.aspectRatio, .001, 1000.);
   programLight[i] = gl.getAttribLocation(programLight, i);
 });
 
-['target0', 'target1', 'target2', 'lightPos'].forEach(function(i) {
+['target0', 'target1', 'target2', 'viewMatrix', 'lightPos'].forEach(function(i) {
   programLight[i] = gl.getUniformLocation(programLight, i);
 });
 
@@ -154,6 +153,7 @@ programPass.activate = function(scene) {
   gl.useProgram(programPass);
   gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
 
+  gl.enable(gl.DEPTH_TEST);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   /*//
@@ -198,6 +198,9 @@ programPass.activate = function(scene) {
 
   gl.bindBuffer(gl.ARRAY_BUFFER, null);
 }
+var sc = function(lights) {
+  console.log(lights);
+}
 
 programPass.deactivate = function() {
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -206,10 +209,15 @@ programPass.deactivate = function() {
   gl.disableVertexAttribArray(programPass.normal);
   gl.disableVertexAttribArray(programPass.uv);
   gl.disableVertexAttribArray(programPass.extra);
+  gl.disable(gl.DEPTH_TEST);
 }
 
 programLight.activate = function(scene) {
   gl.useProgram(programLight);
+
+  /*gl.enable(gl.BLEND);
+  gl.blendFunc(gl.ONE, gl.ONE);*/
+  gl.clear(gl.COLOR_BUFFER_BIT);
 
   //
   // Uniform setup
@@ -229,15 +237,26 @@ programLight.activate = function(scene) {
   gl.uniform1i(programLight.target0, 0);
   gl.uniform1i(programLight.target1, 1);
   gl.uniform1i(programLight.target2, 2);
-  gl.uniform3fv(programLight.lightPos, scene.lightPos);
+  gl.uniformMatrix4fv(programLight.view, false, scene.view);
 
   gl.enableVertexAttribArray(programLight.position);
 
+  gl.uniform3fv(programLight.lightPos, [0,.025,-.05]);
   gl.drawArrays(gl.TRIANGLES, 0, 6);
+  /*if(scene.lights.length > 0) {
+    for(var i = 0, I = Math.min(scene.lights.length, 4); i < I; i++) {
+      gl.uniform3fv(programLight.lightPos, scene.lights[i]);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+    }
+    if(sc !== null) sc(scene.lights);
+    sc = null;
+    
+  } else console.log('No lights');*/
 }
 
 programLight.deactivate = function() {
   gl.disableVertexAttribArray(programLight.position);
+  gl.disable(gl.BLEND);
 }
 
 module.exports = {

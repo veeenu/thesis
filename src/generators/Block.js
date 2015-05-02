@@ -1,11 +1,11 @@
-var PRNG = new (require('PRNG')),
+var PRNG = require('PRNG'),
     Geom = require('Geom'),
     ShapeGrammar = require('ShapeGrammar');
 
 var lerp = function(a, b, t) { return (1 - t) * a + t * b; }
 
 // Inspired to https://www.cs.purdue.edu/cgvlab/papers/aliaga/eg2012.pdf
-var subdivideStrip = function(block, strip) {
+var subdivideStrip = function(block, strip, rng) {
   var points = [], quads = [], i1, i2, i3, 
       b1, b2, dx, dy, i, j, m, n, p, len,
       lots = [];
@@ -21,7 +21,7 @@ var subdivideStrip = function(block, strip) {
     dx = b1.x - b2.x;
     dy = b1.y - b2.y;
     len = Math.sqrt(dx * dx + dy * dy);
-    m = ~~(PRNG.random() * 3 + 1);
+    m = ~~(rng.random() * 3 + 1);
     if(len < 0.35)
       m = 1;
     else if(len < .6)
@@ -56,7 +56,7 @@ var subdivideStrip = function(block, strip) {
     for(var k = 0, m = p.length; k < m - 2; k+= 2) {
       lots.push(new Building(
         [p[k], p[(k + 1) % m], p[(k + 3) % m], p[(k + 2) % m]], 
-        PRNG.random() + .5 
+        rng.random() + .5 
       ));
     }
   }
@@ -71,10 +71,10 @@ var Building = function(poly, height) {
 }
 
 var Block = function(poly, seed) {
-  PRNG.seed(seed);
+  var rng = new PRNG(seed);
   this.poly = poly;
   this.block = Geom.insetPolygon(this.poly, 0.05);
-  this.lots = subdivideStrip(Geom.insetPolygon(this.block, 0.1), Geom.insetPolygon(this.block, 0.4));
+  this.lots = subdivideStrip(Geom.insetPolygon(this.block, 0.1), Geom.insetPolygon(this.block, 0.4), rng);
 
   var cd = poly.reduce(function(o, i) {
   

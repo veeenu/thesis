@@ -44,7 +44,7 @@ module.exports = {
       var pct = parseInt(dict[i].value * 100), sp = '' + pct;
       while(sp.length < 4) sp = '_' + sp;
       sp = sp.replace(/_/g, '&nbsp;');
-      dict[i].li.innerHTML = '&nbsp;' + i + ': ' + sp + "&nbsp;\n";
+      dict[i].li.innerHTML = '&nbsp;' + i + ': ' + sp + "%&nbsp;\n";
       var a = 'linear-gradient(90deg, #0f0, #0f0 ' + pct + '%, #0b0 ' + pct + '%)';
       dict[i].li.style.backgroundImage = a;
 

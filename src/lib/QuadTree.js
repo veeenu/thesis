@@ -1,10 +1,11 @@
-var QuadTree = function(x, y, w) {
+var QuadTree = function(x, y, w, limit) {
 
   this.nw = this.sw = this.ne = this.se = null;
 
   this.x = x;
   this.y = y;
   this.w = w;
+  this.limit = limit;
 
   this.points = [];
 };
@@ -17,7 +18,7 @@ QuadTree.prototype.insert = function(el) {
   if(!this.contains(el))
     return false;
 
-  if(this.points.length < 4) {
+  if(this.points.length < this.limit) {
     this.points.push(el);
     return true;
   }
@@ -33,10 +34,10 @@ QuadTree.prototype.insert = function(el) {
 
 QuadTree.prototype.subdivide = function() {
   var x = this.x, y = this.y, w = this.w / 2;
-  this.nw = new QuadTree(x - w, y - w, w);
-  this.sw = new QuadTree(x - w, y + w, w);
-  this.ne = new QuadTree(x + w, y - w, w);
-  this.se = new QuadTree(x + w, y + w, w);
+  this.nw = new QuadTree(x - w, y - w, w, this.limit);
+  this.sw = new QuadTree(x - w, y + w, w, this.limit);
+  this.ne = new QuadTree(x + w, y - w, w, this.limit);
+  this.se = new QuadTree(x + w, y + w, w, this.limit);
 }
 
 QuadTree.prototype.intersect = function(x, y, w) {

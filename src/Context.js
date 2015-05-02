@@ -6,7 +6,7 @@ var canvas   = document.getElementById('thesis-canvas'),
 
 canvas.width  = w;
 canvas.height = h;
-canvas.style.background = 'linear-gradient(to bottom, rgb(0,0,32) 0%, rgb(0,0,96) 100%)';
+canvas.style.background = 'black';
 
 module.exports = {
   canvas: canvas,

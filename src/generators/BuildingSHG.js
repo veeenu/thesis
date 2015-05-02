@@ -1,7 +1,8 @@
 var ShapeGrammar = require('ShapeGrammar'),
-    SHAPE = require('../lib/SHAPE.js'),
-    earcut = require('earcut'),
-    Geom = require('Geom');
+    SHAPE        = require('../lib/SHAPE.js'),
+    earcut       = require('earcut'),
+    Geom         = require('Geom'),
+    PRNG         = require('PRNG');
 
 var shg = new ShapeGrammar(),
     context = { 
@@ -9,7 +10,8 @@ var shg = new ShapeGrammar(),
       normals: [],
       extra: [],
       uvs: [],
-      totalLights: 0
+      totalLights: 0,
+      rng: new PRNG(31337)
     };
 
 shg.define('GndFloor', null, null, null, function() {
@@ -40,6 +42,19 @@ shg.define('GndFloor', null, null, null, function() {
       return o;
     }.bind(this), { sym: i < this.floors ? 'Floor' : 'Ledge', floorHeight: this.floorHeight, ledgeHeight: this.ledgeHeight, points: [] });
     ret.push(fs);
+  }
+
+  var lY = (this.points[0].y + this.floorHeight * this.floors) / 2;
+
+  for(var i = 0, I = ret.length; i < I; i++) {
+    ret.push({
+      sym: 'TLight',
+      lightPos: {
+        x: (ret[i].x0 + ret[i].x3) / 2,
+        y: lY,
+        z: (ret[i].z0 + ret[i].z3) / 2
+      }
+    });
   }
 
   return ret;
@@ -157,13 +172,14 @@ shg.define('TQuad', null, null, null, function() {
   normal = Geom.triToNormal(vertices);
   for(var i = 0; i < 18; i++) {
     normals.push(normal[i % 3]);
-    /*context.vertices.push(vertices[i])
-    context.normals.push(normal[i % 3]);
-    context.uvs.push(uvs[i]);*/
-    //normals.push.apply(normals, normal);
   }
 
-  return { sym: null , vertices: vertices, normals: normals, uvs: uvs };
+  this.sym = null;
+  this.vertices = vertices;
+  this.normals = normals;
+  this.uvs = uvs;
+  return this;
+  //return { sym: null , vertices: vertices, normals: normals, uvs: uvs };
 });
 
 shg.define('TPolyFloor', null, null, null, function() {
@@ -186,10 +202,10 @@ shg.define('TPolyFloor', null, null, null, function() {
 });
 
 shg.define('TWin', null, null, null, function() {
-  var hasLight = Math.random() > .25;
+  var hasLight = context.rng.random() > .25;
   this.texID = hasLight ? 4 : 5;
   this.sym = 'TQuad';
-  this.hasLight = hasLight;
+  //if(hasLight)
 
   return this;
 });
@@ -211,6 +227,8 @@ var availColors = [
 module.exports = {
   shg: shg,
   create: function(lot) {
+    //context.rng.seed(10);
+
     var dx = lot.width / 2, dy = lot.depth / 2,
         x0 = lot.x - dx, x1 = lot.x + dx,
         y0 = lot.y - dy, y1 = lot.y + dy;
@@ -218,7 +236,7 @@ module.exports = {
     var axiom = {
       sym: 'GndFloor',
       floorHeight: .1,
-      floors: 4 + ~~(Math.random() * 10),
+      floors: 4 + ~~(context.rng.random() * 10),
       ledgeHeight: .02,
       points: [
         { x: x0, y: 0, z: y0 },
@@ -228,7 +246,7 @@ module.exports = {
       ]
     };
 
-    var color = availColors[ ~~(Math.random() * availColors.length) ];
+    var color = availColors[ ~~(context.rng.random() * availColors.length) ];
 
     var ret = shg.run(axiom);
     return { geom: ret, color: color };

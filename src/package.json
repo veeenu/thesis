@@ -6,13 +6,14 @@
   "scripts": {
     "__": "nodemon --delay 0 -e js,glsl -x npm run build",
     "start": "watchify -dv -t aliasify -t brfs -e main.js -o ../build.js",
-    "build": "browserify -t aliasify -t brfs -e main.js -o ../build.js",
-    "disc": "browserify --full-paths -t aliasify -t brfs -e main.js -o ../build.js && discify ../build.js > ../report.html"
+    "build": "browserify -t aliasify -t brfs -e main.js | uglifyjs -mc --screw-ie8 -o ../build.js",
+    "disc": "browserify --full-paths -t aliasify -t brfs -e main.js | uglifyjs --screw-ie8 -o ../build.js && discify ../build.js > ../report.html"
   },
   "dependencies": {
     "brfs": "^1.4.0",
     "earcut": "^1.4.2",
     "gl-matrix": "^2.2.1",
+    "mersennetwister": "^0.2.1",
     "stats-js": "^1.0.0-alpha1"
   },
   "devDependencies": {

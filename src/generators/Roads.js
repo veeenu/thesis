@@ -11,18 +11,18 @@
  * - Random seeding
  */
 
-var PRNG = new (require('PRNG'));
+var PRNG = require('PRNG');
 
 var side = 8, q = 0, amp = 2;
     
 module.exports = function(seed) {
 
-  var g = [];
+  var g = [], rng = new PRNG(seed);
 
   for(var y = 0; y < side; y++) for(var x = 0; x < side; x++) {
     var p = g[y * side + x] = { 
-      x: amp * x + q * PRNG.random(), 
-      y: amp * y + q * PRNG.random(), 
+      x: amp * x + q * rng.random(), 
+      y: amp * y + q * rng.random(), 
       conns: [] 
     };
     if(x > 0) {

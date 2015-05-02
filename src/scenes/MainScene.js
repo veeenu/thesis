@@ -1,11 +1,12 @@
 var glMatrix = require('gl-matrix'),
     Context  = require('Context'),
+    Mesh     = require('Mesh'),
+    Geom     = require('Geom'),
+    QuadTree = require('QuadTree'),
+    Loader   = require('Loader'),
     vec3     = glMatrix.vec3,
     mat4     = glMatrix.mat4,
     gl       = Context.gl,
-    Mesh     = require('Mesh'),
-    QuadTree = require('QuadTree'),
-    Loader   = require('Loader'),
     BuildingSHG = require('../generators/BuildingSHG.js'),
     City = require('../generators/City.js');
 
@@ -14,6 +15,7 @@ var computeBlockMesh = function(block, availColors) {
       normals  = [],
       uvs      = [],
       extra    = [],
+      lights   = [],
       count    = 0;
 
   for(var j = 0, n = block.lots.length; j < n; j++) {
@@ -52,12 +54,15 @@ var computeBlockMesh = function(block, availColors) {
 
       var bg = bldgGeom[l]; //.shift();
 
-      for(var k = 0; k < 18; k++) {
-        vertices.push(bg.vertices[k]);
-        normals.push(bg.normals[k]);
-        uvs.push(bg.uvs[k]);
-        extra.push(color[k % 3]);
-      }
+      if(bg.sym === null)
+        for(var k = 0; k < 18; k++) {
+          vertices.push(bg.vertices[k]);
+          normals.push(bg.normals[k]);
+          uvs.push(bg.uvs[k]);
+          extra.push(color[k % 3]);
+        }
+      else
+        lights.push(bg.lightPos);
 
       bldgGeom[l] = null;
     }
@@ -66,6 +71,7 @@ var computeBlockMesh = function(block, availColors) {
 
   return {
     mesh: new Mesh(vertices, normals, uvs, extra),
+    lights: lights,
     x: block.x,
     y: block.y,
     w: block.w
@@ -75,6 +81,7 @@ var computeBlockMesh = function(block, availColors) {
 var city = new City(0),
     geom = {
       quadtree: null,
+      quadtreeLights: null,
       fixedMeshes: []
     };
 
@@ -88,14 +95,16 @@ var city = new City(0),
       mI = 0,
       meshes = [],
       blocks = [],
-      qtree;
+      lights = [],
+      qtree, qtreeL;
 
   var blocksProgress = 0, blocksCount = city.blocks.length;
 
   while(city.blocks.length) {
     block = city.blocks.shift();
     setTimeout(function() {
-      blocks.push(computeBlockMesh(this));
+      var m = computeBlockMesh(this);
+      blocks.push(m);
       blocksProgress++;
       Loader.progress('Blocks', blocksProgress / blocksCount);
     }.bind(block), 0);
@@ -116,13 +125,20 @@ var city = new City(0),
     var qx = Math.abs(xM - xm) / 2,
         qy = Math.abs(yM - ym) / 2;
 
-    qtree = new QuadTree(qx, qy, Math.max(qx, qy));
+    qtree = new QuadTree(qx, qy, Math.max(qx, qy), 4);
+    qtreeL = new QuadTree(qx, qy, Math.max(qx, qy), 8);
 
     blocks.forEach(function(i) {
       qtree.insert(i);
+      i.lights.forEach(function(i) {
+        qtreeL.insert({ x: i.x, y: i.z, l: i });
+      });
     });
 
     geom.quadtree = qtree;
+    geom.quadtreeLights = qtreeL;
+
+    console.log(geom.quadtreeLights.query(6, 6, .25).length);
 
   }}(geom, blocks)));
 
@@ -130,6 +146,7 @@ var city = new City(0),
     -20, -10e-4, -20,  -20, -10e-4, 20,  20, -10e-4, 20,
     -20, -10e-4, -20,   20, -10e-4, 20,  20, -10e-4, -20
   ]);
+
   normals.push.apply(normals, [
     0, 1, 0,  0, 1, 0,  0, 1, 0,
     0, 1, 0,  0, 1, 0,  0, 1, 0
@@ -146,8 +163,8 @@ var city = new City(0),
   var roadQuads = city.roadQuads.reduce((function() { 
     var N, U;
     N = [
-      0, 1, 0, 0, 1, 0, 0, 1, 0,
-      0, 1, 0, 0, 1, 0, 0, 1, 0
+      0, -1, 0, 0, -1, 0, 0, -1, 0,
+      0, -1, 0, 0, -1, 0, 0, -1, 0
     ];
     U = [
       0, 0, 2,  0, 1, 2,  1, 1, 2,  
@@ -200,6 +217,7 @@ var city = new City(0),
 
 var scene = {
   meshes: [],
+  lights: [],
   lightPos: vec3.create(),
   view:  mat4.create(),
   model: mat4.create(),
@@ -209,26 +227,44 @@ var scene = {
 console.log(geom)
 
 var t = 0., pushFn = function(o, i) { o.push(i); return o; },
-    x = 0, z = 0;
+    x = 6, z = 6;
 
 scene.update = function(timestamp) {
-  vec3.set(scene.lightPos, 0,.05,-.05);
+  vec3.set(scene.lightPos, x,.05, z-.05);
   mat4.identity(scene.view);
   mat4.rotateY(scene.view, scene.view, Math.PI);
-  var X = 6 + Math.cos(x) * 4, Z = 4 * Math.sin(x) + 6;
+  //mat4.rotateX(scene.view, scene.view, -Math.PI / 4);
 
-  mat4.translate(scene.view, scene.view, [ -X, -.05, -Z ]);
+  mat4.translate(scene.view, scene.view, [ -x, -.05, -z ]);
 
-  if(geom.quadtree !== null) {
-    scene.meshes = geom.fixedMeshes.reduce(pushFn, []);
+  scene.meshes = geom.fixedMeshes.reduce(pushFn, []);
 
-    scene.meshes = geom.quadtree
-      .query(X, Z, 4)
-      .map(function(i) { return i.mesh })
-      .reduce(pushFn, scene.meshes);
-  }
+  scene.meshes = geom.quadtree
+    .query(6, 6, 4)
+    .map(function(i) { return i.mesh })
+    .reduce(pushFn, scene.meshes);
+
+  scene.lights = geom.quadtreeLights
+    .query(x, z, .5)
+    .map(function(i) { 
+      return [ i.l.x, i.l.y, i.l.z ];
+    });
+
+  t += .001;
+
   //console.log(scene.meshes.reduce(function(o, i) { o += i.count; return o; }, 0));
 
 }
+
+document.body.addEventListener('keydown', function(evt) {
+
+  switch(evt.keyIdentifier) {
+    case 'Up':    z += .02; break;
+    case 'Down':  z -= .02; break;
+    case 'Left':  x += .02; break;
+    case 'Right': x -= .02; break;
+  }
+
+});
 
 module.exports = scene;

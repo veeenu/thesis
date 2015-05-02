@@ -4,10 +4,12 @@ precision highp float;
 /* #pragma glslify: fxaa = require(glsl-fxaa) */
 
 uniform sampler2D target0, target1, target2, randMap;
+uniform vec3 lightPos;
 
 varying vec2 coord;
+varying vec3 lPos;
 
-uniform vec3 lightPos;
+//uniform vec3 lightPos;
 
 float sample(vec3 p, vec3 n, vec2 uv) {
   vec3 dstP = texture2D(target0, uv).xyz,
@@ -43,14 +45,14 @@ void main() {
        t2 = texture2D(target2, coord);
 
   vec3  vertex = t0.xyz,
-        normal = t1.xyz,
+        normal = normalize(t1.xyz),
         color  = t2.xyz;
   float depth  = t1.w, 
         texNo  = t1.w;
 
   vec3 lightDir = lightPos - vertex;
 
-  float lambert = .2 + max(dot(faceforward(normal, -lightDir, normal), normalize(lightDir)), 0.),
+  float lambert = max(dot(faceforward(normal, vertex, normal), normalize(lightDir)), 0.),
         dist = length(lightDir),
         att = min(1., 1. / (1. + 2.5 * dist + 8. * dist * dist));
 
@@ -77,15 +79,8 @@ void main() {
     occlusion += sample(vertex, normal, coord + k1 * kRad * .25);
   }
   occlusion /= 16.;
-  //occlusion = clamp(occlusion, 0., 1.);
+  occlusion = clamp(occlusion, 0., 1.);
 
-  //gl_FragColor = vec4(normalize(vertex), 1.);
-  //gl_FragColor = vec4(color * lambert, 1.);
   color = clamp(color - occlusion, 0., 1.);
-  //color = vec3(1.);
-  //occlusion = 0.;
-  //gl_FragColor = vec4(vec3(1. - occlusion), 1.);
-  att = 1.;
-  gl_FragColor = vec4(lambert * att * color, 1.);
-  //gl_FragColor = vec4(mix(vec3(depth), color, .3), 1.);
+  gl_FragColor = vec4(lambert * att * 2. * color, 1.);
 }
