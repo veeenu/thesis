@@ -1,16 +1,18 @@
+var Context = require('Context');
+
 var dict = {
 };
 
 var log = document.createElement('ul');
 log.style.position = 'absolute';
-log.style.top = '6rem';
-log.style.left = '0rem';
+log.style.top = '7rem';
+log.style.left = '1rem';
 log.style.color = '#444';
 log.style.font = '10px "Ubuntu Mono", monospace';
 log.style.lineHeight = '1.5em';
 log.style.listStyleType = 'none';
 
-document.body.appendChild(log);
+Context.canvas.parentNode.appendChild(log);
 
 module.exports = {
   progress: function(id, percent) {

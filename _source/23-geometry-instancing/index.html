@@ -1,9 +1,10 @@
 ---
 layout: proto
-title: "Shape grammar objects"
+title: "Geometry instancing"
 ---
 <script type='application/x-vertex-shader' id='vertex-shader'>
 attribute vec3 vertex, normal;
+attribute vec3 offset;
 
 uniform mat4 projection, view, model, ltransf;
 uniform mat3 nmatrix;
@@ -13,9 +14,9 @@ varying vec3 vnormal;
 
 void main() {
 
-  gl_Position = projection * view * model * vec4(vertex, 1.);
+  gl_Position = projection * view * model * vec4(vertex + offset, 1.);
   
-  position = vec4(model * vec4(vertex, 1.));
+  position = vec4(model * vec4(vertex + offset, 1.));
   //vnormal = normalize(vec4(model * vec4(normal, 1.)).xyz);
   vnormal = nmatrix * normalize(normal);
   luv = (mat4(
@@ -100,6 +101,7 @@ void main() {
 
 </script>
 <script src='gl-matrix-min.js'></script>
+<script src='stats.min.js'></script>
 <script src='lib.js'></script>
 <script src='earcut.js'></script>
 <script src='meshes.js'></script>

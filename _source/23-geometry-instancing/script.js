@@ -1,7 +1,11 @@
+var SIDE = 200;
+
 var Mesh = function(gl, geom) {
   this.vbuf = gl.createBuffer();
   this.nbuf = gl.createBuffer();
   this.cbuf = gl.createBuffer();
+
+  this.obuf = gl.createBuffer();
 
   this.count = ~~(geom.vertices.length / 3);
 
@@ -16,10 +20,20 @@ var Mesh = function(gl, geom) {
   gl.bindBuffer(gl.ARRAY_BUFFER, this.cbuf);
   gl.bufferData(gl.ARRAY_BUFFER, geom.colors, gl.STATIC_DRAW);
 
+  var offsets = [];
+  for(var x = 0; x < SIDE; x++) {
+    for(var y = 0; y < SIDE; y++) {
+      offsets.push(x/10, y/10, 0);
+    }
+  }
+  
+  gl.bindBuffer(gl.ARRAY_BUFFER, this.obuf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(offsets), gl.STATIC_DRAW);
+
   gl.bindBuffer(gl.ARRAY_BUFFER, null);
 }
 
-Mesh.prototype.bind = function(program) {
+Mesh.prototype.bind = function(program, ext) {
   var gl = this.gl;
   gl.bindBuffer(gl.ARRAY_BUFFER, this.vbuf);
   gl.enableVertexAttribArray(gl.getAttribLocation(program, 'vertex'));
@@ -27,6 +41,11 @@ Mesh.prototype.bind = function(program) {
   gl.bindBuffer(gl.ARRAY_BUFFER, this.nbuf);
   gl.enableVertexAttribArray(gl.getAttribLocation(program, 'normal'));
   gl.vertexAttribPointer(gl.getAttribLocation(program, 'normal'), 3, gl.FLOAT, false, 0, 0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, this.obuf);
+  gl.enableVertexAttribArray(gl.getAttribLocation(program, 'offset'));
+  gl.vertexAttribPointer(gl.getAttribLocation(program, 'offset'), 3, gl.FLOAT, false, 0, 0);
+  ext.vertexAttribDivisorANGLE(gl.getAttribLocation(program, 'offset'), 1);
 
 }
 
@@ -58,9 +77,10 @@ var Shader = function(gl, vshSrc, fshSrc) {
   return program;
 }
 
-var Scene = function(gl) {
+var Scene = function(gl, ext) {
   this.gl = gl;
   this.graph = [];
+  this.ext = ext;
   this.matrices = {
     projection: mat4.create(),
     view: mat4.create(),
@@ -77,6 +97,7 @@ var Scene = function(gl) {
                         document.getElementById('fragment-shader').textContent);
 
   gl.useProgram(this.program);
+  console.log(ext)
 }
 
 Scene.prototype.add = function(el) {
@@ -96,15 +117,16 @@ Scene.prototype.draw = function(w, h) {
   gl.uniformMatrix4fv(gl.getUniformLocation(this.program, 'view'), false, this.matrices.view);
   gl.uniform3fv(gl.getUniformLocation(this.program, 'lightPos'), this.matrices.lightPos);
 
-  this.graph.forEach((function(program) { return function(i) {
-    i.bind(program);
+  this.graph.forEach((function(program, ext) { return function(i) {
+    i.bind(program, ext);
     var nmatrix = mat3.create();
     mat3.normalFromMat4(nmatrix, i.modelMatrix);
     gl.uniformMatrix4fv(gl.getUniformLocation(program, 'model'), false, i.modelMatrix);
     gl.uniformMatrix3fv(gl.getUniformLocation(program, 'nmatrix'), false, nmatrix);
-    gl.drawArrays(gl.TRIANGLES, 0, i.count);
+    //gl.drawArrays(gl.TRIANGLES, 0, i.count);
+    ext.drawArraysInstancedANGLE(gl.TRIANGLES, 0, i.count, SIDE * SIDE);
 
-  }}(this.program)));
+  }}(this.program, this.ext)));
 }
 
 Scene.prototype.setView = function(view) {
@@ -135,7 +157,14 @@ Object.defineProperty(Scene.prototype, "lightPos", {
       gl     = canvas.getContext('webgl'),
       bcr    = canvas.getBoundingClientRect(),
       w      = bcr.width,
-      h      = bcr.height;
+      h      = bcr.height,
+      stats  = new Stats();
+
+  stats.setMode(0);
+  stats.domElement.style.position = 'absolute';
+  stats.domElement.style.right = '1rem';
+  stats.domElement.style.top = '1rem';
+  document.body.appendChild(stats.domElement);
 
   canvas.width = w;
   canvas.height = h;
@@ -150,7 +179,7 @@ Object.defineProperty(Scene.prototype, "lightPos", {
       model = mat4.create(),
       lightPos = vec3.fromValues(1, 0.25, -1),
       shProj = mat4.create(),
-      scene = new Scene(gl),
+      scene = new Scene(gl, gl.getExtension('ANGLE_instanced_arrays')),
       ext = gl.getExtension('EXT_texture_filter_anisotropic');
 
   (function() {
@@ -158,7 +187,7 @@ Object.defineProperty(Scene.prototype, "lightPos", {
         normals = [], //shgResult.normals,
         colors = []; //shgResult.colors;
 
-    var ggeom = BuildingSHG.create({ width: .6, x: 0, y: 0, depth: .6 }) ;
+    var ggeom = BuildingSHG.create({ width: .1, x: 0, y: 0, depth: .1 }) ;
     ggeom.geom.forEach(function(i) {
       vertices.push.apply(vertices, i.vertices);
       normals.push.apply(normals, i.normals);
@@ -171,7 +200,7 @@ Object.defineProperty(Scene.prototype, "lightPos", {
   }());
 
   mat4.perspective(proj, Math.PI / 2, w / h, 0.0001, 1000.0);
-  mat4.ortho(shProj, -32, 32, -32, 32, -32, 32);
+  mat4.ortho(shProj, -16, 16, -16, 16, -16, 16);
 
   mat4.identity(view);
   mat4.translate(view, view, [0, -.5, -1]);
@@ -201,6 +230,7 @@ Object.defineProperty(Scene.prototype, "lightPos", {
 
   function render() {
 
+    stats.begin();
     scene.view = view;
     mat4.identity(model);
     mat4.rotateY(model, model, rY);
@@ -210,6 +240,7 @@ Object.defineProperty(Scene.prototype, "lightPos", {
 
     scene.lightPos = lightPos;
     scene.draw(w, h);
+    stats.end();
 
     requestAnimationFrame(render);
   }

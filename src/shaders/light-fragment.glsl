@@ -3,7 +3,7 @@ precision highp float;
 
 /* #pragma glslify: fxaa = require(glsl-fxaa) */
 
-uniform sampler2D target0, target1, target2, randMap;
+uniform sampler2D target0, target1, target2, depthBuffer, randMap;
 uniform vec3 lightPos;
 
 varying vec2 coord;
@@ -47,12 +47,11 @@ void main() {
   vec3  vertex = t0.xyz,
         normal = normalize(t1.xyz),
         color  = t2.xyz;
-  float depth  = t1.w, 
-        texNo  = t1.w;
+  float depth  = t1.w;
 
-  vec3 lightDir = lightPos - vertex;
+  vec3 lightDir = lPos - vertex;
 
-  float lambert = max(dot(faceforward(normal, vertex, normal), normalize(lightDir)), 0.),
+  float lambert = max(dot(faceforward(-normal, lightDir, normal), normalize(lightDir)), 0.),
         dist = length(lightDir),
         att = min(1., 1. / (1. + 2.5 * dist + 8. * dist * dist));
 

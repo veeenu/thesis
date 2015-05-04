@@ -5,7 +5,6 @@ precision highp float;
 
 varying vec4 vPosition;
 varying vec3 texUV, vNormal, vExtra;
-varying float vDepth;
 
 ////////////////////////////////////////////////////////////////////////////////
 // https://github.com/ashima/webgl-noise/blob/master/src/noise2D.glsl         //
@@ -196,20 +195,22 @@ void main() {
   TTextureInfo ti; // = textureBrick(vPosition.xyz, vNormal.xyz, vNormal.w, texUV.st, vExtra.xyz);
   vec3 color, normal;
 
+  float depth = gl_FragCoord.z / gl_FragCoord.w;
+
   normal = normalize(faceforward(vNormal, gl_FragCoord.xyz, vNormal));
 
   if(texUV.z > 5.1) {
-    ti = textureBrick(vPosition.xyz, vNormal, vDepth, mod(texUV.xy, 1.), vExtra);
+    ti = textureBrick(vPosition.xyz, vNormal, gl_FragCoord.z, mod(texUV.xy, 1.), vExtra);
     color = ti.color;
     normal = ti.normal;
   }
   else if(texUV.z > 4.1) {
-    ti = textureWindow(vPosition.xyz, vNormal, vDepth, mod(texUV.yx, 1.), vec3(1., 1., .7));
+    ti = textureWindow(vPosition.xyz, vNormal, gl_FragCoord.z, mod(texUV.yx, 1.), vec3(1., 1., .7));
     color = ti.color;
     normal = ti.normal;
   }
   else if(texUV.z > 3.1) {
-    ti = textureWindow(vPosition.xyz, vNormal, vDepth, mod(texUV.yx, 1.), vec3(.3, .3, .3));
+    ti = textureWindow(vPosition.xyz, vNormal, gl_FragCoord.z, mod(texUV.yx, 1.), vec3(.3, .3, .3));
     color = ti.color;
     normal = ti.normal;
   }
@@ -221,6 +222,6 @@ void main() {
     color = textureAsphalt(mod(texUV.yx, 1.)); //textureWindow(uuv, fextra);
 
   gl_FragData[0] = vPosition;
-  gl_FragData[1] = vec4(normal, vDepth);
+  gl_FragData[1] = vec4(normal, depth);
   gl_FragData[2] = vec4(color, 1.);
 }

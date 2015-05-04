@@ -227,20 +227,21 @@ var scene = {
 console.log(geom)
 
 var t = 0., pushFn = function(o, i) { o.push(i); return o; },
-    x = 6, z = 6;
+    x = 6, z = 6, alpha = 0, beta = 0;
 
 scene.update = function(timestamp) {
-  vec3.set(scene.lightPos, x,.05, z-.05);
+  vec3.set(scene.lightPos, 6,.05, 6-.05);
   mat4.identity(scene.view);
-  mat4.rotateY(scene.view, scene.view, Math.PI);
-  //mat4.rotateX(scene.view, scene.view, -Math.PI / 4);
+  //mat4.rotateY(scene.view, scene.view, Math.PI);
+  mat4.rotateX(scene.view, scene.view, alpha);
+  mat4.rotateY(scene.view, scene.view, beta);
 
   mat4.translate(scene.view, scene.view, [ -x, -.05, -z ]);
 
   scene.meshes = geom.fixedMeshes.reduce(pushFn, []);
 
   scene.meshes = geom.quadtree
-    .query(6, 6, 4)
+    .query(x, z, 4)
     .map(function(i) { return i.mesh })
     .reduce(pushFn, scene.meshes);
 
@@ -255,15 +256,50 @@ scene.update = function(timestamp) {
   //console.log(scene.meshes.reduce(function(o, i) { o += i.count; return o; }, 0));
 
 }
+// 87 65 83 68;
 
 document.body.addEventListener('keydown', function(evt) {
 
-  switch(evt.keyIdentifier) {
-    case 'Up':    z += .02; break;
-    case 'Down':  z -= .02; break;
-    case 'Left':  x += .02; break;
-    case 'Right': x -= .02; break;
+  var dx = 0, dz = 0;
+
+  switch(evt.which) {
+    case 87: dz = -.04; break;
+    case 83: dz = .04; break;
+    case 65: dx = -.04; break;
+    case 68: dx = .04; break;
+    /*case 87: z += .02; break;
+    case 83: z -= .02; break;
+    case 65: x += .02; break;
+    case 68: x -= .02; break;*/
   }
+
+  x += Math.cos(beta) * dx - Math.sin(beta) * dz;
+  z += Math.sin(beta) * dx + Math.cos(beta) * dz;
+
+});
+
+Context.canvas.addEventListener('mousedown', function(evt) {
+
+  var onMove, onUp, x0 = evt.clientX, y0 = evt.clientY;
+
+  onMove = function(evt) {
+    var dx = evt.clientX - x0,
+        dy = evt.clientY - y0;
+
+    alpha += dy * .005;
+    beta += dx * .005;
+
+    x0 = evt.clientX;
+    y0 = evt.clientY;
+  }
+
+  onUp = function(evt) {
+    Context.canvas.removeEventListener('mousemove', onMove);
+    Context.canvas.removeEventListener('mouseup', onUp);
+  }
+
+  Context.canvas.addEventListener('mousemove', onMove);
+  Context.canvas.addEventListener('mouseup', onUp);
 
 });
 

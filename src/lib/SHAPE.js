@@ -70,6 +70,64 @@ var SHAPE = {
     return out;
   },
 
+  splitXZ: function(quad, xSplits, zSplits, symbols) {
+    var out = [], symI = 0;
+
+    var accZ = 0;
+    for(var z = 0, Z = zSplits.length; z < Z; z++) {
+      var accX = 0;
+      for(var x = 0, X = xSplits.length; x < X; x++) {
+        var xa = SHAPE.lerp(quad.x0, quad.x3, accX),
+            xb = SHAPE.lerp(quad.x0, quad.x3, accX + xSplits[x]),
+            ya = SHAPE.lerp(quad.y0, quad.y1, accX),
+            yb = SHAPE.lerp(quad.y0, quad.y1, accX + xSplits[x]),
+            za = SHAPE.lerp(quad.z0, quad.z1, accZ),
+            zb = SHAPE.lerp(quad.z0, quad.z1, accZ + zSplits[z]);
+
+        out.push({
+          sym: symbols instanceof Array? symbols[symI++] : symbols,
+          x0: xa, y0: ya, z0: za,
+          x1: xa, y1: ya, z1: zb,
+          x2: xb, y2: yb, z2: zb,
+          x3: xb, y3: yb, z3: za
+        })
+        accX += xSplits[x];
+      }
+      accZ += zSplits[z];
+    }
+
+    return out;
+  },
+
+  splitZX: function(quad, xSplits, zSplits, symbols) {
+    var out = [], symI = 0;
+
+    var accZ = 0;
+    for(var z = 0, Z = zSplits.length; z < Z; z++) {
+      var accX = 0;
+      for(var x = 0, X = xSplits.length; x < X; x++) {
+        var xa = SHAPE.lerp(quad.x0, quad.x1, accX),
+            xb = SHAPE.lerp(quad.x0, quad.x1, accX + xSplits[x]),
+            ya = SHAPE.lerp(quad.y0, quad.y1, accX),
+            yb = SHAPE.lerp(quad.y0, quad.y1, accX + xSplits[x]),
+            za = SHAPE.lerp(quad.z0, quad.z3, accZ),
+            zb = SHAPE.lerp(quad.z0, quad.z3, accZ + zSplits[z]);
+
+        out.push({
+          sym: symbols instanceof Array? symbols[symI++] : symbols,
+          x0: xa, y0: ya, z0: za,
+          x1: xa, y1: ya, z1: zb,
+          x2: xb, y2: yb, z2: zb,
+          x3: xb, y3: yb, z3: za
+        })
+        accX += xSplits[x];
+      }
+      accZ += zSplits[z];
+    }
+
+    return out;
+  },
+
   // Input: axis, quad, symbol
   // Output: [quad]
   fit: function(axis, quad, symbol, ratio) {

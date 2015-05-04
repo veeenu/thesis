@@ -5,7 +5,6 @@ attribute vec3 vertex, normal, uv, extra;
 
 varying vec4 vPosition;
 varying vec3 texUV, vNormal, vExtra;
-varying float vDepth;
 
 void main() {
   
@@ -15,7 +14,6 @@ void main() {
   vPosition = viewPos;
   vNormal = normalize(normalM * normal);
   vExtra = extra;
-  vDepth = gl_Position.z / gl_Position.w;
   texUV = uv;
 
 }

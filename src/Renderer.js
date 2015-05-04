@@ -117,11 +117,18 @@ gl.bindFramebuffer(gl.FRAMEBUFFER, null);
  * Setup global matrices and VBOs
  *******************************************************************************/
 var quadBuf      = gl.createBuffer(),
+    lightBuf     = gl.createBuffer(),
+    quadArr      = [],
     projection   = mat4.create();
+
+for(var i = 0; i < 128; i++) {
+  quadArr.push(1, -1, -1, -1, -1, 1,  1, -1, -1, 1, 1, 1);
+}
 
 // Quad data directly in screen space coordinates
 gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
-gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([ 1, -1, -1, -1, -1, 1,  1, -1, -1, 1, 1, 1 ]), gl.STATIC_DRAW);
+//gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(quadArr), gl.STATIC_DRAW);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([1, -1, -1, -1, -1, 1,  1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
 gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
 mat4.perspective(projection, Math.PI / 2, Context.aspectRatio, .001, 1000.);
@@ -138,11 +145,11 @@ mat4.perspective(projection, Math.PI / 2, Context.aspectRatio, .001, 1000.);
   programPass[i] = gl.getUniformLocation(programPass, i);
 });
 
-['position'].forEach(function(i) {
+['position', 'lightPosition'].forEach(function(i) {
   programLight[i] = gl.getAttribLocation(programLight, i);
 });
 
-['target0', 'target1', 'target2', 'viewMatrix', 'lightPos'].forEach(function(i) {
+['target0', 'target1', 'target2', 'depthBuffer', 'viewMatrix', 'lightPos'].forEach(function(i) {
   programLight[i] = gl.getUniformLocation(programLight, i);
 });
 
@@ -212,11 +219,13 @@ programPass.deactivate = function() {
   gl.disable(gl.DEPTH_TEST);
 }
 
+var __do = false, cnt = 0;
+
 programLight.activate = function(scene) {
   gl.useProgram(programLight);
 
-  /*gl.enable(gl.BLEND);
-  gl.blendFunc(gl.ONE, gl.ONE);*/
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.ONE, gl.ONE);
   gl.clear(gl.COLOR_BUFFER_BIT);
 
   //
@@ -228,6 +237,8 @@ programLight.activate = function(scene) {
   gl.bindTexture(gl.TEXTURE_2D, target1);
   gl.activeTexture(gl.TEXTURE2);
   gl.bindTexture(gl.TEXTURE_2D, target2);
+  gl.activeTexture(gl.TEXTURE3);
+  gl.bindTexture(gl.TEXTURE_2D, depthTex);
   //
   // VBO setup
   //
@@ -237,21 +248,36 @@ programLight.activate = function(scene) {
   gl.uniform1i(programLight.target0, 0);
   gl.uniform1i(programLight.target1, 1);
   gl.uniform1i(programLight.target2, 2);
-  gl.uniformMatrix4fv(programLight.view, false, scene.view);
+  gl.uniform1i(programLight.depthBuffer, 3);
+
+  gl.uniformMatrix4fv(programLight.viewMatrix, false, scene.view);
 
   gl.enableVertexAttribArray(programLight.position);
+  //gl.enableVertexAttribArray(programLight.lightPosition);
 
-  gl.uniform3fv(programLight.lightPos, [0,.025,-.05]);
+  gl.uniform3fv(programLight.lightPos, scene.lightPos); //[0,.025,-.05]);
   gl.drawArrays(gl.TRIANGLES, 0, 6);
-  /*if(scene.lights.length > 0) {
-    for(var i = 0, I = Math.min(scene.lights.length, 4); i < I; i++) {
-      gl.uniform3fv(programLight.lightPos, scene.lights[i]);
-      gl.drawArrays(gl.TRIANGLES, 0, 6);
+  /*var I = scene.lights.length;
+  if(I > 0 && __do === false) {
+
+    var lv = new Float32Array(I * 18);
+    for(var i = 0; i < I; i++) {
+      var ii = i * 3;
+      for(var j = 0; j < 18; j++) {
+        lv[ii + j] = scene.lights[i][j % 3];
+      }
     }
-    if(sc !== null) sc(scene.lights);
-    sc = null;
+    gl.bindBuffer(gl.ARRAY_BUFFER, lightBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, lv, gl.STATIC_DRAW);
+    cnt = I;
+    console.log(cnt)
+    __do = true;
     
-  } else console.log('No lights');*/
+  }
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, lightBuf);
+  gl.vertexAttribPointer(programLight.lightPosition, 3, gl.FLOAT, false, 0, 0);
+  gl.drawArrays(gl.TRIANGLES, 0, cnt * 6);*/
 }
 
 programLight.deactivate = function() {

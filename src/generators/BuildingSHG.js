@@ -2,7 +2,9 @@ var ShapeGrammar = require('ShapeGrammar'),
     SHAPE        = require('../lib/SHAPE.js'),
     earcut       = require('earcut'),
     Geom         = require('Geom'),
-    PRNG         = require('PRNG');
+    PRNG         = require('PRNG'),
+    BalconySHG   = require('./BalconySHG.js'),
+    StaircaseSHG = require('./StaircaseSHG.js');
 
 var shg = new ShapeGrammar(),
     context = { 
@@ -16,16 +18,23 @@ var shg = new ShapeGrammar(),
 
 shg.define('GndFloor', null, null, null, function() {
   var ret = SHAPE.extrudeAll(this.points, this.floorHeight,
-                             this.points.map(function(i, idx) { return idx === 0 ? 'FrontDoor' : 'Facade'} ));
+                             this.points.map(function(i, idx) { return idx === 0 ? 'FrontDoor' : 'Facade'} )),
+      dy = this.floorHeight * (this.floors + 1),
+      ceilFace = {
+        /*sym: 'TPolyFloor',
+        points: this.points.map(function(i) {
+          return { x: i.x, y: i.y + this.floorHeight * (this.floors + 1) + this.ledgeHeight, z: i.z }
+        }.bind(this))*/
+        sym: 'Ceiling',
+        x0: this.points[0].x, y0: this.points[0].y + dy, z0: this.points[0].z,
+        x1: this.points[1].x, y1: this.points[1].y + dy, z1: this.points[1].z,
+        x2: this.points[2].x, y2: this.points[2].y + dy, z2: this.points[2].z,
+        x3: this.points[3].x, y3: this.points[3].y + dy, z3: this.points[3].z,
+        texID: 6
+      };
       /*floorFace = {
         sym: 'TPolyFloor',
         points: this.points
-      },
-      ceilFace = {
-        sym: 'TPolyFloor',
-        points: this.points.map(function(i) {
-          return { x: i.x, y: i.y + this.floorHeight * (this.floors + 1) + this.ledgeHeight, z: i.z }
-        }.bind(this))
       },
       gceilFace = {
         sym: 'TPolyFloor',
@@ -41,6 +50,10 @@ shg.define('GndFloor', null, null, null, function() {
       });
       return o;
     }.bind(this), { sym: i < this.floors ? 'Floor' : 'Ledge', floorHeight: this.floorHeight, ledgeHeight: this.ledgeHeight, points: [] });
+
+    fs.hasBalcony = true;
+    if(i < this.floors - 1)
+      fs.hasStairs = true;
     ret.push(fs);
   }
 
@@ -57,12 +70,30 @@ shg.define('GndFloor', null, null, null, function() {
     });
   }
 
+  ret.push(ceilFace);
+
   return ret;
 });
 
+shg.define('Ceiling', null, null, null, function() {
+  var ret = SHAPE.splitXZ(this, [ .5, .5 ], [ .5, .5 ], 'TQuad')
+    .map(function(i) {
+      i.texID = 6;
+      return i;
+    });
+  return ret;
+})
+
 shg.define('Floor', null, null, null, function() {
+  var hb = this.hasBalcony, hs = this.hasStairs;
+
   var ret = SHAPE.extrudeAll(this.points, this.floorHeight,
                              this.points.map(function(i, idx) { return 'Facade' } ))
+    .map(function(i) {
+      i.hasBalcony = hb;
+      i.hasStairs = hs;
+      return i;
+    });
   return ret;
 });
 
@@ -99,7 +130,12 @@ shg.define('Ledge', null, null, null, function() {
 
 shg.define('Facade', null, null, null, function() {
 
-  return SHAPE.fit('x', this, 'Tile', 1);
+  var tiles = SHAPE.fit('x', this, 'Tile', 1);
+
+  tiles[1].hasBalcony = this.hasBalcony;
+  tiles[1].hasStairs = this.hasStairs;
+
+  return tiles;
 });
 
 shg.define('FrontDoor', null, null, null, function() {
@@ -119,6 +155,45 @@ shg.define('Tile', null, null, null, function() {
     spl[3].texID = spl[5].texID = 6;
   spl[1].uvs = null;
   
+  var dx = this.x3 - this.x0,
+      dy = Math.abs(this.y1 - this.y0),
+      dz = this.z3 - this.z0,
+      angle = Math.atan2(dz, dx) + Math.PI / 2,
+      cos = Math.cos(angle), sin = Math.sin(angle),
+      padx = sin * .01, padz = -cos * .01,
+      w = Math.sqrt(dx * dx + dz * dz) * .33,
+      h = Math.abs(dy);
+  
+  if(this.hasBalcony) {
+    spl.push({
+      sym: 'Balcony',
+      points: {
+        x0: this.x0 + padx, y0: this.y1, z0: this.z0 + padz,
+        x3: this.x3 - padx, y3: this.y2, z3: this.z3 - padz,
+        y1: this.y1, y2: this.y1,
+
+        x1: this.x0 + cos * w + padx,
+        x2: this.x3 + cos * w - padx,
+        z1: this.z0 + sin * w + padz,
+        z2: this.z3 + sin * w - padz
+      },
+      cos: cos,
+      floorHeight: .005,
+      fenceHeight: dy / 2
+    });
+  }
+  if(this.hasStairs) {
+    spl.push({
+      sym: 'Staircase',
+      x: this.x0 + 2 * padx, y: this.y1, z: this.z0 + w * .25,
+
+      height: Math.abs(this.y1 - this.y0), 
+      width: sin * (dx - 4 * padx),
+      stairDepth: w * .5,
+      stairHeight: .0025,
+      stairSpace: .00625
+    });
+  }
 
   return spl;
 });
@@ -216,6 +291,9 @@ shg.define('TDoor', null, null, null, function() {
 
   return this;
 });
+
+BalconySHG.augment(shg);
+StaircaseSHG.augment(shg);
 
 var availColors = [
   [ .88, .88, .88 ],
