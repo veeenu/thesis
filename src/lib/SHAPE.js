@@ -6,24 +6,33 @@
 var SHAPE = {
   // Input:  segment ends, extrusion height
   // Output: quad
-  // Only ever extrude a segment along [0, 1, 0].
-  extrude: function(symbol, a, b, h) {
+  // Only ever extrude a segment along [0, 1, 0]. TODO
+  extrude: function(symbol, a, b, len, norm) {
+
+    var nX = 0, nY = len, nZ = 0;
+
+    if(norm !== undefined) {
+      nX = norm[0] * len; 
+      nY = norm[1] * len;
+      nZ = norm[2] * len;
+    }
+
     return {
       sym: symbol,
-      x0: a.x, y0: a.y,     z0: a.z,
-      x1: a.x, y1: a.y + h, z1: a.z,
-      x2: b.x, y2: b.y + h, z2: b.z,
-      x3: b.x, y3: b.y,     z3: b.z
+      x0: a.x, y0: a.y, z0: a.z,
+      x1: a.x + nX, y1: a.y + nY, z1: a.z + nZ,
+      x2: b.x + nX, y2: b.y + nY, z2: b.z + nZ,
+      x3: b.x, y3: b.y, z3: b.z 
     };
   },
   
   // Input:  list of points, symbols
   // Output: [quad]
-  extrudeAll: function(path, height, symbols) {
+  extrudeAll: function(path, len, symbols, norm) {
     var out = [];
-    for(var i = 0, n = path.length; i < n; i++) {
+    for(var i = 0, n = path.length; i < n; ++i) {
       var cur = path[i], next = path[(i + 1) % n];
-      out.push(SHAPE.extrude(symbols instanceof Array ? symbols[i] : symbols, cur, next, height));
+      out.push(SHAPE.extrude(symbols instanceof Array ? symbols[i] : symbols, cur, next, len, norm));
     }
     return out;
   },
@@ -38,9 +47,9 @@ var SHAPE = {
         z0 = quad.z0, z1 = quad.z1, z2 = quad.z2, z3 = quad.z3;
 
     var accY = 0;
-    for(var y = 0, Y = ySplits.length; y < Y; y++) {
+    for(var y = 0, Y = ySplits.length; y < Y; ++y) {
       var accX = 0, accYY = accY + ySplits[y];
-      for(var x = 0, X = xSplits.length; x < X; x++) {
+      for(var x = 0, X = xSplits.length; x < X; ++x) {
         var accXX = accX + xSplits[x], 
             xa = SHAPE.lerp(x0, x3, accX),
             xb = SHAPE.lerp(x0, x3, accXX),
@@ -74,9 +83,9 @@ var SHAPE = {
     var out = [], symI = 0;
 
     var accZ = 0;
-    for(var z = 0, Z = zSplits.length; z < Z; z++) {
+    for(var z = 0, Z = zSplits.length; z < Z; ++z) {
       var accX = 0;
-      for(var x = 0, X = xSplits.length; x < X; x++) {
+      for(var x = 0, X = xSplits.length; x < X; ++x) {
         var xa = SHAPE.lerp(quad.x0, quad.x3, accX),
             xb = SHAPE.lerp(quad.x0, quad.x3, accX + xSplits[x]),
             ya = SHAPE.lerp(quad.y0, quad.y1, accX),
@@ -103,9 +112,9 @@ var SHAPE = {
     var out = [], symI = 0;
 
     var accZ = 0;
-    for(var z = 0, Z = zSplits.length; z < Z; z++) {
+    for(var z = 0, Z = zSplits.length; z < Z; ++z) {
       var accX = 0;
-      for(var x = 0, X = xSplits.length; x < X; x++) {
+      for(var x = 0, X = xSplits.length; x < X; ++x) {
         var xa = SHAPE.lerp(quad.x0, quad.x1, accX),
             xb = SHAPE.lerp(quad.x0, quad.x1, accX + xSplits[x]),
             ya = SHAPE.lerp(quad.y0, quad.y1, accX),

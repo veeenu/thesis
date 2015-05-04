@@ -230,7 +230,7 @@ var t = 0., pushFn = function(o, i) { o.push(i); return o; },
     x = 6, z = 6, alpha = 0, beta = 0;
 
 scene.update = function(timestamp) {
-  vec3.set(scene.lightPos, 6,.05, 6-.05);
+  vec3.set(scene.lightPos, 6 - .1,.05, 6 - .1);
   mat4.identity(scene.view);
   //mat4.rotateY(scene.view, scene.view, Math.PI);
   mat4.rotateX(scene.view, scene.view, alpha);

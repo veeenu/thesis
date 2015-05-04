@@ -135,7 +135,16 @@ var Geom = {
     var a1 = points[0] - points[3], a2 = points[1] - points[4], a3 = points[2] - points[5],
         b1 = points[6] - points[3], b2 = points[7] - points[4], b3 = points[8] - points[5];
 
-    return [ a2 * b3 - a3 * b2, a1 * b3 - a3 * b1, a1 * b2 - a2 * b1 ];
+    var nX = a2 * b3 - a3 * b2,
+        nY = a1 * b3 - a3 * b1,
+        nZ = a1 * b2 - a2 * b1,
+        rlen = 1 / Math.sqrt(nX * nX + nY * nY + nZ * nZ);
+    
+    nX *= rlen;
+    nY *= rlen;
+    nZ *= rlen;
+
+    return [ nX, nY, nZ ];
 
   }
 

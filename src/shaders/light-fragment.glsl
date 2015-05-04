@@ -53,7 +53,7 @@ void main() {
 
   float lambert = max(dot(faceforward(-normal, lightDir, normal), normalize(lightDir)), 0.),
         dist = length(lightDir),
-        att = min(1., 1. / (1. + 2.5 * dist + 8. * dist * dist));
+        att = min(1., 1. / (1. + 1.5 * dist + 5. * dist * dist));
 
   //////////////////////////////////////////////////////////////////////////////
   // SSAO

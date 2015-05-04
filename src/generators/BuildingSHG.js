@@ -51,9 +51,9 @@ shg.define('GndFloor', null, null, null, function() {
       return o;
     }.bind(this), { sym: i < this.floors ? 'Floor' : 'Ledge', floorHeight: this.floorHeight, ledgeHeight: this.ledgeHeight, points: [] });
 
-    fs.hasBalcony = true;
+    /*fs.hasBalcony = true;
     if(i < this.floors - 1)
-      fs.hasStairs = true;
+      fs.hasStairs = true;*/
     ret.push(fs);
   }
 
@@ -132,8 +132,8 @@ shg.define('Facade', null, null, null, function() {
 
   var tiles = SHAPE.fit('x', this, 'Tile', 1);
 
-  tiles[1].hasBalcony = this.hasBalcony;
-  tiles[1].hasStairs = this.hasStairs;
+  /*tiles[1].hasBalcony = this.hasBalcony;
+  tiles[1].hasStairs = this.hasStairs;*/
 
   return tiles;
 });
@@ -282,7 +282,43 @@ shg.define('TWin', null, null, null, function() {
   this.sym = 'TQuad';
   //if(hasLight)
 
-  return this;
+  var norm = Geom.triToNormal([
+    this.x0, this.y0, this.z0,
+    this.x1, this.y1, this.z1,
+    this.x2, this.y2, this.z2
+  ]);
+
+  var borders = SHAPE.extrudeAll([
+    { x: this.x0, y: this.y0, z: this.z0 },
+    { x: this.x1, y: this.y1, z: this.z1 },
+    { x: this.x2, y: this.y2, z: this.z2 },
+    { x: this.x3, y: this.y3, z: this.z3 }
+  ], -.005, 'TQuad', norm);
+
+  var nX = norm[0],
+      nY = norm[1],
+      nZ = norm[2];
+  
+  nX *= .005;
+  nY *= .005;
+  nZ *= .005;
+
+  this.x0 -= nX;
+  this.y0 -= nY;
+  this.z0 -= nZ;
+  this.x1 -= nX;
+  this.y1 -= nY;
+  this.z1 -= nZ;
+  this.x2 -= nX;
+  this.y2 -= nY;
+  this.z2 -= nZ;
+  this.x3 -= nX;
+  this.y3 -= nY;
+  this.z3 -= nZ;
+
+  borders.push(this)
+
+  return borders;
 });
 
 shg.define('TDoor', null, null, null, function() {

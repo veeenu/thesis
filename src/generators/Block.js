@@ -21,18 +21,18 @@ var subdivideStrip = function(block, strip, rng) {
     dx = b1.x - b2.x;
     dy = b1.y - b2.y;
     len = Math.sqrt(dx * dx + dy * dy);
-    m = ~~(rng.random() * 3 + 1);
-    if(len < 0.35)
+    m = ~~(rng.random() * 3 + 2);
+    /*if(len < .35)
       m = 1;
     else if(len < .6)
       m = Math.min(m, 2);
     else if(len < .8)
-      m = Math.min(m, 3);
+      m = Math.min(m, 3);*/
 
-    quads.push(m + 1);
+    quads.push(m);
 
-    for(j = 0; j <= m; j++) {
-      var jm = j / m;
+    for(j = 0; j < m; j++) {
+      var jm = j / (m - 1);
       px1 = lerp(b1.x, b2.x, jm);
       py1 = lerp(b1.y, b2.y, jm);
       px2 = lerp(strip[i].x, strip[i1].x, jm);

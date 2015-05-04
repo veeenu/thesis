@@ -83,7 +83,7 @@ var City = function(seed) {
         continue;
       
       polys.push(poly);
-      this.blocks.push(new Block(poly, seed));
+      this.blocks.push(new Block(poly, PRNG.random() * 65536));
     }
   }
 
