@@ -10,5 +10,6 @@ varying vec3 lPos;
 void main() {
   gl_Position = vec4(position, 0., 1.);
   coord = .5 + .5 * position;
-  lPos = (viewMatrix * vec4(lightPos, 1.)).xyz;
+  lPos = vec3(0., 0., 0.); //(viewMatrix * vec4(lightPos, 1.)).xyz;
+  //lPos = (viewMatrix * vec4(lightPos, 1.)).xyz;
 }

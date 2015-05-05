@@ -4,9 +4,8 @@
  * p0 p3
  */
 var SHAPE = {
-  // Input:  segment ends, extrusion height
+  // Input:  segment ends, extrusion height, normal
   // Output: quad
-  // Only ever extrude a segment along [0, 1, 0]. TODO
   extrude: function(symbol, a, b, len, norm) {
 
     var nX = 0, nY = len, nZ = 0;
@@ -19,10 +18,12 @@ var SHAPE = {
 
     return {
       sym: symbol,
-      x0: a.x, y0: a.y, z0: a.z,
-      x1: a.x + nX, y1: a.y + nY, z1: a.z + nZ,
-      x2: b.x + nX, y2: b.y + nY, z2: b.z + nZ,
-      x3: b.x, y3: b.y, z3: b.z 
+      points: [
+        { x: a.x,      y: a.y,      z: a.z },
+        { x: a.x + nX, y: a.y + nY, z: a.z + nZ },
+        { x: b.x + nX, y: b.y + nY, z: b.z + nZ },
+        { x: b.x,      y: b.y,      z: b.z }
+      ]
     };
   },
   
@@ -42,9 +43,16 @@ var SHAPE = {
   // Split from top to bottom
   split: function(quad, xSplits, ySplits, symbols) {
     var out = [], symI = 0, sioa = symbols instanceof Array,
-        x0 = quad.x0, x1 = quad.x1, x2 = quad.x2, x3 = quad.x3,
-        y0 = quad.y0, y1 = quad.y1, y2 = quad.y2, y3 = quad.y3,
-        z0 = quad.z0, z1 = quad.z1, z2 = quad.z2, z3 = quad.z3;
+        qp = quad.points, qu = quad.uvs,
+        p0 = qp[0], p1 = qp[1], p2 = qp[2], p3 = qp[3],
+        x0 = p0.x, x1 = p1.x, x2 = p2.x, x3 = p3.x,
+        y0 = p0.y, y1 = p1.y, y2 = p2.y, y3 = p3.y,
+        z0 = p0.z, z1 = p1.z, z2 = p2.z, z3 = p3.z,
+        ds = 1, dt = 1, ms = 0, mt = 0;
+
+    if(qu instanceof Array)
+      ds = qu[3].s - qu[0].s, dt = qu[1].t - qu[0].t,
+      ms = qu[0].s, mt = qu[1].t;
 
     var accY = 0;
     for(var y = 0, Y = ySplits.length; y < Y; ++y) {
@@ -60,15 +68,17 @@ var SHAPE = {
 
         out.push({
           sym: sioa ? symbols[symI++] : symbols,
-          x0: xa, y0: yb, z0: za,
-          x1: xa, y1: ya, z1: za,
-          x2: xb, y2: ya, z2: zb,
-          x3: xb, y3: yb, z3: zb,
+          points: [
+            { x: xa, y: ya, z: za },
+            { x: xa, y: yb, z: za },
+            { x: xb, y: yb, z: zb },
+            { x: xb, y: ya, z: zb }
+          ],
           uvs: [
-            { s: accX,  t: accYY },
-            { s: accX,  t: accY },
-            { s: accXX, t: accY },
-            { s: accXX, t: accYY },
+            { s: ms + ds * accX,  t: mt + dt * accY },
+            { s: ms + ds * accX,  t: mt + dt * accYY },
+            { s: ms + ds * accXX, t: mt + dt * accYY },
+            { s: ms + ds * accXX, t: mt + dt * accY },
           ]
         })
         accX = accXX;
@@ -80,25 +90,32 @@ var SHAPE = {
   },
 
   splitXZ: function(quad, xSplits, zSplits, symbols) {
-    var out = [], symI = 0;
+    var out = [], symI = 0,
+        qp = quad.points,
+        p0 = qp[0], p1 = qp[1], p2 = qp[2], p3 = qp[3],
+        x0 = p0.x, x1 = p1.x, x2 = p2.x, x3 = p3.x,
+        y0 = p0.y, y1 = p1.y, y2 = p2.y, y3 = p3.y,
+        z0 = p0.z, z1 = p1.z, z2 = p2.z, z3 = p3.z;
 
     var accZ = 0;
     for(var z = 0, Z = zSplits.length; z < Z; ++z) {
       var accX = 0;
       for(var x = 0, X = xSplits.length; x < X; ++x) {
-        var xa = SHAPE.lerp(quad.x0, quad.x3, accX),
-            xb = SHAPE.lerp(quad.x0, quad.x3, accX + xSplits[x]),
-            ya = SHAPE.lerp(quad.y0, quad.y1, accX),
-            yb = SHAPE.lerp(quad.y0, quad.y1, accX + xSplits[x]),
-            za = SHAPE.lerp(quad.z0, quad.z1, accZ),
-            zb = SHAPE.lerp(quad.z0, quad.z1, accZ + zSplits[z]);
+        var xa = SHAPE.lerp(x0, x3, accX),
+            xb = SHAPE.lerp(x0, x3, accX + xSplits[x]),
+            ya = SHAPE.lerp(y0, y1, accX),
+            yb = SHAPE.lerp(y0, y1, accX + xSplits[x]),
+            za = SHAPE.lerp(z0, z1, accZ),
+            zb = SHAPE.lerp(z0, z1, accZ + zSplits[z]);
 
         out.push({
           sym: symbols instanceof Array? symbols[symI++] : symbols,
-          x0: xa, y0: ya, z0: za,
-          x1: xa, y1: ya, z1: zb,
-          x2: xb, y2: yb, z2: zb,
-          x3: xb, y3: yb, z3: za
+          points: [
+            { x: xa, y: ya, z: za },
+            { x: xa, y: ya, z: zb },
+            { x: xb, y: yb, z: zb },
+            { x: xb, y: yb, z: za }
+          ]
         })
         accX += xSplits[x];
       }
@@ -109,25 +126,32 @@ var SHAPE = {
   },
 
   splitZX: function(quad, xSplits, zSplits, symbols) {
-    var out = [], symI = 0;
+    var out = [], symI = 0,
+        qp = quad.points,
+        p0 = qp[0], p1 = qp[1], p2 = qp[2], p3 = qp[3],
+        x0 = p0.x, x1 = p1.x, x2 = p2.x, x3 = p3.x,
+        y0 = p0.y, y1 = p1.y, y2 = p2.y, y3 = p3.y,
+        z0 = p0.z, z1 = p1.z, z2 = p2.z, z3 = p3.z;
 
     var accZ = 0;
     for(var z = 0, Z = zSplits.length; z < Z; ++z) {
       var accX = 0;
       for(var x = 0, X = xSplits.length; x < X; ++x) {
-        var xa = SHAPE.lerp(quad.x0, quad.x1, accX),
-            xb = SHAPE.lerp(quad.x0, quad.x1, accX + xSplits[x]),
-            ya = SHAPE.lerp(quad.y0, quad.y1, accX),
-            yb = SHAPE.lerp(quad.y0, quad.y1, accX + xSplits[x]),
-            za = SHAPE.lerp(quad.z0, quad.z3, accZ),
-            zb = SHAPE.lerp(quad.z0, quad.z3, accZ + zSplits[z]);
+        var xa = SHAPE.lerp(x0, x1, accX),
+            xb = SHAPE.lerp(x0, x1, accX + xSplits[x]),
+            ya = SHAPE.lerp(y0, y1, accX),
+            yb = SHAPE.lerp(y0, y1, accX + xSplits[x]),
+            za = SHAPE.lerp(z0, z3, accZ),
+            zb = SHAPE.lerp(z0, z3, accZ + zSplits[z]);
 
         out.push({
           sym: symbols instanceof Array? symbols[symI++] : symbols,
-          x0: xa, y0: ya, z0: za,
-          x1: xa, y1: ya, z1: zb,
-          x2: xb, y2: yb, z2: zb,
-          x3: xb, y3: yb, z3: za
+          points: [
+            { x: xa, y: ya, z: za },
+            { x: xa, y: ya, z: zb },
+            { x: xb, y: yb, z: zb },
+            { x: xb, y: yb, z: za }
+          ]
         })
         accX += xSplits[x];
       }
@@ -143,11 +167,18 @@ var SHAPE = {
 
     ratio = ratio || 1;
 
+    var qp = quad.points,
+        p0 = qp[0], p1 = qp[1], p2 = qp[2], p3 = qp[3],
+        x0 = p0.x, x1 = p1.x, x2 = p2.x, x3 = p3.x,
+        y0 = p0.y, y1 = p1.y, y2 = p2.y, y3 = p3.y,
+        z0 = p0.z, z1 = p1.z, z2 = p2.z, z3 = p3.z,
+        dx = x3 - x0, dy = y1 - y0, dz = z3 - z0, dzdy = z1 - z0;
+
     if(axis === 'x') {
-      var h = quad.y1 - quad.y0,
+      var h = dy,
           w = ratio * h,
-          wAvail = Math.sqrt( Math.pow(quad.x3 - quad.x0, 2) + Math.pow(quad.z3 - quad.z0, 2) ),
-          count = ~~(wAvail / w),
+          wAvail = Math.sqrt( dx * dx + dz * dz ),
+          count = Math.round(wAvail / w),
           splits = [];
 
       w = wAvail / count; // Correct width
@@ -158,10 +189,10 @@ var SHAPE = {
 
       return SHAPE.split(quad, splits, [1], symbol);
     } else if(axis === 'y') {
-      var w = quad.x3 - quad.x0,
+      var w = x3 - x0,
           h = w / ratio,
-          hAvail = Math.sqrt( Math.pow(quad.y1 - quad.y0, 2) + Math.pow(quad.z1 - quad.z0, 2) ),
-          count = ~~(hAvail / h),
+          hAvail = Math.sqrt( dy * dy + dzdy * dzdy ),
+          count = Math.round(hAvail / h),
           splits = [];
 
       h = hAvail / count; // Correct width

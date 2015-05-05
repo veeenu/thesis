@@ -54,15 +54,15 @@ var computeBlockMesh = function(block, availColors) {
 
       var bg = bldgGeom[l]; //.shift();
 
-      if(bg.sym === null)
-        for(var k = 0; k < 18; k++) {
+      if(bg.sym === 'LIGHT')
+        lights.push(bg.lightPos);
+      else
+        for(var k = 0, K = bg.vertices.length; k < K; k++) {
           vertices.push(bg.vertices[k]);
           normals.push(bg.normals[k]);
           uvs.push(bg.uvs[k]);
           extra.push(color[k % 3]);
         }
-      else
-        lights.push(bg.lightPos);
 
       bldgGeom[l] = null;
     }
@@ -84,6 +84,15 @@ var city = new City(0),
       quadtreeLights: null,
       fixedMeshes: []
     };
+
+var log = document.createElement('pre');
+log.style.background = 'white';
+log.style.color = 'black';
+log.style.position = 'absolute';
+log.style.right = '1rem';
+log.style.top = '7rem';
+
+Context.canvas.parentElement.appendChild(log);
 
 (function() {
   var vertices = [],
@@ -130,9 +139,9 @@ var city = new City(0),
 
     blocks.forEach(function(i) {
       qtree.insert(i);
-      i.lights.forEach(function(i) {
+      /*i.lights.forEach(function(i) {
         qtreeL.insert({ x: i.x, y: i.z, l: i });
-      });
+      });*/
     });
 
     geom.quadtree = qtree;
@@ -227,16 +236,83 @@ var scene = {
 console.log(geom)
 
 var t = 0., pushFn = function(o, i) { o.push(i); return o; },
-    x = 6, z = 6, alpha = 0, beta = 0;
+    x = 6, y = 20, z = 6, alpha = Math.PI / 2, beta = 0;
+
+var tlerp = function(start, end, ts) {
+  return (ts - start) / (end - start);
+}
+
+var lerp = function(a, b, t) {
+  return a * (1 - t) + b * t;
+}
+
+var polyEasing = function(x) { return x * x * x * (x * (6 * x - 15) + 10) };
+
+var calcPositions = function(ts) {
+
+  log.textContent = parseInt(ts);
+  if(ts < 5000) {
+    var t = polyEasing(tlerp(0, 5000, ts));
+    y = lerp(20, .05, t);
+  }
+
+  if(ts >= 4000 && ts < 5000) {
+    var t = polyEasing(tlerp(4000, 5000, ts));
+    alpha = lerp(Math.PI / 2, 0, t);
+    beta = lerp(0, Math.PI, t);
+  }
+
+  if(ts >= 4000 && ts < 20000) {
+    var t = polyEasing(tlerp(4000, 20000, ts));
+    x = lerp(6, 10, t);
+  }
+
+  if(ts >= 5000 && ts < 19500) {
+    var t = polyEasing(tlerp(5000, 20000, ts));
+    beta = lerp(Math.PI, Math.PI * 3/2, t);
+  }
+
+  if(ts >= 19500 && ts < 20500) {
+    var t = polyEasing(tlerp(19500, 20500, ts));
+    alpha = lerp(0, - Math.PI / 2, t);
+  }
+
+  if(ts >= 20000 && ts < 22500) {
+    var t = polyEasing(tlerp(20000, 22500, ts));
+    beta = lerp(Math.PI * 3 / 2, Math.PI, t);
+    y = lerp(.05, 1.05, t);
+    z = lerp(6, 0, t);
+  }
+
+  if(ts >= 20500 && ts < 22500) {
+    var t = polyEasing(tlerp(20500, 22500, ts));
+    alpha = lerp(- Math.PI / 2, 0, t);
+  }
+
+  if(ts >= 22500 && ts < 30000) {
+    var t = polyEasing(tlerp(22500, 30000, ts));
+    z = lerp(0, 14, t);
+  }
+
+  if(ts >= 30000) {
+    var t = tlerp(30000, 40000, ts);
+    z = 0;
+    alpha = Math.PI / 8;
+    x = lerp(12, 0, t);
+  }
+
+}
 
 scene.update = function(timestamp) {
-  vec3.set(scene.lightPos, 6 - .1,.05, 6 - .1);
+
+  calcPositions(timestamp);
+
+  vec3.set(scene.lightPos, 6,.05, 6);
   mat4.identity(scene.view);
-  //mat4.rotateY(scene.view, scene.view, Math.PI);
+
   mat4.rotateX(scene.view, scene.view, alpha);
   mat4.rotateY(scene.view, scene.view, beta);
-
-  mat4.translate(scene.view, scene.view, [ -x, -.05, -z ]);
+  mat4.translate(scene.view, scene.view, [ -x, -y, -z ]);
 
   scene.meshes = geom.fixedMeshes.reduce(pushFn, []);
 
@@ -258,7 +334,7 @@ scene.update = function(timestamp) {
 }
 // 87 65 83 68;
 
-document.body.addEventListener('keydown', function(evt) {
+/*document.body.addEventListener('keydown', function(evt) {
 
   var dx = 0, dz = 0;
 
@@ -267,14 +343,15 @@ document.body.addEventListener('keydown', function(evt) {
     case 83: dz = .04; break;
     case 65: dx = -.04; break;
     case 68: dx = .04; break;
-    /*case 87: z += .02; break;
-    case 83: z -= .02; break;
-    case 65: x += .02; break;
-    case 68: x -= .02; break;*/
   }
 
-  x += Math.cos(beta) * dx - Math.sin(beta) * dz;
-  z += Math.sin(beta) * dx + Math.cos(beta) * dz;
+  x += -Math.sin(beta) * Math.cos(alpha) * dz;
+  y += Math.sin(alpha) * dz;
+  z += Math.cos(beta) * Math.cos(alpha) * dz;
+
+  log.textContent = [x,y,z].map(function(i) { return i.toFixed(2) }).join(', ') + ' ' +
+    (Math.PI / alpha).toFixed(2) + ' ' + 
+    (Math.PI / beta).toFixed(2);
 
 });
 
@@ -291,7 +368,11 @@ Context.canvas.addEventListener('mousedown', function(evt) {
 
     x0 = evt.clientX;
     y0 = evt.clientY;
-  }
+
+    log.textContent = [x,y,z].map(function(i) { return i.toFixed(2) }).join(', ') + ' ' +
+      (Math.PI / alpha).toFixed(2) + ' ' + 
+      (Math.PI / beta).toFixed(2);
+    }
 
   onUp = function(evt) {
     Context.canvas.removeEventListener('mousemove', onMove);
@@ -301,6 +382,6 @@ Context.canvas.addEventListener('mousedown', function(evt) {
   Context.canvas.addEventListener('mousemove', onMove);
   Context.canvas.addEventListener('mouseup', onUp);
 
-});
+});*/
 
 module.exports = scene;

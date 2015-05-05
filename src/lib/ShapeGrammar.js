@@ -5,62 +5,52 @@ var Geom = require('Geom'),
     vec3 = glMatrix.vec3,
     mat4 = glMatrix.mat4;
 
-var ShapeGrammar = function() {
+var _ = function() {
   this.rules = [];
-}
+};
 
-ShapeGrammar.prototype.define = function(rule, lc, rc, cond, fn) {
-
-  if(!(rule in this.rules))
-    this.rules[rule] = [];
-
-  this.rules[rule].push({
-    lc: lc, rc: rc, cond: cond, fn: fn
+_.prototype.define = function(lhs, cond, rhs) {
+  this.rules.push({
+    lhs: lhs,
+    cond: cond,
+    rhs: rhs
   });
-}
+};
 
-ShapeGrammar.prototype.run = function(axiom) {
+_.prototype.run = function(state) {
+  
+  var output = [], rules = this.rules, nonterminals = 0;
 
-  var out = [], nonempty = false;
-  axiom = axiom instanceof Array? axiom : [axiom];
+  state = (state instanceof Array? state : [state]);
 
-  for(var i = 0, n = axiom.length; i < n; i++) {
-    var symbol = axiom[i],
-        //lc = (i > 0 ?     axiom[i - 1] : null),
-        //rc = (i < n - 1 ? axiom[i + 1] : null),
-        rlhs, rule = null;
-    
-    rlhs = this.rules[symbol.sym];
-    if(!rlhs) {
-      out.push(symbol);
-      continue;
-    }
+  while(state.length) {
 
-    for(var j = 0, J = rlhs.length; j < J && rule === null; j++) {
-      var r = rlhs[j];
-      if( /*(r.lc   === null || r.lc === lc.sym) &&
-          (r.rc   === null || r.rc === rc.sym) &&*/
-          (r.cond === null || r.cond.call(symbol/*, lc, rc*/)) ) {
-        rule = r;
+    var lhs = state.shift();
+
+    if(lhs.sym === _.TERMINAL) {
+      output.push(lhs);
+    } else for(var i = 0, I = rules.length; i < I; i++) {
+      
+      var rule = rules[i];
+      if(lhs.sym === rule.lhs && 
+        (rule.cond === null || rule.cond.call(lhs))) {
+        
+        var ret = rule.rhs.call(lhs);
+        ret = (ret instanceof Array? ret : [ret]);
+
+        for(var j = 0, J = ret.length; j < J; j++) {
+          output.push(ret[j]);
+          ++nonterminals;
+        }
+
+        break;
       }
     }
-
-    if(rule === null) {
-      out.push(symbol);
-      continue;
-    }
-
-    nonempty = true;
-
-    var res = rule.fn.call(symbol/*, lc, rc*/);
-    if(!(res instanceof Array)) res = [res];
-    for(var k = 0, K = res.length; k < K; k++)
-      out.push(res[k]);
-    //out.push.apply(out, res instanceof Array? res : [res]);
-
   }
 
-  return nonempty ? this.run(out) : axiom;
+  return (nonterminals > 0 ? this.run(output) : output);
 }
 
-module.exports = ShapeGrammar;
+_.TERMINAL = 'TERMINAL';
+
+module.exports = _;

@@ -49,7 +49,7 @@ vec3 bumpMap(vec3 fvert, vec3 fnorm, float bump) {
 
   vec3 bU = dFdx(bump) * cross(fnorm, normalize(dFdy(fvert))),
        bV = dFdy(bump) * cross(normalize(dFdx(fvert)), fnorm),
-       bD = fnorm + (bU + bV) * .5;
+       bD = fnorm + .5 * (bU + bV);
 
   return normalize(bD);
 }

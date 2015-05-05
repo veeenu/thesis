@@ -4,6 +4,7 @@ precision highp float;
 /* #pragma glslify: fxaa = require(glsl-fxaa) */
 
 uniform sampler2D target0, target1, target2, depthBuffer, randMap;
+uniform mat4 viewMatrix;
 uniform vec3 lightPos;
 
 varying vec2 coord;
@@ -36,7 +37,13 @@ highp float rand(vec2 co)
 // Main
 ////////////////////////////////////////////////////////////////////////////////
 
+
 void main() {
+  /*vec3 lights[4];
+  lights[0] = vec3(6. - .025, .2, 6. - .025);
+  lights[1] = vec3(6. - .025, .2, 6. + .025);
+  lights[2] = vec3(6. + .025, .2, 6. + .025);
+  lights[3] = vec3(6. + .025, .2, 6. - .025);*/
   /*vec4 t0 = fxaa(target0, coord, res),
        t1 = fxaa(target1, coord, res),
        t2 = fxaa(target2, coord, res);*/
@@ -49,11 +56,21 @@ void main() {
         color  = t2.xyz;
   float depth  = t1.w;
 
-  vec3 lightDir = lPos - vertex;
 
+
+  vec3 lightDir = lPos - vertex;
   float lambert = max(dot(faceforward(-normal, lightDir, normal), normalize(lightDir)), 0.),
         dist = length(lightDir),
-        att = min(1., 1. / (1. + 1.5 * dist + 5. * dist * dist));
+        att = min(1., 1. / (1. + 2.5 * dist + 5. * dist * dist));
+
+  /*float lambert = 0., att = 1.;
+  for(int i = 0; i < 4; i++) {
+    vec3 lightDir = (viewMatrix * vec4(lights[i], 1.)).xyz - vertex;
+    float llambert = max(dot(faceforward(-normal, lightDir, normal), normalize(lightDir)), 0.),
+          dist = length(lightDir),
+          latt = min(1., 1. / (1. + .5 * dist + 5. * dist * dist));
+    lambert += llambert * latt * .25;
+  }*/
 
   //////////////////////////////////////////////////////////////////////////////
   // SSAO
@@ -82,4 +99,5 @@ void main() {
 
   color = clamp(color - occlusion, 0., 1.);
   gl_FragColor = vec4(lambert * att * 2. * color, 1.);
+  //gl_FragColor = vec4(color, 1.);
 }

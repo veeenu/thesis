@@ -7,294 +7,251 @@ var ShapeGrammar = require('ShapeGrammar'),
     StaircaseSHG = require('./StaircaseSHG.js');
 
 var shg = new ShapeGrammar(),
-    context = { 
-      vertices: [],
-      normals: [],
-      extra: [],
-      uvs: [],
-      totalLights: 0,
-      rng: new PRNG(31337)
+    rng = new PRNG(31337);
+
+shg.define('Building', null, function() {
+
+  var ret = [],
+      curHeight = 0;
+  
+  for(var i = 0, I = this.floorsLayout.length; i < I; i++) {
+    var fli = this.floorsLayout[i], floor = {
+      sym: fli.type,
+      height: fli.height,
+      params: fli,
+      points: this.points.map(function(i) {
+        return { x: i.x, y: i.y + curHeight, z: i.z };
+      })
     };
 
-shg.define('GndFloor', null, null, null, function() {
-  var ret = SHAPE.extrudeAll(this.points, this.floorHeight,
-                             this.points.map(function(i, idx) { return idx === 0 ? 'FrontDoor' : 'Facade'} )),
-      dy = this.floorHeight * (this.floors + 1),
-      ceilFace = {
-        /*sym: 'TPolyFloor',
-        points: this.points.map(function(i) {
-          return { x: i.x, y: i.y + this.floorHeight * (this.floors + 1) + this.ledgeHeight, z: i.z }
-        }.bind(this))*/
-        sym: 'Ceiling',
-        x0: this.points[0].x, y0: this.points[0].y + dy, z0: this.points[0].z,
-        x1: this.points[1].x, y1: this.points[1].y + dy, z1: this.points[1].z,
-        x2: this.points[2].x, y2: this.points[2].y + dy, z2: this.points[2].z,
-        x3: this.points[3].x, y3: this.points[3].y + dy, z3: this.points[3].z,
-        texID: 6
-      };
-      /*floorFace = {
-        sym: 'TPolyFloor',
-        points: this.points
-      },
-      gceilFace = {
-        sym: 'TPolyFloor',
-        points: this.points.map(function(i) {
-          return { x: i.x, y: i.y + this.floorHeight, z: i.z }
-        }.bind(this))
-      };*/
-
-  for(var i = 0; i <= this.floors; i++) {
-    var fs = this.points.reduce(function(o, cur) {
-      o.points.push({
-        x: cur.x, y: cur.y + o.floorHeight * (i + 1), z: cur.z
-      });
-      return o;
-    }.bind(this), { sym: i < this.floors ? 'Floor' : 'Ledge', floorHeight: this.floorHeight, ledgeHeight: this.ledgeHeight, points: [] });
-
-    /*fs.hasBalcony = true;
-    if(i < this.floors - 1)
-      fs.hasStairs = true;*/
-    ret.push(fs);
+    curHeight += fli.height;
+    
+    ret.push(floor);
   }
 
-  var lY = (this.points[0].y + this.floorHeight * this.floors) / 2;
-
-  for(var i = 0, I = ret.length; i < I; i++) {
-    ret.push({
-      sym: 'TLight',
-      lightPos: {
-        x: (ret[i].x0 + ret[i].x3) / 2,
-        y: lY,
-        z: (ret[i].z0 + ret[i].z3) / 2
-      }
-    });
-  }
-
-  ret.push(ceilFace);
-
   return ret;
+
 });
 
-shg.define('Ceiling', null, null, null, function() {
-  var ret = SHAPE.splitXZ(this, [ .5, .5 ], [ .5, .5 ], 'TQuad')
-    .map(function(i) {
-      i.texID = 6;
-      return i;
-    });
-  return ret;
-})
-
-shg.define('Floor', null, null, null, function() {
-  var hb = this.hasBalcony, hs = this.hasStairs;
-
-  var ret = SHAPE.extrudeAll(this.points, this.floorHeight,
-                             this.points.map(function(i, idx) { return 'Facade' } ))
-    .map(function(i) {
-      i.hasBalcony = hb;
-      i.hasStairs = hs;
-      return i;
-    });
-  return ret;
-});
-
-shg.define('Ledge', null, null, null, function() {
-  var ret = SHAPE.extrudeAll(this.points, this.ledgeHeight,
-        this.points.map(function(i, idx) { return 'TQuad' } )
-      ).map(function(i) { 
-        i.texID = 6;
-        var dx = i.x0 - i.x3, dz = i.z0 - i.z3, 
-            dy = Math.abs(i.y1 - i.y0),
-            w = Math.sqrt(dx * dx + dz * dz) / (7 * this.ledgeHeight);
-        i.uvs = [
-          { s: 0, t: .125 },
-          { s: 0, t: 0 },
-          { s: w, t: 0 },
-          { s: w, t: .125 }
-        ]
-        return i; 
-      }.bind(this))/*,
-      p0 = this.points[0], p1 = this.points[1],
-      p2 = this.points[2], p3 = this.points[3],
-      ceilFace = {
-        sym: 'TQuad',
-        points: {
-          x0: p0.x, y0: p0.y + this.ledgeHeight, z0: p0.z,
-          x1: p1.x, y1: p1.y + this.ledgeHeight, z1: p1.z,
-          x2: p2.x, y2: p2.y + this.ledgeHeight, z2: p2.z,
-          x3: p3.x, y3: p3.y + this.ledgeHeight, z3: p3.z
-        }
-      }*/;
-  //ret.push(ceilFace);
-  return ret;
-});
-
-shg.define('Facade', null, null, null, function() {
-
-  var tiles = SHAPE.fit('x', this, 'Tile', 1);
-
-  /*tiles[1].hasBalcony = this.hasBalcony;
-  tiles[1].hasStairs = this.hasStairs;*/
-
-  return tiles;
-});
-
-shg.define('FrontDoor', null, null, null, function() {
-  var d = SHAPE.fit('x', this, 'Tile', 1), c = ~~(d.length / 2);
-  d[c].sym = 'Door';
-  return d;
-});
-
-shg.define('Tile', null, null, null, function() {
-
-  var spl = SHAPE.split(this, [ .3, .4, .3 ], [ .7, .3 ], [
-    'TQuad', 'TWin',  'TQuad',
-    'TQuad', 'TQuad', 'TQuad'
-  ]);
-
-  spl[0].texID = spl[4].texID = spl[2].texID = 
-    spl[3].texID = spl[5].texID = 6;
-  spl[1].uvs = null;
+shg.define('FL_GndFloor', null, function() {
   
-  var dx = this.x3 - this.x0,
-      dy = Math.abs(this.y1 - this.y0),
-      dz = this.z3 - this.z0,
-      angle = Math.atan2(dz, dx) + Math.PI / 2,
-      cos = Math.cos(angle), sin = Math.sin(angle),
-      padx = sin * .01, padz = -cos * .01,
-      w = Math.sqrt(dx * dx + dz * dz) * .33,
-      h = Math.abs(dy);
+  var facades = SHAPE.extrudeAll(this.points, this.height, 'Facade', [0, 1, 0]);
+
+  switch(this.params.tiles) {
+    case 'OneDoor':
+      for(var i = 1, I = facades.length; i < I; i++)
+        facades[i].type = 'Windows';
+      facades[0].type = 'OneDoor';
+      break;
+  }
+
+  return facades;
+
+});
+
+shg.define('FL_Floor', null, function() {
   
-  if(this.hasBalcony) {
-    spl.push({
-      sym: 'Balcony',
-      points: {
-        x0: this.x0 + padx, y0: this.y1, z0: this.z0 + padz,
-        x3: this.x3 - padx, y3: this.y2, z3: this.z3 - padz,
-        y1: this.y1, y2: this.y1,
+  var facades = SHAPE.extrudeAll(this.points, this.height, 'Facade', [0, 1, 0]);
 
-        x1: this.x0 + cos * w + padx,
-        x2: this.x3 + cos * w - padx,
-        z1: this.z0 + sin * w + padz,
-        z2: this.z3 + sin * w - padz
-      },
-      cos: cos,
-      floorHeight: .005,
-      fenceHeight: dy / 2
-    });
-  }
-  if(this.hasStairs) {
-    spl.push({
-      sym: 'Staircase',
-      x: this.x0 + 2 * padx, y: this.y1, z: this.z0 + w * .25,
-
-      height: Math.abs(this.y1 - this.y0), 
-      width: sin * (dx - 4 * padx),
-      stairDepth: w * .5,
-      stairHeight: .0025,
-      stairSpace: .00625
-    });
+  for(var i = 0, I = facades.length; i < I; i++) {
+    facades[i].type = 'Windows';
+    facades[i].windows = this.params.windows;
   }
 
-  return spl;
+  return facades;
+
 });
 
-shg.define('Door', null, null, null, function() {
+shg.define('FL_Ledge', null, function() {
 
- var spl = SHAPE.split(this, [ .1, .8, .1 ], [ .3, .7 ], [
-   'TQuad', 'TQuad', 'TQuad',
-   'TQuad', 'TDoor',  'TQuad'
- ]).map(function(i, idx) {
-   if(idx !== 4)
-     i.texID = 6;
-   return i;
- });
+  var extrPoints = [], h = this.height;
 
-  spl[4].uvs = [ { s:  0, t:  1 }, { s:  0, t:  0 }, { s:  1, t:  0 }, { s:  1, t:  1 } ];
+  for(var i = 0, I = this.points.length; i < I; i++) {
+    var p0 = this.points[i], p1 = this.points[(i + 1) % I],
+        angle = Math.atan2(p1.z - p0.z, p1.x - p0.x),
+        anglep = angle - Math.PI / 2,
+        cos = Math.cos(angle) + Math.cos(anglep),
+        sin = Math.sin(angle) + Math.sin(anglep);
 
-  return spl;
+    extrPoints.push({
+      x: p0.x - this.params.width * cos,
+      y: p0.y, 
+      z: p0.z - this.params.width * sin
+    })
+  }
+
+  var facades = SHAPE.extrudeAll(extrPoints, this.height, 'Quad', [0, 1, 0]);
+
+  facades.forEach(function(i) {
+    var dx = i.points[3].x - i.points[0].x,
+        dy = i.points[1].y - i.points[0].y,
+        dz = i.points[3].z - i.points[0].z;
+    var t = h / shg.UVSCALE,
+        s = t * Math.sqrt(dx * dx + dz * dz) / dy;
+
+    i.uvs = [
+      { s: 0, t: t },
+      { s: 0, t: 0 },
+      { s: s, t: 0 },
+      { s: s, t: t }
+    ];
+    i.texID = 6;
+  });
+
+  facades.push({
+    sym: 'Poly',
+    texID: 6,
+    points: extrPoints
+  });
+
+  facades.push({
+    sym: 'Poly',
+    texID: 6,
+    points: extrPoints.map(function(i) {
+      return { x: i.x, y: i.y + h, z: i.z }
+    })
+  });
+
+  return facades;
+
 });
 
-shg.define('TQuad', null, null, null, function() {
-  var vertices = [], normals = [], uvs = [], normal,
-      u0, u1, u2, u3;
-  var uuvs = this.uvs || [ { s:  0, t:  1 }, { s:  0, t:  0 }, { s:  1, t:  0 }, { s:  1, t:  1 } ];
+shg.define('FL_Rooftop', null, function() {
 
-  vertices = [
-    this.x0, this.y0, this.z0,
-    this.x1, this.y1, this.z1,
-    this.x2, this.y2, this.z2,
-    this.x0, this.y0, this.z0,
-    this.x2, this.y2, this.z2,
-    this.x3, this.y3, this.z3
+  var extrPoints = [], h = this.height;
+
+  for(var i = 0, I = this.points.length; i < I; i++) {
+    var p0 = this.points[i], p1 = this.points[(i + 1) % I],
+        angle = Math.atan2(p1.z - p0.z, p1.x - p0.x),
+        anglep = angle - Math.PI / 2,
+        cos = Math.cos(angle) + Math.cos(anglep),
+        sin = Math.sin(angle) + Math.sin(anglep);
+
+    extrPoints.push({
+      x: p0.x + this.params.width * cos,
+      y: p0.y, 
+      z: p0.z + this.params.width * sin
+    })
+  }
+
+  var facadesOut = SHAPE.extrudeAll(this.points, this.height, 'Quad', [0, 1, 0]),
+      facadesIn  = SHAPE.extrudeAll(extrPoints,  this.height, 'Quad', [0, 1, 0]);
+
+  facadesIn.push({
+    sym: 'Poly',
+    points: extrPoints
+  });
+
+  while(facadesOut.length)
+    facadesIn.push(facadesOut.shift());
+
+  facadesIn.forEach(function(i) {
+    var dx = i.points[3].x - i.points[0].x,
+        dy = i.points[1].y - i.points[0].y,
+        dz = i.points[3].z - i.points[0].z;
+    var t = h / shg.UVSCALE,
+        s = t * Math.sqrt(dx * dx + dz * dz) / dy;
+
+    i.uvs = [
+      { s: 0, t: t },
+      { s: 0, t: 0 },
+      { s: s, t: 0 },
+      { s: s, t: t }
+    ];
+    i.texID = 6;
+  });
+
+  for(var i = 0, I = extrPoints.length; i < I; i++) {
+    var ii = (i + 1) % I,
+        p0 = this.points[i], p1 = extrPoints[i],
+        p2 = extrPoints[ii], p3 = this.points[ii];
+
+    var poly = {
+      sym: 'Poly',
+      points: [ p0, p1, p2, p0, p2, p3 ].map(function(i) { return { x: i.x, y: i.y + h, z: i.z }; }),
+      texID: 6
+    };
+
+    facadesIn.push(poly);
+  }
+
+  return facadesIn;
+});
+
+shg.define('Facade', function() { return this.type === 'OneDoor' }, function() {
+
+  var dx = this.points[3].x - this.points[0].x,
+      dy = this.points[1].y - this.points[0].y,
+      dz = this.points[3].z - this.points[0].z,
+      t  = dy / shg.UVSCALE,
+      s  = t * Math.sqrt(dx * dx + dz * dz) / dy;
+
+  this.uvs = [
+    { s: 0, t: t },
+    { s: 0, t: 0 },
+    { s: s, t: 0 },
+    { s: s, t: t }
   ];
 
-  var ti = this.texID || 0;
+  var quads = SHAPE.fit('x', this, 'Window', 1);
 
-  u0 = uuvs[0];
-  u1 = uuvs[1];
-  u2 = uuvs[2];
-  u3 = uuvs[3];
+  //quads[ ~~(quads.length / 2) ].sym = 'Door';
+  quads.splice(Math.floor(quads.length / 2), 1);
+  
+  for(var i = 0, I = quads.length; i < I; i++)
+    quads[i].normal = this.normal;
 
-  uvs = [
-    u0.s, u0.t, ti,
-    u1.s, u1.t, ti,
-    u2.s, u2.t, ti,
-    u0.s, u0.t, ti,
-    u2.s, u2.t, ti,
-    u3.s, u3.t, ti
+  return quads;
+
+});
+
+shg.define('Facade', null, function() {
+
+  var dx = this.points[3].x - this.points[0].x,
+      dy = this.points[1].y - this.points[0].y,
+      dz = this.points[3].z - this.points[0].z,
+      t  = dy / shg.UVSCALE,
+      s  = t * Math.sqrt(dx * dx + dz * dz) / dy;
+
+  this.uvs = [
+    { s: 0, t: t },
+    { s: 0, t: 0 },
+    { s: s, t: 0 },
+    { s: s, t: t }
   ];
 
-  normal = Geom.triToNormal(vertices);
-  for(var i = 0; i < 18; i++) {
-    normals.push(normal[i % 3]);
-  }
+  var quads = SHAPE.fit('x', this, 'Window', 1);
 
-  this.sym = null;
-  this.vertices = vertices;
-  this.normals = normals;
-  this.uvs = uvs;
-  return this;
-  //return { sym: null , vertices: vertices, normals: normals, uvs: uvs };
+  //quads[ Math.round(quads.length / 2) ].sym = 'Door';
+  
+  for(var i = 0, I = quads.length; i < I; i++)
+    quads[i].normal = this.normal;
+
+  return quads;
+
 });
 
-shg.define('TPolyFloor', null, null, null, function() {
-  var rings = this.points.reduce(function(out, val) {
-    out.push([val.x, val.z]);
-    return out;
-  }, []), y = this.points[0].y;
+shg.define('Window', null, function() {
+  
+  var hsp = SHAPE.split(this, [ .3, .4, .3 ], [1], 'Quad'),
+      vsp = SHAPE.split(hsp[1], [1], [.15, .7, .15], 'Quad'),
+      windowPane = vsp[1];
 
-  var triverts = earcut([rings]),
-      vertices = triverts.reduce(function(out, val, i) {
-        out.push(val[0], y, val[1]);
-        return out;
-      }, []),
-      normal = Geom.triToNormal(vertices),
-      normals = vertices.map(function(i, idx) {
-        return normal[idx % 3];
-      });
+  var wpuvs = windowPane.uvs;
+  windowPane.uvs = null;
+  windowPane.texID = 4;
 
-  return { sym: null, vertices: vertices, normals: normals };
-});
+  hsp[0].texID = hsp[2].texID = vsp[0].texID = vsp[2].texID = 6;
 
-shg.define('TWin', null, null, null, function() {
-  var hasLight = context.rng.random() > .25;
-  this.texID = hasLight ? 4 : 5;
-  this.sym = 'TQuad';
-  //if(hasLight)
+  var ret = [ hsp[0], hsp[2], vsp[0], vsp[2] ];
 
   var norm = Geom.triToNormal([
-    this.x0, this.y0, this.z0,
-    this.x1, this.y1, this.z1,
-    this.x2, this.y2, this.z2
+    windowPane.points[0].x, windowPane.points[0].y, windowPane.points[0].z, 
+    windowPane.points[1].x, windowPane.points[1].y, windowPane.points[1].z, 
+    windowPane.points[2].x, windowPane.points[2].y, windowPane.points[2].z
   ]);
 
-  var borders = SHAPE.extrudeAll([
-    { x: this.x0, y: this.y0, z: this.z0 },
-    { x: this.x1, y: this.y1, z: this.z1 },
-    { x: this.x2, y: this.y2, z: this.z2 },
-    { x: this.x3, y: this.y3, z: this.z3 }
-  ], -.005, 'TQuad', norm);
-
+  var borders = SHAPE.extrudeAll(windowPane.points, -.005, 'Quad', norm);
   var nX = norm[0],
       nY = norm[1],
       nZ = norm[2];
@@ -303,33 +260,113 @@ shg.define('TWin', null, null, null, function() {
   nY *= .005;
   nZ *= .005;
 
-  this.x0 -= nX;
-  this.y0 -= nY;
-  this.z0 -= nZ;
-  this.x1 -= nX;
-  this.y1 -= nY;
-  this.z1 -= nZ;
-  this.x2 -= nX;
-  this.y2 -= nY;
-  this.z2 -= nZ;
-  this.x3 -= nX;
-  this.y3 -= nY;
-  this.z3 -= nZ;
+  for(var i = 0, I = windowPane.points.length; i < I; i++) {
+    var p = windowPane.points[i];
+    p.x -= nX;
+    p.y -= nY;
+    p.z -= nZ;
+  }
 
-  borders.push(this)
+  for(var i = 0, I = borders.length; i < I; i++) {
+    borders[i].texID = 3;
+    ret.push(borders[i]);
+  }
+  ret.push(windowPane);
 
-  return borders;
+  return ret;
+
 });
 
-shg.define('TDoor', null, null, null, function() {
-  this.texID = 4;
-  this.sym = 'TQuad';
+shg.define('Quad', null, (function() {
 
-  return this;
+  var defaultUVS = [ 
+    { s: 0, t: 1 }, 
+    { s: 0, t: 0 }, 
+    { s: 1, t: 0 }, 
+    { s: 1, t: 1 } 
+  ];
+
+  return function() {
+    
+    var vertices, normals = [], uvs,
+        normal, texID,
+        u0, u1, u2, u3,
+        p0, p1, p2, p3, ps = this.points;
+
+    p0 = ps[0], p1 = ps[1], p2 = ps[2], p3 = ps[3];
+
+    vertices = [
+      p0.x, p0.y, p0.z, p1.x, p1.y, p1.z, p2.x, p2.y, p2.z,
+      p0.x, p0.y, p0.z, p2.x, p2.y, p2.z, p3.x, p3.y, p3.z
+    ];
+
+    normal = this.normal || Geom.triToNormal(vertices);
+    for(var i = 0; i < 6; i++)
+      normals.push(normal[0], normal[1], normal[2]);
+
+    uvs = this.uvs || defaultUVS;
+    u0 = uvs[0], u1 = uvs[1], u2 = uvs[2], u3 = uvs[3];
+    texID = this.texID || 0;
+
+    uvs = [
+      u0.s, u0.t, texID, u1.s, u1.t, texID, u2.s, u2.t, texID,
+      u0.s, u0.t, texID, u2.s, u2.t, texID, u3.s, u3.t, texID
+    ];
+
+    return {
+      sym: ShapeGrammar.TERMINAL,
+      vertices: vertices,
+      normals: normals,
+      uvs: uvs
+    }
+
+  }
+
+}()));
+
+shg.define('Poly', null, function() {
+  var rings = this.points.map(function(i) {
+    return [i.x, i.z];
+  }), y = this.points[0].y;
+
+  var triverts = earcut([rings]),
+      vertices = triverts.reduce(function(o, i) {
+        o.push(i[0], y, i[1]);
+        return o;
+      }, []),
+      normal = this.normal || Geom.triToNormal(vertices),
+      normals = [], uvs = [];
+
+  var minX, minZ, maxX, maxZ, dx, dz, p;
+
+  minX = minZ = Number.POSITIVE_INFINITY;
+  maxX = maxZ = Number.NEGATIVE_INFINITY;
+
+  for(var i = 0, I = this.points.length; i < I; i++) {
+    p = this.points[i];
+    if(minX > p.x) minX = p.x;
+    if(maxX < p.x) maxX = p.x;
+    if(minZ > p.z) minZ = p.z;
+    if(maxZ < p.z) maxZ = p.z;
+  }
+
+  dx = maxX - minX;
+  dz = maxZ - minZ;
+
+  for(var i = 0, I = vertices.length; i < I; i += 3) {
+    var x = vertices[i], z = vertices[i + 2];
+    uvs.push( (x - minX) / dx, (z - minZ) / dz, this.texID );
+    normals.push(normal[0], normal[1], normal[2]);
+  }
+
+  return {
+    sym: ShapeGrammar.TERMINAL,
+    vertices: vertices,
+    normals: normals,
+    uvs: uvs
+  }
+
 });
-
-BalconySHG.augment(shg);
-StaircaseSHG.augment(shg);
 
 var availColors = [
   [ .88, .88, .88 ],
@@ -338,6 +375,8 @@ var availColors = [
   [ .68, .53, .46 ]
 ];
 
+shg.UVSCALE = .1;
+
 module.exports = {
   shg: shg,
   create: function(lot) {
@@ -345,22 +384,44 @@ module.exports = {
 
     var dx = lot.width / 2, dy = lot.depth / 2,
         x0 = lot.x - dx, x1 = lot.x + dx,
-        y0 = lot.y - dy, y1 = lot.y + dy;
+        y0 = lot.y - dy, y1 = lot.y + dy,
+        ratio = Math.max(dx / dy, dy / dx);
+   var pts = [];
 
-    var axiom = {
-      sym: 'GndFloor',
-      floorHeight: .1,
-      floors: 4 + ~~(context.rng.random() * 10),
-      ledgeHeight: .02,
-      points: [
+    if(ratio < 1.3 && rng.random() < .3) {
+      for(var i = 0; i < 8; i++)
+        pts.push({ x : lot.x + dx * Math.cos(-i * Math.PI / 4), y: 0, z: lot.y + dy * Math.sin(-i * Math.PI / 4) }); 
+    } else {
+      pts.push(
         { x: x0, y: 0, z: y0 },
         { x: x0, y: 0, z: y1 },
         { x: x1, y: 0, z: y1 },
         { x: x1, y: 0, z: y0 }
-      ]
+      );
+    }
+
+    var floorLayout = [
+      { type: 'FL_GndFloor', height: .1, tiles: 'OneDoor' },
+      { type: 'FL_Ledge',    height: .025, width: .0125 }
+    ];
+
+    for(var i = 0, I = 4 + ~~(rng.random() * 10); i < I; i++)
+      floorLayout.push(
+        { type: 'FL_Floor',  height: .1, windows: 'Double' }
+      );
+    floorLayout.push(
+      { type: 'FL_Ledge',    height: .025, width: .003125 },
+      { type: 'FL_Floor',    height: .15, windows: 'Single' },
+      { type: 'FL_Rooftop',  height: .025, width: .00625 }
+    );
+
+    var axiom = {
+      sym: 'Building',
+      floorsLayout: floorLayout,
+      points: pts
     };
 
-    var color = availColors[ ~~(context.rng.random() * availColors.length) ];
+    var color = availColors[ ~~(rng.random() * availColors.length) ];
 
     var ret = shg.run(axiom);
     return { geom: ret, color: color };
@@ -368,4 +429,5 @@ module.exports = {
   getGeom: function() {
     return context;
   }
-};
+
+}

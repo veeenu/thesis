@@ -382,11 +382,11 @@ var shgResult = shg.run({
     { type: 'FL_Floor',    height: .15, windows: 'Single' },
     { type: 'FL_Rooftop',  height: .05, width: .025 }
   ],
-  points: [
+  /*points: [
     { x: -.3, y: 0, z: -.3 },
     { x: -.3, y: 0, z:  .3 },
     { x:  .3, y: 0, z:  .3 },
     { x:  .3, y: 0, z: -.3 }
-  ]
-  //points: pts
+  ]*/
+  points: pts
 });

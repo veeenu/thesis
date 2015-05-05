@@ -18,10 +18,12 @@ stats.domElement.style.top = '1rem';
 canvas.parentNode.appendChild(stats.domElement);
 
 var loadingStatus = 0;
+var t0 = NaN;
 
 Loader.subscribe('Blocks', function() {
   console.log('Loading complete');
   loadingStatus = 1;
+  t0 = NaN;
   sceneLoop();
 });
 
@@ -31,11 +33,15 @@ function loadingLoop() {
   Loader.render();
 }
 
-function sceneLoop() {
+
+function sceneLoop(ts) {
+
+  if(isNaN(sceneLoop.t0))
+    sceneLoop.t0 = ts;
 
   stats.begin();
   Renderer.render(mainScene);
-  mainScene.update();
+  mainScene.update(ts - sceneLoop.t0);
   stats.end();
 
   requestAnimationFrame(sceneLoop);
