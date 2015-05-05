@@ -4,5 +4,7 @@ highlighter: pygments
 collections:
   source:
     output: true
+  js:
+    output: true
 baseurl: /thesis
 exclude: ['src', 'LICENSE', 'README.md']
