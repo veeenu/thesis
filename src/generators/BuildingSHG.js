@@ -2,7 +2,8 @@ var ShapeGrammar = require('ShapeGrammar'),
     SHAPE        = require('../lib/SHAPE.js'),
     earcut       = require('earcut'),
     Geom         = require('Geom'),
-    PRNG         = require('PRNG');
+    PRNG         = require('PRNG'),
+    BalconySHG   = require('./BalconySHG.js');
     //BalconySHG   = require('./BalconySHG.js'),
     //StaircaseSHG = require('./StaircaseSHG.js');
 
@@ -29,6 +30,8 @@ shg.define('Building', null, function() {
 
     if('frontFacade' in this)
       floor.frontFacade = this.frontFacade;
+    if('hasBalcony' in this)
+      floor.hasBalcony = this.hasBalcony;
 
     curHeight += fli.height;
     
@@ -51,12 +54,12 @@ shg.define('FL_GndFloor', null, (function() {
 
     switch(this.params.tiles) {
       case 'OneDoor':
-        var doorf = 0, minAD = Number.POSITIVE_INFINITY;
+        //var doorf = 0, minAD = Number.POSITIVE_INFINITY;
 
         for(var i = 0, I = facades.length; i < I; i++) {
           facades[i].type = 'Windows';
         }
-        if(!('frontFacade' in this))
+        /*if(!('frontFacade' in this))
           for(var i = 0, I = facades.length; i < I; i++) {
             var fi = facades[i],
                 x0 = fi.points[0].x,
@@ -71,9 +74,9 @@ shg.define('FL_GndFloor', null, (function() {
 
           }
         else
-          doorf = this.frontFacade;
+          doorf = this.frontFacade;*/
 
-        facades[doorf].type = 'OneDoor';
+        facades[this.frontFacade].type = 'OneDoor';
         break;
     }
 
@@ -90,6 +93,7 @@ shg.define('FL_Floor', null, function() {
     facades[i].type = 'Windows';
     facades[i].windows = this.params.windows;
   }
+  if('hasBalcony' in this) facades[this.frontFacade].hasBalcony = this.hasBalcony;
 
   return facades;
 
@@ -97,7 +101,7 @@ shg.define('FL_Floor', null, function() {
 
 shg.define('FL_Ledge', null, function() {
 
-  var extrPoints = [], h = this.height;
+  var extrPoints = [], h = this.height, yy = this.points[0].y;
 
   for(var i = 0, I = this.points.length; i < I; i++) {
     var p0 = this.points[i], p1 = this.points[(i + 1) % I],
@@ -105,13 +109,13 @@ shg.define('FL_Ledge', null, function() {
         anglep = angle - Math.PI / 2,
         cos = Math.cos(angle) + Math.cos(anglep),
         sin = Math.sin(angle) + Math.sin(anglep);
-
-    extrPoints.push({
-      x: p0.x - this.params.width * cos,
-      y: p0.y, 
-      z: p0.z - this.params.width * sin
-    })
   }
+
+  extrPoints = Geom.insetPolygon(this.points.map(function(i) { 
+                 return { x: i.x, y: i.z }
+               }), this.params.width).map(function(i) {
+                 return { x: i.x, y: yy, z: i.y }
+               });
 
   var facades = SHAPE.extrudeAll(extrPoints, this.height, 'Quad', [0, 1, 0]);
 
@@ -151,7 +155,7 @@ shg.define('FL_Ledge', null, function() {
 
 shg.define('FL_Rooftop', null, function() {
 
-  var extrPoints = [], h = this.height;
+  var extrPoints = [], h = this.height, yy = this.points[0].y;
 
   for(var i = 0, I = this.points.length; i < I; i++) {
     var p0 = this.points[i], p1 = this.points[(i + 1) % I],
@@ -159,13 +163,13 @@ shg.define('FL_Rooftop', null, function() {
         anglep = angle - Math.PI / 2,
         cos = Math.cos(angle) + Math.cos(anglep),
         sin = Math.sin(angle) + Math.sin(anglep);
-
-    extrPoints.push({
-      x: p0.x + this.params.width * cos,
-      y: p0.y, 
-      z: p0.z + this.params.width * sin
-    })
   }
+
+  extrPoints = Geom.insetPolygon(this.points.map(function(i) { 
+                 return { x: i.x, y: i.z }
+               }), -this.params.width).map(function(i) {
+                 return { x: i.x, y: yy, z: i.y }
+               });
 
   var facadesOut = SHAPE.extrudeAll(this.points, this.height, 'Quad', [0, 1, 0]),
       facadesIn  = SHAPE.extrudeAll(extrPoints,  this.height, 'Quad', [0, 1, 0]);
@@ -244,8 +248,10 @@ shg.define('Facade', null, function() {
   var dx = this.points[3].x - this.points[0].x,
       dy = this.points[1].y - this.points[0].y,
       dz = this.points[3].z - this.points[0].z,
+      len = Math.sqrt(dx * dx + dz * dz),
       t  = dy / shg.UVSCALE,
-      s  = t * Math.sqrt(dx * dx + dz * dz) / dy;
+      s  = t * len / dy,
+      bs = null;
 
   this.uvs = [
     { s: 0, t: t },
@@ -254,10 +260,32 @@ shg.define('Facade', null, function() {
     { s: s, t: t }
   ];
 
+  if(this.hasBalcony) {
+    var pars = {
+      x0: this.points[0].x, z0: this.points[0].z,
+      x1: this.points[3].x, z1: this.points[3].z,
+      y: this.points[0].y,
+      height: dy,
+      width: len * .9,
+      depth: len * .33,
+      angle: Math.atan2(-dz, dx)
+    };
+
+    bs = BalconySHG.createBalconyWithStairs(
+      pars
+    );
+
+    bs.sym = ShapeGrammar.TERMINAL;
+
+  }
   var quads = SHAPE.fit('x', this, 'Window', 1);
 
   for(var i = 0, I = quads.length; i < I; i++)
     quads[i].normal = this.normal;
+
+  if(bs !== null) {
+    quads.push(bs)
+  }
 
   return quads;
 
@@ -474,7 +502,7 @@ module.exports = {
         x0 = lot.x - dx, x1 = lot.x + dx,
         y0 = lot.y - dy, y1 = lot.y + dy,
         ratio = Math.max(dx / dy, dy / dx),
-        frontFacade = null;
+        frontFacade = null, hasBalcony = false;
 
     var pts = [];
 
@@ -496,6 +524,9 @@ module.exports = {
       // Building with an inward-extruded part, facing the
       // front of the street
       //
+      hasBalcony = true;
+
+      var balck = 2 / 2.7;
       if(dx > dy) {
         //
         // Lot angle can either be 0 (front facing) or π (back facing)
@@ -504,10 +535,10 @@ module.exports = {
           pts.push(
             { x: x0, y: 0, z: y0 },
             { x: x0, y: 0, z: y1 },
-            { x: x0 + dx * 2 / 3, y: 0, z: y1 },
-            { x: x0 + dx * 2 / 3, y: 0, z: y1 - dy * 2 / 3 },
-            { x: x1 - dx * 2 / 3, y: 0, z: y1 - dy * 2 / 3 },
-            { x: x1 - dx * 2 / 3, y: 0, z: y1 },
+            { x: x0 + dx * balck, y: 0, z: y1 },
+            { x: x0 + dx * balck, y: 0, z: y1 - dy * balck },
+            { x: x1 - dx * balck, y: 0, z: y1 - dy * balck },
+            { x: x1 - dx * balck, y: 0, z: y1 },
             { x: x1, y: 0, z: y1 },
             { x: x1, y: 0, z: y0 }
           );
@@ -518,10 +549,10 @@ module.exports = {
             { x: x0, y: 0, z: y1 },
             { x: x1, y: 0, z: y1 },
             { x: x1, y: 0, z: y0 },
-            { x: x1 - dx * 2 / 3, y: 0, z: y0 },
-            { x: x1 - dx * 2 / 3, y: 0, z: y0 + dy * 2 / 3 },
-            { x: x0 + dx * 2 / 3, y: 0, z: y0 + dy * 2 / 3 },
-            { x: x0 + dx * 2 / 3, y: 0, z: y0 }
+            { x: x1 - dx * balck, y: 0, z: y0 },
+            { x: x1 - dx * balck, y: 0, z: y0 + dy * balck },
+            { x: x0 + dx * balck, y: 0, z: y0 + dy * balck },
+            { x: x0 + dx * balck, y: 0, z: y0 }
           );
           frontFacade = 5;
         } 
@@ -532,10 +563,10 @@ module.exports = {
         if(lot.angle > 0) {
           pts.push(
             { x: x0, y: 0, z: y0 },
-            { x: x0, y: 0, z: y0 + dy * 2 / 3 },
-            { x: x0 + dx * 2 / 3, y: 0, z: y0 + dy * 2 / 3 },
-            { x: x0 + dx * 2 / 3, y: 0, z: y1 - dy * 2 / 3 },
-            { x: x0, y: 0, z: y1 - dy * 2 / 3 },
+            { x: x0, y: 0, z: y0 + dy * balck },
+            { x: x0 + dx * balck, y: 0, z: y0 + dy * balck },
+            { x: x0 + dx * balck, y: 0, z: y1 - dy * balck },
+            { x: x0, y: 0, z: y1 - dy * balck },
             { x: x0, y: 0, z: y1 },
             { x: x1, y: 0, z: y1 },
             { x: x1, y: 0, z: y0 }
@@ -546,10 +577,10 @@ module.exports = {
             { x: x0, y: 0, z: y0 },
             { x: x0, y: 0, z: y1 },
             { x: x1, y: 0, z: y1 },
-            { x: x1, y: 0, z: y1 - dy * 2 / 3 },
-            { x: x1 - dx * 2 / 3, y: 0, z: y1 - dy * 2 / 3 },
-            { x: x1 - dx * 2 / 3, y: 0, z: y0 + dy * 2 / 3 },
-            { x: x1, y: 0, z: y0 + dy * 2 / 3 },
+            { x: x1, y: 0, z: y1 - dy * balck },
+            { x: x1 - dx * balck, y: 0, z: y1 - dy * balck },
+            { x: x1 - dx * balck, y: 0, z: y0 + dy * balck },
+            { x: x1, y: 0, z: y0 + dy * balck },
             { x: x1, y: 0, z: y0 }
           );
           frontFacade = 4;
@@ -577,31 +608,31 @@ module.exports = {
     switch(flId) {
       case 0: // With ledge
         floorLayout.push(
-          { type: 'FL_GndFloor', height: .1, tiles: 'OneDoor', 
+          { type: 'FL_GndFloor', height: .2, tiles: 'OneDoor', 
                                  frontSide: lot.angle },
           { type: 'FL_Ledge',    height: .025, width: .00625 }
         );
         for(var i = 0, I = 4 + ~~(rng.random() * 10); i < I; i++)
           floorLayout.push(
-            { type: 'FL_Floor',  height: .1, windows: 'Double' }
+            { type: 'FL_Floor',  height: .2, windows: 'Double' }
           );
         floorLayout.push(
           { type: 'FL_Ledge',    height: .025, width: .00625 },
-          { type: 'FL_Floor',    height: .15, windows: 'Single' },
+          { type: 'FL_Floor',    height: .25, windows: 'Single' },
           { type: 'FL_Rooftop',  height: .025, width: .00625 }
         );
         break;
       case 1: // Without ledge
         floorLayout.push(
-          { type: 'FL_GndFloor', height: .1, tiles: 'OneDoor',
+          { type: 'FL_GndFloor', height: .2, tiles: 'OneDoor',
                                  frontSide: lot.angle }
         );
         for(var i = 0, I = 4 + ~~(rng.random() * 10); i < I; i++)
           floorLayout.push(
-            { type: 'FL_Floor',  height: .1, windows: 'Double' }
+            { type: 'FL_Floor',  height: .2, windows: 'Double' }
           );
         floorLayout.push(
-          { type: 'FL_Floor',    height: .15, windows: 'Single' },
+          { type: 'FL_Floor',    height: .25, windows: 'Single' },
           { type: 'FL_Rooftop',  height: .025, width: .00625 }
         );
         break;
@@ -615,6 +646,8 @@ module.exports = {
 
     if(frontFacade !== null)
       axiom.frontFacade = frontFacade;
+    if(hasBalcony)
+      axiom.hasBalcony = true;
 
     var color = availColors[ ~~(rng.random() * availColors.length) ];
 

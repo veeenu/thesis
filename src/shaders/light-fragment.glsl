@@ -114,7 +114,7 @@ void main() {
   kernel[2] = vec2(0., -1.);
   kernel[3] = vec2(-1., 0.);
 
-  const float sin45 = .707107, sRad = 80.;
+  const float sin45 = .707107, sRad = 40.;
 
   float occlusion = 0., kRad = sRad * (1. - depth);
 
@@ -127,11 +127,12 @@ void main() {
     occlusion += sample(vertex, normal, coord + k1 * kRad * .5);
     occlusion += sample(vertex, normal, coord + k1 * kRad * .25);
   }
-  occlusion /= 16.;
+  occlusion /= 8.;
   occlusion = clamp(occlusion, 0., 1.);
 
   color = clamp(color - occlusion, 0., 1.);
   gl_FragColor = vec4(lambert * att * 2. * color, 1.);
+  //gl_FragColor = vec4(vec3(1. - occlusion), 1.);
   //gl_FragColor = vec4(normal, 1.);
   //gl_FragColor = vec4(color, 1.);
 }

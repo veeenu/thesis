@@ -237,7 +237,7 @@ var scene = {
 console.log(geom)
 
 var t = 0., pushFn = function(o, i) { o.push(i); return o; },
-    x = 6, y = .05, z = 6, alpha = 0, beta = 0,
+    x = 5, y = .19, z = 6, alpha = 0, beta = 0,
     dx = 0, dz = 0;
 
 var tlerp = function(start, end, ts) {
@@ -318,7 +318,7 @@ scene.update = function(timestamp) {
     (Math.PI / beta).toFixed(2);
   //////////////////////////////////////////////////////////////////////////////
 
-  vec3.set(scene.lightPos, 6,.05, 6);
+  vec3.set(scene.lightPos, 5,.25, 6);
   mat4.identity(scene.view);
 
   mat4.rotateX(scene.view, scene.view, alpha);
@@ -332,7 +332,7 @@ scene.update = function(timestamp) {
     .map(function(i) { return i.mesh })
     .reduce(pushFn, scene.meshes);
 
-  log.textContent = scene.meshes.reduce(function(o, i) {
+  log.textContent += "\nVertices: " + scene.meshes.reduce(function(o, i) {
     return o + i.count;
   }, 0);
 
