@@ -3,11 +3,12 @@ precision highp float;
 
 /* #pragma glslify: fxaa = require(glsl-fxaa) */
 
-uniform sampler2D target0, target1, target2, depthBuffer, randMap;
-uniform mat4 viewMatrix;
+//uniform sampler2D target0, target1, target2, depthBuffer, randMap;
+uniform sampler2D target0, depthBuffer;
+uniform mat4 inverseProjection, viewMatrix;
 uniform vec3 lightPos;
 
-varying vec2 coord;
+varying vec2 sscoord, coord;
 varying vec3 lPos;
 
 //uniform vec3 lightPos;
@@ -32,6 +33,27 @@ highp float rand(vec2 co)
     return fract(sin(sn) * c);
 }
 
+vec3 unpackColor(float d) {
+  vec3 ret;
+
+  ret.x = fract(d);
+  float zi = floor(d / 255.);
+  ret.z = fract(zi / 255.);
+  ret.y = fract( floor( d - ( zi * 255. ) ) / 255.);
+
+  return ret;
+}
+
+vec3 unpackNormal(in vec2 enc)
+{
+	const float SCALE = 1.7777;
+	vec2 nn = enc * (2.0 * SCALE) - SCALE;
+	float g = 2.0 / (dot(nn.xy, nn.xy) + 1.0);
+	vec3 normal;
+	normal.xy = g * nn.xy;
+	normal.z = g - 1.0;
+	return normal;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Main
@@ -54,19 +76,20 @@ void main() {
        c2 = coord - nfw,
        c3 = coord + nfw;*/
 
-  vec4 t0 = texture2D(target0, coord),
+  vec4 t0 = texture2D(target0, coord);
+  /*vec4 t0 = texture2D(target0, coord),
        t1 = texture2D(target1, coord),
-       /*t1 = mix( mix(texture2D(target1, c0), texture2D(target1, c1), .5), 
-                 mix(texture2D(target1, c2), texture2D(target1, c3), .5), 
-                 .5),*/
-       t2 = texture2D(target2, coord);
+       t2 = texture2D(target2, coord);*/
 
-  vec3  vertex = t0.xyz,
-        normal = normalize(t1.xyz),
-        color  = t2.xyz;
-  float depth  = t1.w;
+  vec3  vertex,
+        //normal = normalize(t1.xyz),
+        normal = normalize(unpackNormal(t0.xy)),
+        color  = unpackColor(t0.z);
+        //color  = t2.xyz;
+  float depth  = t0.w;
 
-
+  vec4 vertexFromDepth = inverseProjection * vec4(sscoord, depth, 1.);
+  vertex = vertexFromDepth.xyz / vertexFromDepth.w;
 
   vec3 lightDir = lPos - vertex;
   float lambert = max(dot(faceforward(-normal, lightDir, normal), normalize(lightDir)), 0.),
@@ -109,5 +132,6 @@ void main() {
 
   color = clamp(color - occlusion, 0., 1.);
   gl_FragColor = vec4(lambert * att * 2. * color, 1.);
+  //gl_FragColor = vec4(normal, 1.);
   //gl_FragColor = vec4(color, 1.);
 }

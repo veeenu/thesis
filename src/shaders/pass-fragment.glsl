@@ -1,9 +1,9 @@
 #extension GL_OES_standard_derivatives : require
-#extension GL_EXT_draw_buffers : require
+//#extension GL_EXT_draw_buffers : require
 
 precision highp float;
 
-varying vec4 vPosition;
+varying vec4 vPosition, clipPosition;
 varying vec3 texUV, vNormal, vExtra;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -190,12 +190,25 @@ vec3 textureAsphalt(vec2 uuv) {
 }
 ////////////////////////////////////////////////////////////////////////////////
 
+float packColor(vec3 v) {
+  const float u = 255. / 256.;
+
+  return fract(v.x * u) + floor(v.y * u * 255.) + floor(v.z * u * 255.) * 255.;
+}
+
+vec2 packNormal(in vec3 normal)
+{
+    const float SCALE = 1.7777;
+    float scalar1 = (normal.z + 1.0) * (SCALE * 2.0);
+    return normal.xy / scalar1 + 0.5;
+}
+
 void main() {
 
   TTextureInfo ti; // = textureBrick(vPosition.xyz, vNormal.xyz, vNormal.w, texUV.st, vExtra.xyz);
   vec3 color, normal;
 
-  float depth = gl_FragCoord.z / gl_FragCoord.w;
+  float depth = clipPosition.z / clipPosition.w; //gl_FragCoord.z / gl_FragCoord.w;
 
   normal = normalize(faceforward(vNormal, gl_FragCoord.xyz, vNormal));
 
@@ -221,7 +234,8 @@ void main() {
   else
     color = textureAsphalt(mod(texUV.yx, 1.)); //textureWindow(uuv, fextra);
 
-  gl_FragData[0] = vPosition;
-  gl_FragData[1] = vec4(normal, depth);
-  gl_FragData[2] = vec4(color, 1.);
+  gl_FragColor = vec4(packNormal(normalize(normal)), packColor(clamp(color, 0., 1.)), depth);
+  //gl_FragData[0] = vec4(packNormal(normalize(normal)), packColor(clamp(color, 0., 1.)), depth);
+  //gl_FragData[1] = vec4(normalize(normal), depth);
+  //gl_FragData[2] = vec4(color, pack(clamp(color, 0., 1.)));
 }

@@ -22,17 +22,13 @@ vsrcPass  = fs.readFileSync(__dirname + '/shaders/pass-vertex.glsl', 'utf-8');
 fsrcPass  = fs.readFileSync(__dirname + '/shaders/pass-fragment.glsl', 'utf-8');
 vsrcLight = fs.readFileSync(__dirname + '/shaders/light-vertex.glsl', 'utf-8');
 fsrcLight = fs.readFileSync(__dirname + '/shaders/light-fragment.glsl', 'utf-8');
-/*vsrcPass  = glslify(__dirname + '/shaders/pass-vertex.glsl', 'utf-8');
-fsrcPass  = glslify(__dirname + '/shaders/pass-fragment.glsl', 'utf-8');
-vsrcLight = glslify(__dirname + '/shaders/light-vertex.glsl', 'utf-8');
-fsrcLight = glslify(__dirname + '/shaders/light-fragment.glsl', 'utf-8');*/
 
 gl.clearColor(0, 0, 0, 0);
 gl.depthFunc(gl.LESS);
 gl.getExtension('OES_standard_derivatives');
 gl.getExtension('OES_texture_float');
 gl.getExtension('OES_texture_float_linear');
-extDrawbuffers = gl.getExtension('WEBGL_draw_buffers');
+//extDrawbuffers = gl.getExtension('WEBGL_draw_buffers');
 extDepthTexture = gl.getExtension('WEBGL_depth_texture');
 
 /*******************************************************************************
@@ -65,17 +61,16 @@ console.log('VP:', gl.getShaderInfoLog(vshPass),
 /*******************************************************************************
  * Texture MRTs setup.
  * Layout:    
- * Target 0: | Pos.x  | Pos.y  | Pos.z  | Depth  |
- * Target 1: | Norm.x | Norm.y | Norm.z | ?      |
- * Target 2: | Col.r  | Col.g  | Col.b  | ?      |
+ * Target 0: | Pos.x  | Pos.y  | Pos.z  | Color  |
+ * Target 1: | Norm.x | Norm.y | Norm.z | Depth  |
  *******************************************************************************/
 
 var target0     = gl.createTexture(),
-    target1     = gl.createTexture(),
-    target2     = gl.createTexture(),
+  //target1     = gl.createTexture(),
+  //target2     = gl.createTexture(),
     depthTex    = gl.createTexture(),
-    framebuffer = gl.createFramebuffer(),
-    drawbuffers;
+    framebuffer = gl.createFramebuffer();
+  //drawbuffers;
 
 gl.bindTexture(gl.TEXTURE_2D, depthTex);
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
@@ -84,31 +79,40 @@ gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT, Context.w, Context.h, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_SHORT, null);
     
-[target0, target1, target2].forEach(function(target) {
+gl.bindTexture(gl.TEXTURE_2D, target0);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, Context.w, Context.h, 0, gl.RGBA, gl.FLOAT, null);
+/*[target0, target1, target2].forEach(function(target) {
   gl.bindTexture(gl.TEXTURE_2D, target);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, Context.w, Context.h, 0, gl.RGBA, gl.FLOAT, null);
-});
+});*/
 
 gl.bindTexture(gl.TEXTURE_2D, null);
 
 gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
 
 try {
-  drawbuffers = [
+  /*drawbuffers = [
     extDrawbuffers.COLOR_ATTACHMENT0_WEBGL,
-    extDrawbuffers.COLOR_ATTACHMENT1_WEBGL,
-    extDrawbuffers.COLOR_ATTACHMENT2_WEBGL
-  ];
-  extDrawbuffers.drawBuffersWEBGL(drawbuffers);
+    extDrawbuffers.COLOR_ATTACHMENT1_WEBGL
+    //extDrawbuffers.COLOR_ATTACHMENT2_WEBGL
+  ];*/
+  //extDrawbuffers.drawBuffersWEBGL(drawbuffers);
   gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, depthTex, 0);
-  gl.framebufferTexture2D(gl.FRAMEBUFFER, drawbuffers[0], gl.TEXTURE_2D, target0, 0);
-  gl.framebufferTexture2D(gl.FRAMEBUFFER, drawbuffers[1], gl.TEXTURE_2D, target1, 0);
-  gl.framebufferTexture2D(gl.FRAMEBUFFER, drawbuffers[2], gl.TEXTURE_2D, target2, 0);
-} catch(e) {}
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, target0, 0);
+  //gl.framebufferTexture2D(gl.FRAMEBUFFER, drawbuffers[0], gl.TEXTURE_2D, target0, 0);
+  //gl.framebufferTexture2D(gl.FRAMEBUFFER, drawbuffers[1], gl.TEXTURE_2D, target1, 0);
+  //gl.framebufferTexture2D(gl.FRAMEBUFFER, drawbuffers[2], gl.TEXTURE_2D, target2, 0);
+} catch(e) {
+  console.log(e)
+}
 
 
 gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -116,10 +120,11 @@ gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 /*******************************************************************************
  * Setup global matrices and VBOs
  *******************************************************************************/
-var quadBuf      = gl.createBuffer(),
-    lightBuf     = gl.createBuffer(),
-    quadArr      = [],
-    projection   = mat4.create();
+var quadBuf       = gl.createBuffer(),
+    lightBuf      = gl.createBuffer(),
+    quadArr       = [],
+    projection    = mat4.create(),
+    invProjection = mat4.create();
 
 for(var i = 0; i < 128; i++) {
   quadArr.push(1, -1, -1, -1, -1, 1,  1, -1, -1, 1, 1, 1);
@@ -132,6 +137,7 @@ gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([1, -1, -1, -1, -1, 1,  1, -1, -
 gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
 mat4.perspective(projection, Math.PI / 2, Context.aspectRatio, .001, 1000.);
+mat4.invert(invProjection, projection);
 
 /*******************************************************************************
  * Uniforms and attributes setup
@@ -149,7 +155,8 @@ mat4.perspective(projection, Math.PI / 2, Context.aspectRatio, .001, 1000.);
   programLight[i] = gl.getAttribLocation(programLight, i);
 });
 
-['target0', 'target1', 'target2', 'depthBuffer', 'viewMatrix', 'lightPos'].forEach(function(i) {
+['target0', 'target1', 'target2', 'depthBuffer', 
+ 'inverseProjection', 'viewMatrix', 'lightPos'].forEach(function(i) {
   programLight[i] = gl.getUniformLocation(programLight, i);
 });
 
@@ -233,12 +240,12 @@ programLight.activate = function(scene) {
   //
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, target0);
-  gl.activeTexture(gl.TEXTURE1);
+  /*gl.activeTexture(gl.TEXTURE1);
   gl.bindTexture(gl.TEXTURE_2D, target1);
   gl.activeTexture(gl.TEXTURE2);
   gl.bindTexture(gl.TEXTURE_2D, target2);
   gl.activeTexture(gl.TEXTURE3);
-  gl.bindTexture(gl.TEXTURE_2D, depthTex);
+  gl.bindTexture(gl.TEXTURE_2D, depthTex);*/
   //
   // VBO setup
   //
@@ -246,11 +253,12 @@ programLight.activate = function(scene) {
   gl.vertexAttribPointer(programLight.position, 2, gl.FLOAT, false, 0, 0);
 
   gl.uniform1i(programLight.target0, 0);
-  gl.uniform1i(programLight.target1, 1);
-  gl.uniform1i(programLight.target2, 2);
+  /*gl.uniform1i(programLight.target1, 1);
+  gl.uniform1i(programLight.target2, 2);*/
   gl.uniform1i(programLight.depthBuffer, 3);
 
   gl.uniformMatrix4fv(programLight.viewMatrix, false, scene.view);
+  gl.uniformMatrix4fv(programLight.inverseProjection, false, invProjection);
 
   gl.enableVertexAttribArray(programLight.position);
   //gl.enableVertexAttribArray(programLight.lightPosition);

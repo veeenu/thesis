@@ -3,13 +3,13 @@ uniform mat3 normalM;
 
 attribute vec3 vertex, normal, uv, extra;
 
-varying vec4 vPosition;
+varying vec4 vPosition, clipPosition;
 varying vec3 texUV, vNormal, vExtra;
 
 void main() {
   
   vec4 viewPos = viewmodel * vec4(vertex, 1.);
-  gl_Position = projection * viewPos;
+  clipPosition = gl_Position = projection * viewPos;
 
   vPosition = viewPos;
   vNormal = normalize(normalM * normal);

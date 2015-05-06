@@ -332,6 +332,8 @@ scene.update = function(timestamp) {
     .map(function(i) { return i.mesh })
     .reduce(pushFn, scene.meshes);
 
+  log.textContent = scene.meshes.length;
+
   scene.lights = geom.quadtreeLights
     .query(x, z, .5)
     .map(function(i) { 
