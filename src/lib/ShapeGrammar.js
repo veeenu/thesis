@@ -1,6 +1,6 @@
 var Geom = require('Geom'),
     SHAPE = require('./SHAPE.js'),
-    glMatrix = require('gl-matrix'),
+    glMatrix = require('glMatrix'),
     earcut = require('earcut'),
     vec3 = glMatrix.vec3,
     mat4 = glMatrix.mat4;

@@ -1,4 +1,4 @@
-var glMatrix = require('gl-matrix'),
+var glMatrix = require('glMatrix'),
     Context  = require('Context'),
     Mesh     = require('Mesh'),
     Geom     = require('Geom'),
@@ -332,7 +332,9 @@ scene.update = function(timestamp) {
     .map(function(i) { return i.mesh })
     .reduce(pushFn, scene.meshes);
 
-  log.textContent = scene.meshes.length;
+  log.textContent = scene.meshes.reduce(function(o, i) {
+    return o + i.count;
+  }, 0);
 
   scene.lights = geom.quadtreeLights
     .query(x, z, .5)

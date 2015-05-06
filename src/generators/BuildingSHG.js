@@ -27,6 +27,9 @@ shg.define('Building', null, function() {
       })
     };
 
+    if('frontFacade' in this)
+      floor.frontFacade = this.frontFacade;
+
     curHeight += fli.height;
     
     ret.push(floor);
@@ -51,19 +54,24 @@ shg.define('FL_GndFloor', null, (function() {
         var doorf = 0, minAD = Number.POSITIVE_INFINITY;
 
         for(var i = 0, I = facades.length; i < I; i++) {
-          var fi = facades[i],
-              x0 = fi.points[0].x,
-              z0 = fi.points[0].z,
-              x1 = fi.points[3].x,
-              z1 = fi.points[3].z,
-              ad = Math.abs(Math.atan2(z1 - z0, x1 - x0) - th);
-
-          fi.type = 'Windows';
-          if(ad < minAD) {
-            minAD = ad; doorf = i;
-          }
-
+          facades[i].type = 'Windows';
         }
+        if(!('frontFacade' in this))
+          for(var i = 0, I = facades.length; i < I; i++) {
+            var fi = facades[i],
+                x0 = fi.points[0].x,
+                z0 = fi.points[0].z,
+                x1 = fi.points[3].x,
+                z1 = fi.points[3].z,
+                ad = Math.abs(Math.atan2(z1 - z0, x1 - x0) - th);
+
+            if(ad < minAD) {
+              minAD = ad; doorf = i;
+            }
+
+          }
+        else
+          doorf = this.frontFacade;
 
         facades[doorf].type = 'OneDoor';
         break;
@@ -248,8 +256,6 @@ shg.define('Facade', null, function() {
 
   var quads = SHAPE.fit('x', this, 'Window', 1);
 
-  //quads[ Math.round(quads.length / 2) ].sym = 'Door';
-  
   for(var i = 0, I = quads.length; i < I; i++)
     quads[i].normal = this.normal;
 
@@ -440,11 +446,21 @@ shg.define('Poly', null, function() {
 
 });
 
+/*
+  var hex2rgbf = function(i) { 
+    return i.replace(/#(..)(..)(..)/g, '$1,$2,$3')
+            .split(',')
+            .map(function(j) { 
+              return (parseInt(j, 16) / 255).toFixed(2) 
+            }); 
+  }
+*/
 var availColors = [
-  [ .88, .88, .88 ],
-  [ .66, .66, .66 ],
-  [ 1,   .97, .83 ],
-  [ .68, .53, .46 ]
+  [ .90, .65, .48 ],
+  [ .75, .73, .69 ],
+  [ .82, .67, .42 ],
+  [ .60, .39, .33 ]
+  //[ .72, .43, .35 ]
 ];
 
 shg.UVSCALE = .1;
@@ -457,16 +473,89 @@ module.exports = {
     var dx = lot.width / 2, dy = lot.depth / 2,
         x0 = lot.x - dx, x1 = lot.x + dx,
         y0 = lot.y - dy, y1 = lot.y + dy,
-        ratio = Math.max(dx / dy, dy / dx);
+        ratio = Math.max(dx / dy, dy / dx),
+        frontFacade = null;
 
     var pts = [];
 
-    if(ratio < 1.3 && buildingSidesRNG.random() < .5) {
-      for(var i = 0; i < 8; i++)
+    if(ratio < 1.3 && buildingSidesRNG.random() < .3) {
+      //
+      // Octagon building base. Uncommon
+      //
+      for(var i = 0; i < 8; i++) {
+        var ang = -lot.angle - i * Math.PI / 4;
         pts.push({ 
-          x : lot.x + dx * Math.cos(-i * Math.PI / 4), 
+          x : lot.x + dx * Math.cos(ang), 
           y: 0, 
-          z: lot.y + dy * Math.sin(-i * Math.PI / 4) }); 
+          z: lot.y + dy * Math.sin(ang) 
+        }); 
+        frontFacade = 0;
+      }
+    } else if(ratio > 1.5 && buildingSidesRNG.random() < .8) {
+      //
+      // Building with an inward-extruded part, facing the
+      // front of the street
+      //
+      if(dx > dy) {
+        //
+        // Lot angle can either be 0 (front facing) or π (back facing)
+        //
+        if(lot.angle < 10e-2) {
+          pts.push(
+            { x: x0, y: 0, z: y0 },
+            { x: x0, y: 0, z: y1 },
+            { x: x0 + dx * 2 / 3, y: 0, z: y1 },
+            { x: x0 + dx * 2 / 3, y: 0, z: y1 - dy * 2 / 3 },
+            { x: x1 - dx * 2 / 3, y: 0, z: y1 - dy * 2 / 3 },
+            { x: x1 - dx * 2 / 3, y: 0, z: y1 },
+            { x: x1, y: 0, z: y1 },
+            { x: x1, y: 0, z: y0 }
+          );
+          frontFacade = 3;
+        } else {
+          pts.push(
+            { x: x0, y: 0, z: y0 },
+            { x: x0, y: 0, z: y1 },
+            { x: x1, y: 0, z: y1 },
+            { x: x1, y: 0, z: y0 },
+            { x: x1 - dx * 2 / 3, y: 0, z: y0 },
+            { x: x1 - dx * 2 / 3, y: 0, z: y0 + dy * 2 / 3 },
+            { x: x0 + dx * 2 / 3, y: 0, z: y0 + dy * 2 / 3 },
+            { x: x0 + dx * 2 / 3, y: 0, z: y0 }
+          );
+          frontFacade = 5;
+        } 
+      } else {
+        //
+        // Lot angle can either be π/2 (right facing) or -π/2 (left facing)
+        //
+        if(lot.angle > 0) {
+          pts.push(
+            { x: x0, y: 0, z: y0 },
+            { x: x0, y: 0, z: y0 + dy * 2 / 3 },
+            { x: x0 + dx * 2 / 3, y: 0, z: y0 + dy * 2 / 3 },
+            { x: x0 + dx * 2 / 3, y: 0, z: y1 - dy * 2 / 3 },
+            { x: x0, y: 0, z: y1 - dy * 2 / 3 },
+            { x: x0, y: 0, z: y1 },
+            { x: x1, y: 0, z: y1 },
+            { x: x1, y: 0, z: y0 }
+          );
+          frontFacade = 2;
+        } else {
+          pts.push(
+            { x: x0, y: 0, z: y0 },
+            { x: x0, y: 0, z: y1 },
+            { x: x1, y: 0, z: y1 },
+            { x: x1, y: 0, z: y1 - dy * 2 / 3 },
+            { x: x1 - dx * 2 / 3, y: 0, z: y1 - dy * 2 / 3 },
+            { x: x1 - dx * 2 / 3, y: 0, z: y0 + dy * 2 / 3 },
+            { x: x1, y: 0, z: y0 + dy * 2 / 3 },
+            { x: x1, y: 0, z: y0 }
+          );
+          frontFacade = 4;
+        
+        }
+      }
     } else {
       pts.push(
         { x: x0, y: 0, z: y0 },
@@ -474,6 +563,13 @@ module.exports = {
         { x: x1, y: 0, z: y1 },
         { x: x1, y: 0, z: y0 }
       );
+      if(dx > dy) {
+        if(lot.angle < 10e-2) frontFacade = 1;
+        else frontFacade = 3;
+      } else {
+        if(lot.angle < 0) frontFacade = 2;
+        else frontFacade = 0;
+      }
     }
 
     var floorLayout = [], flId = ~~(buildingLayoutRNG.random() * 2);
@@ -516,6 +612,9 @@ module.exports = {
       floorsLayout: floorLayout,
       points: pts
     };
+
+    if(frontFacade !== null)
+      axiom.frontFacade = frontFacade;
 
     var color = availColors[ ~~(rng.random() * availColors.length) ];
 

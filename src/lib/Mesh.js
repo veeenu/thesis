@@ -1,4 +1,4 @@
-var glMatrix = require('gl-matrix'),
+var glMatrix = require('glMatrix'),
     Context  = require('Context'),
     gl       = Context.gl;
 

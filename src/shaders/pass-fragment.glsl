@@ -67,7 +67,8 @@ TTextureInfo textureBrick(vec3 fvert, vec3 fnorm, float fdepth, vec2 uv, vec3 br
               mS  = 1. / 128.,
               mWf = mS * .5 / bW,
               mHf = mS * .5 / bH;
-  const vec3 mortarColor = vec3(.9, .9, .9);
+  //const vec3 mortarColor = vec3(.9, .9, .9);
+  const vec3 mortarColor = vec3(.68, .68, .71);
 
   float u = uv.s / bW,
         v = uv.t / bH,

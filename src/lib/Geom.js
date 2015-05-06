@@ -1,4 +1,4 @@
-var glMatrix = require('gl-matrix'),
+var glMatrix = require('glMatrix'),
     vec3 = glMatrix.vec3;
 
 var Geom = {

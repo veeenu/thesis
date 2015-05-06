@@ -5,7 +5,7 @@
   "main": "main.js",
   "scripts": {
     "__": "nodemon --delay 0 -e js,glsl -x npm run build",
-    "start": "watchify -dv -t aliasify -t brfs -e main.js -o ../build.js",
+    "start": "watchify -dv -t aliasify -t brfs -e main.js -o ../_site/build.js",
     "build": "browserify -t aliasify -t brfs -e main.js | uglifyjs -mc --screw-ie8 -o ../build.js",
     "disc": "browserify --full-paths -t aliasify -t brfs -e main.js | uglifyjs --screw-ie8 -o ../build.js && discify ../build.js > ../report.html"
   },
@@ -24,6 +24,7 @@
   },
   "aliasify": {
     "aliases": {
+      "glMatrix": "./lib/glMatrixSubset",
       "QuadTree": "./lib/QuadTree",
       "Loader": "./lib/Loader",
       "Mesh": "./lib/Mesh",
