@@ -19,9 +19,9 @@ var computeBlockMesh = function(block, availColors) {
       count    = 0;
 
   for(var j = 0, n = block.lots.length; j < n; j++) {
-    var lot, h, cx, cy, xm, xM, ym, yM;
+    var lot, h, angle, cx, cy, xm, xM, ym, yM;
     lot = block.lots[j];
-    h = lot.height, lot = lot.poly;
+    h = lot.height, angle = lot.angle, lot = lot.poly;
 
     cx = cy = 0;
     xm = ym = Number.POSITIVE_INFINITY;
@@ -45,7 +45,8 @@ var computeBlockMesh = function(block, availColors) {
     var bldg = BuildingSHG.create({
       x: cx, y: cy,
       width: Math.abs(xM - xm) * .9,
-      depth: Math.abs(yM - ym) * .9
+      depth: Math.abs(yM - ym) * .9,
+      angle: angle
     }), 
     bldgGeom = bldg.geom, 
     color = bldg.color;
@@ -236,7 +237,8 @@ var scene = {
 console.log(geom)
 
 var t = 0., pushFn = function(o, i) { o.push(i); return o; },
-    x = 6, y = 20, z = 6, alpha = Math.PI / 2, beta = 0;
+    x = 6, y = .05, z = 6, alpha = 0, beta = 0,
+    dx = 0, dz = 0;
 
 var tlerp = function(start, end, ts) {
   return (ts - start) / (end - start);
@@ -305,7 +307,16 @@ var calcPositions = function(ts) {
 
 scene.update = function(timestamp) {
 
-  calcPositions(timestamp);
+  //calcPositions(timestamp);
+  //////////////////////////////////////////////////////////////////////////////
+  x += (Math.cos(beta) * dx - Math.sin(beta) * dz) * Math.cos(alpha);
+  y += Math.sin(alpha) * dz;
+  z += (Math.sin(beta) * dx + Math.cos(beta) * dz) * Math.cos(alpha);
+
+  log.textContent = [x,y,z].map(function(i) { return i.toFixed(2) }).join(', ') + ' ' +
+    (Math.PI / alpha).toFixed(2) + ' ' + 
+    (Math.PI / beta).toFixed(2);
+  //////////////////////////////////////////////////////////////////////////////
 
   vec3.set(scene.lightPos, 6,.05, 6);
   mat4.identity(scene.view);
@@ -334,24 +345,25 @@ scene.update = function(timestamp) {
 }
 // 87 65 83 68;
 
-/*document.body.addEventListener('keydown', function(evt) {
-
-  var dx = 0, dz = 0;
+document.body.addEventListener('keydown', function(evt) {
 
   switch(evt.which) {
-    case 87: dz = -.04; break;
-    case 83: dz = .04; break;
-    case 65: dx = -.04; break;
-    case 68: dx = .04; break;
+    case 87: dz = -.008; break;
+    case 83: dz = .008; break;
+    case 65: dx = -.008; break;
+    case 68: dx = .008; break;
   }
 
-  x += -Math.sin(beta) * Math.cos(alpha) * dz;
-  y += Math.sin(alpha) * dz;
-  z += Math.cos(beta) * Math.cos(alpha) * dz;
+});
 
-  log.textContent = [x,y,z].map(function(i) { return i.toFixed(2) }).join(', ') + ' ' +
-    (Math.PI / alpha).toFixed(2) + ' ' + 
-    (Math.PI / beta).toFixed(2);
+document.body.addEventListener('keyup', function(evt) {
+
+  switch(evt.which) {
+    case 87: dz = 0; break;
+    case 83: dz = 0; break;
+    case 65: dx = 0; break;
+    case 68: dx = 0; break;
+  }
 
 });
 
@@ -382,6 +394,6 @@ Context.canvas.addEventListener('mousedown', function(evt) {
   Context.canvas.addEventListener('mousemove', onMove);
   Context.canvas.addEventListener('mouseup', onUp);
 
-});*/
+});
 
 module.exports = scene;

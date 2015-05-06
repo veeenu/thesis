@@ -47,8 +47,18 @@ void main() {
   /*vec4 t0 = fxaa(target0, coord, res),
        t1 = fxaa(target1, coord, res),
        t2 = fxaa(target2, coord, res);*/
+  /*vec2 fw = .5 * fwidth(coord),
+       nfw = vec2(fw.x, -fw.y),
+       c0 = coord - fw,
+       c1 = coord + fw,
+       c2 = coord - nfw,
+       c3 = coord + nfw;*/
+
   vec4 t0 = texture2D(target0, coord),
        t1 = texture2D(target1, coord),
+       /*t1 = mix( mix(texture2D(target1, c0), texture2D(target1, c1), .5), 
+                 mix(texture2D(target1, c2), texture2D(target1, c3), .5), 
+                 .5),*/
        t2 = texture2D(target2, coord);
 
   vec3  vertex = t0.xyz,
@@ -81,7 +91,7 @@ void main() {
   kernel[2] = vec2(0., -1.);
   kernel[3] = vec2(-1., 0.);
 
-  const float sin45 = .707107, sRad = 40.;
+  const float sin45 = .707107, sRad = 80.;
 
   float occlusion = 0., kRad = sRad * (1. - depth);
 

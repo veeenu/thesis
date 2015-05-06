@@ -6,7 +6,7 @@ var lerp = function(a, b, t) { return (1 - t) * a + t * b; }
 
 // Inspired to https://www.cs.purdue.edu/cgvlab/papers/aliaga/eg2012.pdf
 var subdivideStrip = function(block, strip, rng) {
-  var points = [], quads = [], i1, i2, i3, 
+  var points = [], quads = [], angles = [], i1, i2, i3, 
       b1, b2, dx, dy, i, j, m, n, p, len,
       lots = [];
 
@@ -21,6 +21,7 @@ var subdivideStrip = function(block, strip, rng) {
     dx = b1.x - b2.x;
     dy = b1.y - b2.y;
     len = Math.sqrt(dx * dx + dy * dy);
+    ang = Math.atan2(dy, dx);
     m = ~~(rng.random() * 3 + 2);
     /*if(len < .35)
       m = 1;
@@ -30,6 +31,7 @@ var subdivideStrip = function(block, strip, rng) {
       m = Math.min(m, 3);*/
 
     quads.push(m);
+    angles.push(ang);
 
     for(j = 0; j < m; j++) {
       var jm = j / (m - 1);
@@ -56,7 +58,8 @@ var subdivideStrip = function(block, strip, rng) {
     for(var k = 0, m = p.length; k < m - 2; k+= 2) {
       lots.push(new Building(
         [p[k], p[(k + 1) % m], p[(k + 3) % m], p[(k + 2) % m]], 
-        rng.random() + .5 
+        rng.random() + .5,
+        angles[i]
       ));
     }
   }
@@ -64,9 +67,10 @@ var subdivideStrip = function(block, strip, rng) {
   return lots;
 }
 
-var Building = function(poly, height) {
+var Building = function(poly, height, angle) {
   this.poly = poly;
   this.height = height;
+  this.angle = angle;
 
 }
 

@@ -2,11 +2,14 @@ var ShapeGrammar = require('ShapeGrammar'),
     SHAPE        = require('../lib/SHAPE.js'),
     earcut       = require('earcut'),
     Geom         = require('Geom'),
-    PRNG         = require('PRNG'),
-    BalconySHG   = require('./BalconySHG.js'),
-    StaircaseSHG = require('./StaircaseSHG.js');
+    PRNG         = require('PRNG');
+    //BalconySHG   = require('./BalconySHG.js'),
+    //StaircaseSHG = require('./StaircaseSHG.js');
 
 var shg = new ShapeGrammar(),
+    litWindowsRNG     = new PRNG(31337),
+    buildingSidesRNG  = new PRNG(31338),
+    buildingLayoutRNG = new PRNG(31339),
     rng = new PRNG(31337);
 
 shg.define('Building', null, function() {
@@ -33,21 +36,43 @@ shg.define('Building', null, function() {
 
 });
 
-shg.define('FL_GndFloor', null, function() {
-  
-  var facades = SHAPE.extrudeAll(this.points, this.height, 'Facade', [0, 1, 0]);
+shg.define('FL_GndFloor', null, (function() {
 
-  switch(this.params.tiles) {
-    case 'OneDoor':
-      for(var i = 1, I = facades.length; i < I; i++)
-        facades[i].type = 'Windows';
-      facades[0].type = 'OneDoor';
-      break;
+  var p2 = Math.PI * 2, p4 = 2 * p2,
+      fixTH = function(th) { return (th + p4) % p2 };
+  
+  return function() {
+  
+    var facades = SHAPE.extrudeAll(this.points, this.height, 'Facade', [0, 1, 0]),
+        th = this.params.frontSide;
+
+    switch(this.params.tiles) {
+      case 'OneDoor':
+        var doorf = 0, minAD = Number.POSITIVE_INFINITY;
+
+        for(var i = 0, I = facades.length; i < I; i++) {
+          var fi = facades[i],
+              x0 = fi.points[0].x,
+              z0 = fi.points[0].z,
+              x1 = fi.points[3].x,
+              z1 = fi.points[3].z,
+              ad = Math.abs(Math.atan2(z1 - z0, x1 - x0) - th);
+
+          fi.type = 'Windows';
+          if(ad < minAD) {
+            minAD = ad; doorf = i;
+          }
+
+        }
+
+        facades[doorf].type = 'OneDoor';
+        break;
+    }
+
+    return facades;
   }
 
-  return facades;
-
-});
+}()));
 
 shg.define('FL_Floor', null, function() {
   
@@ -137,11 +162,6 @@ shg.define('FL_Rooftop', null, function() {
   var facadesOut = SHAPE.extrudeAll(this.points, this.height, 'Quad', [0, 1, 0]),
       facadesIn  = SHAPE.extrudeAll(extrPoints,  this.height, 'Quad', [0, 1, 0]);
 
-  facadesIn.push({
-    sym: 'Poly',
-    points: extrPoints
-  });
-
   while(facadesOut.length)
     facadesIn.push(facadesOut.shift());
 
@@ -159,6 +179,12 @@ shg.define('FL_Rooftop', null, function() {
       { s: s, t: t }
     ];
     i.texID = 6;
+  });
+
+  facadesIn.push({
+    sym: 'Poly',
+    points: extrPoints,
+    texID: 3
   });
 
   for(var i = 0, I = extrPoints.length; i < I; i++) {
@@ -195,8 +221,8 @@ shg.define('Facade', function() { return this.type === 'OneDoor' }, function() {
 
   var quads = SHAPE.fit('x', this, 'Window', 1);
 
-  //quads[ ~~(quads.length / 2) ].sym = 'Door';
-  quads.splice(Math.floor(quads.length / 2), 1);
+  quads[ ~~(quads.length / 2) ].sym = 'Door';
+  //quads.splice(Math.floor(quads.length / 2), 1);
   
   for(var i = 0, I = quads.length; i < I; i++)
     quads[i].normal = this.normal;
@@ -239,11 +265,57 @@ shg.define('Window', null, function() {
 
   var wpuvs = windowPane.uvs;
   windowPane.uvs = null;
-  windowPane.texID = 4;
+  windowPane.texID = (litWindowsRNG.random() > .3 ? 4 : 5);
 
   hsp[0].texID = hsp[2].texID = vsp[0].texID = vsp[2].texID = 6;
 
   var ret = [ hsp[0], hsp[2], vsp[0], vsp[2] ];
+
+  var norm = Geom.triToNormal([
+    windowPane.points[0].x, windowPane.points[0].y, windowPane.points[0].z, 
+    windowPane.points[1].x, windowPane.points[1].y, windowPane.points[1].z, 
+    windowPane.points[2].x, windowPane.points[2].y, windowPane.points[2].z
+  ]);
+
+  var borders = SHAPE.extrudeAll(windowPane.points, -.005, 'Quad', norm);
+  var nX = norm[0],
+      nY = norm[1],
+      nZ = norm[2];
+  
+  nX *= .005;
+  nY *= .005;
+  nZ *= .005;
+
+  for(var i = 0, I = windowPane.points.length; i < I; i++) {
+    var p = windowPane.points[i];
+    p.x -= nX;
+    p.y -= nY;
+    p.z -= nZ;
+  }
+
+  for(var i = 0, I = borders.length; i < I; i++) {
+    borders[i].texID = 3;
+    ret.push(borders[i]);
+  }
+  ret.push(windowPane);
+
+  return ret;
+
+});
+
+shg.define('Door', null, function() {
+  
+  var hsp = SHAPE.split(this, [ .15, .7, .15 ], [1], 'Quad'),
+      vsp = SHAPE.split(hsp[1], [1], [.7, .3 ], 'Quad'),
+      windowPane = vsp[0];
+
+  var wpuvs = windowPane.uvs;
+  windowPane.uvs = null;
+  windowPane.texID = (litWindowsRNG.random() > .3 ? 4 : 5);
+
+  hsp[0].texID = hsp[2].texID = vsp[1].texID = 6;
+
+  var ret = [ hsp[0], hsp[2], vsp[1] ];
 
   var norm = Geom.triToNormal([
     windowPane.points[0].x, windowPane.points[0].y, windowPane.points[0].z, 
@@ -386,11 +458,15 @@ module.exports = {
         x0 = lot.x - dx, x1 = lot.x + dx,
         y0 = lot.y - dy, y1 = lot.y + dy,
         ratio = Math.max(dx / dy, dy / dx);
-   var pts = [];
 
-    if(ratio < 1.3 && rng.random() < .3) {
+    var pts = [];
+
+    if(ratio < 1.3 && buildingSidesRNG.random() < .5) {
       for(var i = 0; i < 8; i++)
-        pts.push({ x : lot.x + dx * Math.cos(-i * Math.PI / 4), y: 0, z: lot.y + dy * Math.sin(-i * Math.PI / 4) }); 
+        pts.push({ 
+          x : lot.x + dx * Math.cos(-i * Math.PI / 4), 
+          y: 0, 
+          z: lot.y + dy * Math.sin(-i * Math.PI / 4) }); 
     } else {
       pts.push(
         { x: x0, y: 0, z: y0 },
@@ -400,20 +476,40 @@ module.exports = {
       );
     }
 
-    var floorLayout = [
-      { type: 'FL_GndFloor', height: .1, tiles: 'OneDoor' },
-      { type: 'FL_Ledge',    height: .025, width: .0125 }
-    ];
+    var floorLayout = [], flId = ~~(buildingLayoutRNG.random() * 2);
 
-    for(var i = 0, I = 4 + ~~(rng.random() * 10); i < I; i++)
-      floorLayout.push(
-        { type: 'FL_Floor',  height: .1, windows: 'Double' }
-      );
-    floorLayout.push(
-      { type: 'FL_Ledge',    height: .025, width: .003125 },
-      { type: 'FL_Floor',    height: .15, windows: 'Single' },
-      { type: 'FL_Rooftop',  height: .025, width: .00625 }
-    );
+    switch(flId) {
+      case 0: // With ledge
+        floorLayout.push(
+          { type: 'FL_GndFloor', height: .1, tiles: 'OneDoor', 
+                                 frontSide: lot.angle },
+          { type: 'FL_Ledge',    height: .025, width: .003125 }
+        );
+        for(var i = 0, I = 4 + ~~(rng.random() * 10); i < I; i++)
+          floorLayout.push(
+            { type: 'FL_Floor',  height: .1, windows: 'Double' }
+          );
+        floorLayout.push(
+          { type: 'FL_Ledge',    height: .025, width: .003125 },
+          { type: 'FL_Floor',    height: .15, windows: 'Single' },
+          { type: 'FL_Rooftop',  height: .025, width: .00625 }
+        );
+        break;
+      case 1: // Without ledge
+        floorLayout.push(
+          { type: 'FL_GndFloor', height: .1, tiles: 'OneDoor',
+                                 frontSide: lot.angle }
+        );
+        for(var i = 0, I = 4 + ~~(rng.random() * 10); i < I; i++)
+          floorLayout.push(
+            { type: 'FL_Floor',  height: .1, windows: 'Double' }
+          );
+        floorLayout.push(
+          { type: 'FL_Floor',    height: .15, windows: 'Single' },
+          { type: 'FL_Rooftop',  height: .025, width: .00625 }
+        );
+        break;
+    }
 
     var axiom = {
       sym: 'Building',

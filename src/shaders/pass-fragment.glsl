@@ -49,7 +49,7 @@ vec3 bumpMap(vec3 fvert, vec3 fnorm, float bump) {
 
   vec3 bU = dFdx(bump) * cross(fnorm, normalize(dFdy(fvert))),
        bV = dFdy(bump) * cross(normalize(dFdx(fvert)), fnorm),
-       bD = fnorm + .5 * (bU + bV);
+       bD = fnorm + (bU + bV) * .5;
 
   return normalize(bD);
 }
@@ -92,7 +92,7 @@ TTextureInfo textureBrick(vec3 fvert, vec3 fnorm, float fdepth, vec2 uv, vec3 br
 
   vec3 color = mix(mortarColor, brickColor * brickDamp, ub.x * ub.y);
 
-  float bump = noisev / fdepth + (ub.x * ub.y) - dFdx(ub.x) * dFdy(ub.y);
+  float bump = noisev / fdepth + 4. * ((ub.x * ub.y) - dFdx(ub.x) * dFdy(ub.y));
 
   return TTextureInfo(
     color,
