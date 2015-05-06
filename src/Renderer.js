@@ -28,7 +28,6 @@ gl.depthFunc(gl.LESS);
 gl.getExtension('OES_standard_derivatives');
 gl.getExtension('OES_texture_float');
 gl.getExtension('OES_texture_float_linear');
-//extDrawbuffers = gl.getExtension('WEBGL_draw_buffers');
 extDepthTexture = gl.getExtension('WEBGL_depth_texture');
 
 /*******************************************************************************
@@ -61,8 +60,8 @@ console.log('VP:', gl.getShaderInfoLog(vshPass),
 /*******************************************************************************
  * Texture MRTs setup.
  * Layout:    
- * Target 0: | Pos.x  | Pos.y  | Pos.z  | Color  |
- * Target 1: | Norm.x | Norm.y | Norm.z | Depth  |
+ *           | float1 | float2 | float3 | float4 |
+ * Target 0: | Encoded normal  | Depth  | Color  |
  *******************************************************************************/
 
 var target0     = gl.createTexture(),

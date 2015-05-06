@@ -483,14 +483,14 @@ module.exports = {
         floorLayout.push(
           { type: 'FL_GndFloor', height: .1, tiles: 'OneDoor', 
                                  frontSide: lot.angle },
-          { type: 'FL_Ledge',    height: .025, width: .003125 }
+          { type: 'FL_Ledge',    height: .025, width: .00625 }
         );
         for(var i = 0, I = 4 + ~~(rng.random() * 10); i < I; i++)
           floorLayout.push(
             { type: 'FL_Floor',  height: .1, windows: 'Double' }
           );
         floorLayout.push(
-          { type: 'FL_Ledge',    height: .025, width: .003125 },
+          { type: 'FL_Ledge',    height: .025, width: .00625 },
           { type: 'FL_Floor',    height: .15, windows: 'Single' },
           { type: 'FL_Rooftop',  height: .025, width: .00625 }
         );
