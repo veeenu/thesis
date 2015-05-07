@@ -59,6 +59,59 @@ vec3 unpackNormal(in vec2 enc)
 // Main
 ////////////////////////////////////////////////////////////////////////////////
 
+#define DL 2.399963229728653
+#define EULER 2.718281828459045
+
+vec2 vrand( const vec2 coord ) {
+ 
+  vec2 noise;
+ 
+  float nx = dot ( coord, vec2( 12.9898, 78.233 ) );
+  float ny = dot ( coord, vec2( 12.9898, 78.233 ) * 2.0 );
+ 
+  noise = clamp( fract ( 43758.5453 * sin( vec2( nx, ny ) ) ), 0.0, 1.0 );
+ 
+  return ( noise * 2.0  - 1.0 ) * .0003;
+ 
+}
+
+float readDepth(const vec2 coord) {
+  return (2. * .001) / (1000.001 - texture2D(target0, coord).w * 999.999);
+}
+
+float cmpDepth(const float d1, const float d2, inout int far) {
+
+  float ga = 2., diff = (d1 - d2) * 100.;
+
+  if(diff < .2)
+    ga = .2;
+  else
+    far = 1;
+
+  float dd = diff - .2,
+        gauss = pow(EULER, -2. * dd * dd / (ga * ga));
+  
+  return gauss;
+}
+
+float calcAO(float depth, vec2 uv, float dw, float dh) {
+  float dd = 20. - depth * 20.;
+
+  vec2 vv = vec2(dw, dh),
+       coord1 = uv + dd * vv,
+       coord2 = uv - dd * vv;
+
+  int far = 0;
+  float tmp1 = 0., tmp2 = 0.;
+  
+  tmp1 = cmpDepth(depth, readDepth(coord1), far);
+  if(far > 0) {
+    tmp2 = cmpDepth(readDepth(coord2), depth, far);
+    tmp1 += (1. - tmp1) * tmp2;
+  }
+
+  return tmp1;
+}
 
 void main() {
   /*vec3 lights[4];
@@ -77,9 +130,8 @@ void main() {
        c3 = coord + nfw;*/
 
   vec4 t0 = texture2D(target0, coord);
-  /*vec4 t0 = texture2D(target0, coord),
-       t1 = texture2D(target1, coord),
-       t2 = texture2D(target2, coord);*/
+  if(length(t0.xy) == 0.)
+    discard;
 
   vec3  vertex,
         //normal = normalize(t1.xyz),
@@ -108,30 +160,29 @@ void main() {
   //////////////////////////////////////////////////////////////////////////////
   // SSAO
   //////////////////////////////////////////////////////////////////////////////
-  vec2 kernel[4];
-  kernel[0] = vec2(0., 1.);
-  kernel[1] = vec2(1., 0.);
-  kernel[2] = vec2(0., -1.);
-  kernel[3] = vec2(-1., 0.);
 
-  const float sin45 = .707107, sRad = 40.;
+  float occlusion = 0., vdepth = readDepth(coord);
+  vec2 noisev = vrand(coord);
 
-  float occlusion = 0., kRad = sRad * (1. - depth);
-
-  for(int i = 0; i < 4; ++i) {
-    vec2 k1 = reflect(kernel[i], .6 * vec2(rand(sin(coord)), rand(-coord)));
-    vec2 k2 = vec2(k1.x * sin45 - k1.y * sin45,
-                   k1.x * sin45 + k1.y * sin45);
-    occlusion += sample(vertex, normal, coord + k1 * kRad);
-    occlusion += sample(vertex, normal, coord + k1 * kRad * .75);
-    occlusion += sample(vertex, normal, coord + k1 * kRad * .5);
-    occlusion += sample(vertex, normal, coord + k1 * kRad * .25);
+  float w = (.5 / 1280.) / vdepth + (noisev.x * (1. - noisev.x)),
+        h = (.5 / 800.)  / vdepth + (noisev.y * (1. - noisev.y)),
+        dz = 1. / 16.,
+        z = 1. - dz / 2.,
+        l = 0.;
+  for(int i = 0; i <= 16; i++) {
+    float r = sqrt(1. - z),
+          pw = cos(l) * r,
+          ph = sin(l) * r;
+    occlusion += calcAO(vdepth, coord, pw * w, ph * h);
+    z -= dz;
+    l += DL;
   }
-  occlusion /= 8.;
-  occlusion = clamp(occlusion, 0., 1.);
+
+  occlusion *= dz;
 
   color = clamp(color - occlusion, 0., 1.);
-  gl_FragColor = vec4(lambert * att * 2. * color, 1.);
+  gl_FragColor = vec4(lambert * att * 2.5 * color, 1.);
+  //gl_FragColor = vec4(0., 1. * (1. - occlusion), lambert, 1.);
   //gl_FragColor = vec4(vec3(1. - occlusion), 1.);
   //gl_FragColor = vec4(normal, 1.);
   //gl_FragColor = vec4(color, 1.);

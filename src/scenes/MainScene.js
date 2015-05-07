@@ -318,7 +318,7 @@ scene.update = function(timestamp) {
     (Math.PI / beta).toFixed(2);
   //////////////////////////////////////////////////////////////////////////////
 
-  vec3.set(scene.lightPos, 5,.25, 6);
+  vec3.set(scene.lightPos, 5,.05, 6);
   mat4.identity(scene.view);
 
   mat4.rotateX(scene.view, scene.view, alpha);

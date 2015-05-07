@@ -193,7 +193,7 @@ gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([ 1, -1, -1, -1, -1, 1,  1, -1, 
 gl.enableVertexAttribArray(programQ.position);
 gl.vertexAttribPointer(programQ.position, 2, gl.FLOAT, false, 0, 0);
 
-mat4.perspective(projection, Math.PI / 2, w / h, .00001, 10000.);
+mat4.perspective(projection, Math.PI / 2, w / h, .001, 1000.);
 mat4.scale(view, view, [.00001, .00001, .00001]);
 mat4.translate(view, view, [0, -100, -200]);
 mat4.rotateX(view, view, Math.PI / 4);

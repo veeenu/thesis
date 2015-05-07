@@ -49,7 +49,7 @@ vec3 bumpMap(vec3 fvert, vec3 fnorm, float bump) {
 
   vec3 bU = dFdx(bump) * cross(fnorm, normalize(dFdy(fvert))),
        bV = dFdy(bump) * cross(normalize(dFdx(fvert)), fnorm),
-       bD = fnorm + (bU + bV) * .5;
+       bD = fnorm + (bU + bV);
 
   return normalize(bD);
 }
@@ -93,7 +93,19 @@ TTextureInfo textureBrick(vec3 fvert, vec3 fnorm, float fdepth, vec2 uv, vec3 br
 
   vec3 color = mix(mortarColor, brickColor * brickDamp, ub.x * ub.y);
 
-  float bump = noisev / fdepth + 4. * ((ub.x * ub.y) - dFdx(ub.x) * dFdy(ub.y));
+  // Adaptive box blur filter. Not perfect but quick and somewhat acceptable
+  vec2 ubSample, ubKernel = 4. * fwidth(ub), noiseKernel = fwidth(uv);
+  float bump = 0., invd = 1. / 11.;
+
+  for(int x = -1; x <= 1; x++) {
+    for(int y = -1; y <= 1; y++) {
+      ubSample = ub + vec2(float(x), float(y)) * ubKernel;
+      bump += .1111111 * ubSample.x * ubSample.y;
+    }
+  }
+
+  // Frequency clamping
+  bump += 4. * (1. - smoothstep(0., .005, max(noiseKernel.x, noiseKernel.y))) * noisev;
 
   return TTextureInfo(
     color,
@@ -125,9 +137,22 @@ TTextureInfo textureWindow(vec3 fvert, vec3 fnorm, float fdepth, vec2 uv, vec3 w
                  snoise(uv * 16.) * .0625 +
                  abs(snoise(uv * 512.)) * .0625;
 
+  /*vec2 patSample, patKernel = 3. * vec2(fwidth(patF.x), fwidth(patF.y));
+  float bump = 0.;
+
+  for(int x = -1; x <= 1; x++) {
+    for(int y = -1; y <= 1; y++) {
+      patSample = patF + vec2(float(x), float(y)) * patKernel;
+      bump += patSample.x * patSample.y;
+    }
+  }
+  bump *= 1./9.;*/
+
+  float bump = patF.x * patF.y;
+
   return TTextureInfo(
     mix(frameColor, windowColor * noisep, patF.x * patF.y),
-    bumpMap(fvert, fnorm, patF.x * patF.y)
+    bumpMap(fvert, fnorm, bump)
   );
 }
 
