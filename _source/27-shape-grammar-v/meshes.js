@@ -74,7 +74,8 @@ shgRoom.define('Room', null,
           minX: Number.POSITIVE_INFINITY,
           minZ: Number.POSITIVE_INFINITY
         }),
-        length: Math.sqrt(dx * dx + dz * dz)
+        length: Math.sqrt(dx * dx + dz * dz),
+        angle: th
       });
     }
 
@@ -86,7 +87,6 @@ shgRoom.define('Room', null,
   });
 
 shgRoom.define('Wall', function(context) {
-    console.log(context.reduce(function(o, i) { return o + (i.sym === 'Wall' ? 1 : 0) }, 0));
     return !context.reduce(function(o, i) { return o || i.sym === 'Room' }, false);
   },
   function(context) {
@@ -118,9 +118,13 @@ shgRoom.define('Wall', function(context) {
     // Prevent next walls to take this one into account
     if(occluded) {
       this.occluded = true; 
-      var extr = SHAPE.extrude('OccludedWall', this.points[0], this.points[1], 1.5, [0,1,0]);
-      extr.hspace = .5 / this.length;
-      return extr;
+
+      return {
+        sym: 'OccludedWall',
+        points: this.points,
+        angle: this.angle,
+        length: this.length
+      }
     }
 
     return [];
@@ -131,11 +135,66 @@ shgRoom.define('Wall', null, function() { return this; });
 
 shgRoom.define('OccludedWall', null, function() {
 
-  var hspace = this.hspace, chspace = (1 - hspace) / 2,
-      hsp = SHAPE.split(this, [ chspace, hspace, chspace ], [1], 'Quad'),
-      vsp = SHAPE.split(hsp[1], [1], [ .7, .3 ], 'Quad');
+  var angle = this.angle + Math.PI / 2,
+      sin = Math.sin(angle) * shgRoom.wallDepth / 2,
+      cos = Math.cos(angle) * shgRoom.wallDepth / 2,
+      p0 = this.points[0], p1 = this.points[1],
+      p10 = { x: p0.x + cos, y: p0.y, z: p0.z + sin },
+      p11 = { x: p1.x + cos, y: p1.y, z: p1.z + sin },
+      p20 = { x: p0.x - cos, y: p0.y, z: p0.z - sin },
+      p21 = { x: p1.x - cos, y: p1.y, z: p1.z - sin },
+      extr1 = SHAPE.extrude('OccludedWall', p10, p11, shgRoom.floorHeight, [0,1,0]),
+      extr2 = SHAPE.extrude('OccludedWall', p20, p21, shgRoom.floorHeight, [0,1,0])
+      hspace = .5 / this.length, chspace = (1 - hspace) / 2,
+      hsp1 = SHAPE.split(extr1, [ chspace, hspace, chspace ], [1], 'Quad'),
+      vsp1 = SHAPE.split(hsp1[1], [1], [ .7, .3 ], 'Quad'),
+      hsp2 = SHAPE.split(extr2, [ chspace, hspace, chspace ], [1], 'Quad'),
+      vsp2 = SHAPE.split(hsp2[1], [1], [ .7, .3 ], 'Quad'),
+      q0 = vsp1[0], q1 = vsp2[0],
+      lA = chspace, lB = chspace + hspace,
+      wsA = { 
+        x: SHAPE.lerp(p0.x, p1.x, lA),
+        y: SHAPE.lerp(p0.y, p1.y, lA),
+        z: SHAPE.lerp(p0.z, p1.z, lA)
+      },
+      wsB = {
+        x: SHAPE.lerp(p0.x, p1.x, lB),
+        y: SHAPE.lerp(p0.y, p1.y, lB),
+        z: SHAPE.lerp(p0.z, p1.z, lB)
+      };
 
-  return [ hsp[0], hsp[2], vsp[1] ];
+  return [ 
+    hsp1[0], hsp1[2], vsp1[1],
+    hsp2[0], hsp2[2], vsp2[1],
+    {
+      sym: 'Quad',
+      points: [ q1.points[1], q1.points[0], q0.points[0], q0.points[1] ]
+    },
+    {
+      sym: 'Quad',
+      points: [ q1.points[3], q1.points[2], q0.points[2], q0.points[3] ]
+    },
+    {
+      sym: 'Quad',
+      points: [ q1.points[2], q1.points[1], q0.points[1], q0.points[2] ]
+    },
+    /*{
+      sym: 'Door',
+      angle: angle,
+      point: {
+        x: .5 * (p0.x + p1.x),
+        y: .5 * (p0.y + p1.y),
+        z: .5 * (p0.z + p1.z)
+      }
+    }*/
+    {
+      sym: 'WallSegment',
+      points: [ p0, wsA ]
+    }, {
+      sym: 'WallSegment',
+      points: [ wsB, p1 ]
+    }
+  ];
 
 });
 
@@ -186,10 +245,33 @@ shgRoom.define('Quad', null, (function() {
 
 }()));
 
+shgRoom.define('Door', null, function() {
+
+  return {
+    sym: ShapeGrammar.TERMINAL,
+    isDoor: true,
+    point: this.point,
+    angle: this.angle
+  }
+
+});
+
+shgRoom.define('WallSegment', null, function() {
+
+  return {
+    sym: ShapeGrammar.TERMINAL,
+    isWall: true,
+    p0: this.points[0],
+    p1: this.points[1]
+  }
+});
+
 shgRoom.minWidth = 2.5;
 shgRoom.maxWidth = 5;
 shgRoom.density = .8;
 shgRoom.ratio = .61;
+shgRoom.floorHeight = 1.5;
+shgRoom.wallDepth = .2;
 
 shgResult = shgRoom.run({
   sym: 'Room',
@@ -201,14 +283,64 @@ shgResult = shgRoom.run({
   ]
 }).reduce(function(o, i) {
 
-  for(var j = 0, J = i.vertices.length; j < J; j++) {
-    o.vertices.push(i.vertices[j]);
-    o.normals.push(i.normals[j]);
-    o.uvs.push(i.uvs[j]);
-  }
+  /*if(i.isDoor) {
+    o.graph.push({ point: i.point, angle: i.angle });
+  }*/
+  if(i.isWall)
+    o.walls.push(i);
+  else
+    for(var j = 0, J = i.vertices.length; j < J; j++) {
+      o.vertices.push(i.vertices[j]);
+      o.normals.push(i.normals[j]);
+      o.uvs.push(i.uvs[j]);
+    }
 
   return o;
 
-}, { vertices: [], normals: [], uvs: [] });
+}, { vertices: [], normals: [], uvs: [], walls: [] });
+
+/*var bbox = shgResult.walls.reduce(function(o, i) {
+  o.minX = Math.min(i.point.x, o.minX);
+  o.minZ = Math.min(i.point.z, o.minZ);
+  o.maxX = Math.max(i.point.x, o.maxX);
+  o.maxZ = Math.max(i.point.z, o.maxZ);
+
+  return o;
+
+}, { 
+  minX: Number.POSITIVE_INFINITY, maxX: Number.NEGATIVE_INFINITY,
+  minZ: Number.POSITIVE_INFINITY, maxZ: Number.NEGATIVE_INFINITY,
+});*/
+
+var bbox = {
+  minX: -3, maxX: 3,
+  minZ: -5, maxZ: 5
+}
+
+bbox.lenX = bbox.maxX - bbox.minX;
+bbox.lenZ = bbox.maxZ - bbox.minZ;
+console.log(bbox)
+
+/*shgResult.points = shgResult.graph.reduce(function(o, i) {
+
+  o.push((i.point.x - bbox.minX) / bbox.lenX, (i.point.z - bbox.minZ) / bbox.lenZ, i.angle);
+  return o;
+
+}, [])*/
+
+shgResult.lines = shgResult.walls.reduce(function(o, i) {
+
+  o.push(
+    (i.p0.x - bbox.minX) / bbox.lenX, 
+    (i.p0.z - bbox.minZ) / bbox.lenZ, 
+    (i.p1.x - bbox.minX) / bbox.lenX, 
+    (i.p1.z - bbox.minZ) / bbox.lenZ
+  );
+  return o;
+
+}, []);
+
+shgResult.width = bbox.lenX;
+shgResult.height = bbox.lenZ;
 
 console.log(shgResult);

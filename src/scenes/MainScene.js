@@ -18,6 +18,14 @@ var computeBlockMesh = function(block, availColors) {
       lights   = [],
       count    = 0;
 
+  /*(function() {
+    for(var j = 0, J = block.poly.length; j < J; j++) {
+      var cur = block.poly[j];
+      lights.push({ x: cur.x, y: .05, z: cur.y });
+    }
+
+  }());*/
+
   for(var j = 0, n = block.lots.length; j < n; j++) {
     var lot, h, angle, cx, cy, xm, xM, ym, yM;
     lot = block.lots[j];
@@ -110,6 +118,10 @@ Context.canvas.parentElement.appendChild(log);
 
   var blocksProgress = 0, blocksCount = city.blocks.length;
 
+  city.roads.forEach(function(r) {
+    lights.push({ x: r.x, y: .05, z: r.y });
+  });
+
   while(city.blocks.length) {
     block = city.blocks.shift();
     setTimeout(function() {
@@ -136,19 +148,21 @@ Context.canvas.parentElement.appendChild(log);
         qy = Math.abs(yM - ym) / 2;
 
     qtree = new QuadTree(qx, qy, Math.max(qx, qy), 4);
-    qtreeL = new QuadTree(qx, qy, Math.max(qx, qy), 8);
+    qtreeL = new QuadTree(qx, qy, Math.min(qx, qy), 4);
 
     blocks.forEach(function(i) {
       qtree.insert(i);
-      /*i.lights.forEach(function(i) {
-        qtreeL.insert({ x: i.x, y: i.z, l: i });
-      });*/
     });
+
+    lights.forEach(function(i) {
+      qtreeL.insert({ x: i.x, y: i.z, l: i });
+    });
+
+    console.log(qtreeL, lights)
 
     geom.quadtree = qtree;
     geom.quadtreeLights = qtreeL;
-
-    console.log(geom.quadtreeLights.query(6, 6, .25).length);
+    geom.allLights = lights;
 
   }}(geom, blocks)));
 
@@ -233,8 +247,6 @@ var scene = {
   model: mat4.create(),
   count: 0
 };
-
-console.log(geom)
 
 var t = 0., pushFn = function(o, i) { o.push(i); return o; },
     x = 5, y = .19, z = 6, alpha = 0, beta = 0,
@@ -336,13 +348,20 @@ scene.update = function(timestamp) {
     return o + i.count;
   }, 0);
 
-  scene.lights = geom.quadtreeLights
-    .query(x, z, .5)
-    .map(function(i) { 
+  /*scene.lights = geom.quadtreeLights
+    .query(x, z, 4)
+    .map(function(i) {
+      var dx = i.l.x - x, dz = i.l.z - z;
       return [ i.l.x, i.l.y, i.l.z ];
-    });
+    });*/
+
+  scene.lights = geom.allLights.map(function(i) {
+    return [i.x, i.y, i.z];
+  });
 
   t += .001;
+
+  log.textContent += "\nLights: " + scene.lights.length;
 
   //console.log(scene.meshes.reduce(function(o, i) { o += i.count; return o; }, 0));
 

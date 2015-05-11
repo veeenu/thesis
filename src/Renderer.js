@@ -219,8 +219,13 @@ programLight.activate = function(scene) {
   gl.enableVertexAttribArray(programLight.position);
   //gl.enableVertexAttribArray(programLight.lightPosition);
 
-  gl.uniform3fv(programLight.lightPos, scene.lightPos); //[0,.025,-.05]);
-  gl.drawArrays(gl.TRIANGLES, 0, 6);
+  for(var i = 0, I = scene.lights.length; i < I; i++) {
+    gl.uniform3fv(programLight.lightPos, scene.lights[i]);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+  }
+
+  //gl.uniform3fv(programLight.lightPos, scene.lightPos);
+  //gl.drawArrays(gl.TRIANGLES, 0, 6);
   /*var I = scene.lights.length;
   if(I > 0 && __do === false) {
 

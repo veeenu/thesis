@@ -1,17 +1,12 @@
 #extension GL_OES_standard_derivatives : enable
 precision highp float;
 
-/* #pragma glslify: fxaa = require(glsl-fxaa) */
-
-//uniform sampler2D target0, target1, target2, depthBuffer, randMap;
 uniform sampler2D target0, depthBuffer;
 uniform mat4 inverseProjection, viewMatrix;
 uniform vec3 lightPos;
 
 varying vec2 sscoord, coord;
 varying vec3 lPos;
-
-//uniform vec3 lightPos;
 
 float sample(vec3 p, vec3 n, vec2 uv) {
   vec3 dstP = texture2D(target0, uv).xyz,
@@ -161,7 +156,7 @@ void main() {
   // SSAO
   //////////////////////////////////////////////////////////////////////////////
 
-  float occlusion = 0., vdepth = readDepth(coord);
+  /*float occlusion = 0., vdepth = readDepth(coord);
   vec2 noisev = vrand(coord);
 
   float w = (.5 / 1280.) / vdepth + (noisev.x * (1. - noisev.x)),
@@ -180,7 +175,7 @@ void main() {
 
   occlusion *= dz;
 
-  color = clamp(color - occlusion, 0., 1.);
+  color = clamp(color - occlusion, 0., 1.);*/
   gl_FragColor = vec4(lambert * att * 2.5 * color, 1.);
   //gl_FragColor = vec4(0., 1. * (1. - occlusion), lambert, 1.);
   //gl_FragColor = vec4(vec3(1. - occlusion), 1.);

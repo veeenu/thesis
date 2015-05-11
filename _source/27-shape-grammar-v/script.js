@@ -30,8 +30,10 @@ Mesh.prototype.bind = function(program) {
 
 }
 
-Mesh.prototype.unbind = function() {
-  this.gl.bindBuffer(gl.ARRAY_BUFFER, null);
+Mesh.prototype.unbind = function(program) {
+  this.gl.bindBuffer(this.gl.ARRAY_BUFFER, null);
+  this.gl.disableVertexAttribArray(this.gl.getAttribLocation(program, 'vertex'));
+  this.gl.disableVertexAttribArray(this.gl.getAttribLocation(program, 'normal'));
 }
 
 Object.defineProperty(Mesh.prototype, 'model', {
@@ -88,6 +90,7 @@ Scene.prototype.draw = function(w, h) {
       shView = mat4.create(),
       gl = this.gl;
 
+  gl.useProgram(this.program);
   gl.viewport(0, 0, w, h);
   gl.clearColor(0, 0, 0, 1);
   gl.clear(gl.DEPTH_BUFFER_BIT | gl.COLOR_BUFFER_BIT);
@@ -103,6 +106,7 @@ Scene.prototype.draw = function(w, h) {
     gl.uniformMatrix4fv(gl.getUniformLocation(program, 'model'), false, i.modelMatrix);
     gl.uniformMatrix3fv(gl.getUniformLocation(program, 'nmatrix'), false, nmatrix);
     gl.drawArrays(gl.TRIANGLES, 0, i.count);
+    i.unbind(program);
 
   }}(this.program)));
 }
@@ -192,6 +196,149 @@ Object.defineProperty(Scene.prototype, "lightPos", {
 
   });
 
+  //////////////////////////////////////////////////////////////////////////////
+  var points = new Float32Array(shgResult.lines),
+      pbuf   = gl.createBuffer(),
+      fb     = gl.createFramebuffer(),
+      tex    = gl.createTexture(),
+      fw     = shgResult.width * 2,
+      fh     = shgResult.height * 2,
+      tfw    = fw,
+      tfh    = fh,
+      pprog  = Shader(gl, document.getElementById('vertex-2d').textContent, document.getElementById('fragment-2d').textContent);
+
+  // To next power of two
+  [1,2,4,8,16].forEach(function(i) {
+    tfw |= tfw >> i;
+    tfh |= tfh >> i;
+  })
+  tfw++; tfh++;
+
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, tfw, tfh, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, pbuf);
+  gl.bufferData(gl.ARRAY_BUFFER, points, gl.STATIC_DRAW);
+  gl.useProgram(pprog);
+  gl.viewport(0, 0, fw, fh);
+
+  gl.lineWidth(1);
+  gl.bindBuffer(gl.ARRAY_BUFFER, pbuf);
+  gl.enableVertexAttribArray(gl.getAttribLocation(pprog, 'point'));
+  gl.vertexAttribPointer(gl.getAttribLocation(pprog, 'point'), 2, gl.FLOAT, false, 0, 0);
+  gl.uniform1f(gl.getUniformLocation(pprog, 'ps'), w / 16);
+
+  gl.drawArrays(gl.LINES, 0, points.length / 2);
+
+  console.log(tfw, tfh)
+  var pixels = new Uint8Array(tfw * tfh * 4), pp = [];
+  gl.readPixels(0, 0, tfw, tfh, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+  for(var i = 0, I = pixels.length; i < I; i += 4)
+    pp.push(pixels[i]);
+
+  var newcanv = document.createElement('canvas'), 
+      newctx = newcanv.getContext('2d'),
+      imgd = newctx.createImageData(tfw, tfh);
+  newcanv.width = tfw * 8; newcanv.height = tfh * 8;
+  newcanv.style.position = 'absolute';
+  newcanv.style.top = (bcr.top + window.scrollY) + 'px';
+  newctx.imageSmoothingEnabled = false;
+
+  (function(pp, w, h) {
+    var frontier = [],
+        visited = [];
+
+    var X = 10, Y = 18;
+
+    var elem = function(x, y) {
+      return pp[y * w + x];
+    }
+
+    var neighbors = function(x, y) {
+      var ret = [];
+
+      if(y > 0) ret.push({ x: x, y: y - 1 });
+      if(y < h) ret.push({ x: x, y: y + 1 });
+      if(x > 0) ret.push({ x: x - 1, y: y });
+      if(x < w) ret.push({ x: x + 1, y: y });
+      if(y > 0 && x > 0)
+        ret.push({ x: x - 1, y: y - 1});
+      if(y > 0 && x < w)
+        ret.push({ x: x + 1, y: y - 1});
+      if(y < h && x < w)
+        ret.push({ x: x + 1, y: y + 1});
+      if(y < h && x > 0)
+        ret.push({ x: x - 1, y: y + 1});
+
+      return ret.reduce(function(o, i) {
+        if(elem(i.x, i.y) === 0)
+          o.push(i);
+        return o;
+      }, []);
+    }
+
+    var hasBeenVisited = function(x, y) {
+      return visited[y * w + x] !== undefined;
+    }
+
+    frontier.push({ x: 0, y: 0 });
+    visited[0] = null;
+    var k = 0;
+    while(frontier.length > 0 && k < 10000) {
+      k++;
+      var current = frontier.shift();
+
+      if(current.x === X && current.y === Y)
+        break;
+
+      neighbors(current.x, current.y).forEach(function(i) {
+        if(!hasBeenVisited(i.x, i.y)) {
+          frontier.push(i);
+          visited[i.y * w + i.x] = current;
+        }
+      });
+
+    }
+
+    var path = [], cur = visited[Y * w + X];
+
+    while(cur !== null && path.length < 5000) {
+      path.push(cur);
+      cur = visited[cur.y * w + cur.x];
+    }
+
+    path.forEach(function(i) {
+      pixels[(i.y * w + i.x) * 4 + 1] = 255;
+      pixels[(i.y * w + i.x) * 4 + 3] = 255;
+    })
+
+  }(pp, tfw, tfh));
+  
+  imgd.data.set(pixels);
+  newctx.putImageData(imgd, 0, 0);
+  var im = new Image();
+  im.onload = function() {
+    newctx.clearRect(0, 0, newcanv.width, newcanv.height);
+    newctx.scale(8, 8);
+    newctx.drawImage(im, 0, 0);
+  }
+  im.src = newcanv.toDataURL();
+
+  document.body.appendChild(newcanv);
+
+  gl.disableVertexAttribArray(gl.getAttribLocation(pprog, 'point'));
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+
+  //////////////////////////////////////////////////////////////////////////////
+
   function render() {
 
     scene.view = view;
@@ -203,6 +350,9 @@ Object.defineProperty(Scene.prototype, "lightPos", {
 
     scene.lightPos = lightPos;
     scene.draw(w, h);
+
+    gl.disable(gl.BLEND);
+    gl.enable(gl.DEPTH_TEST);
 
     requestAnimationFrame(render);
   }

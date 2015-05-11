@@ -72,30 +72,23 @@ void main() {
 
 </script>
 
-<script type='application/x-vertex-shader' id='vertex-shadow'>
-attribute vec3 vertex, normal;
-
-uniform mat4 ltransf, model;
+<script type='application/x-vertex-shader' id='vertex-2d'>
+uniform float ps;
+attribute vec2 point;
 
 void main() {
-  
-  gl_Position = ltransf * model * vec4(vertex, 1.);
+  //gl_PointSize = ps;
+  gl_Position = vec4(-1. + 2. * point.xy, 0., 1.);
+
 }
 
 </script>
-<script type='application/x-fragment-shader' id='fragment-shadow'> 
+<script type='application/x-fragment-shader' id='fragment-2d'> 
 precision highp float;
-
-vec2 pack(float depth) {
-  const vec2 bias = vec2(1. / 255., 0.);
-  vec2 col = vec2(depth, fract(depth * 255.));
-
-  return col - (col.yy * bias);
-}
+uniform float ps;
 
 void main() {
-  float moment = gl_FragCoord.z; 
-  gl_FragColor = vec4(pack(moment), pack(moment * moment));
+  gl_FragColor = vec4(1., 0., 0., 1.);
 }
 
 </script>
