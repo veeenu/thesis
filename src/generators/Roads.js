@@ -13,7 +13,7 @@
 
 var PRNG = require('PRNG');
 
-var side = 8, q = 0, amp = 2;
+var side = 3, q = 0, amp = 4;
     
 module.exports = function(seed) {
 

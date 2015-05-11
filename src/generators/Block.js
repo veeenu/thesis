@@ -78,7 +78,7 @@ var Block = function(poly, seed) {
   var rng = new PRNG(seed);
   this.poly = poly;
   this.block = Geom.insetPolygon(this.poly, 0.05);
-  this.lots = subdivideStrip(Geom.insetPolygon(this.block, 0.1), Geom.insetPolygon(this.block, 0.4), rng);
+  this.lots = subdivideStrip(Geom.insetPolygon(this.block, 0.1), Geom.insetPolygon(this.block, 0.8), rng);
 
   var cd = poly.reduce(function(o, i) {
   

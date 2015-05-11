@@ -62,9 +62,9 @@ struct TTextureInfo {
 #define textureBrickI(x, p, notp) ((floor(x)*(p))+max(fract(x)-(notp), 0.0))
 TTextureInfo textureBrick(vec3 fvert, vec3 fnorm, float fdepth, vec2 uv, vec3 brickColor) {
 
-  const float bW  = .125,
-              bH  = .0625,
-              mS  = 1. / 128.,
+  const float bW  = .03125,
+              bH  = .015625,
+              mS  = 1. / 512.,
               mWf = mS * .5 / bW,
               mHf = mS * .5 / bH;
   //const vec3 mortarColor = vec3(.9, .9, .9);
@@ -81,7 +81,7 @@ TTextureInfo textureBrick(vec3 fvert, vec3 fnorm, float fdepth, vec2 uv, vec3 br
 
   float noisev = 1. +
                  //snoise(uv * 16.) * .0625 +
-                 snoise(uv * 64.) * .125;
+                 snoise(uv * 256.) * .125;
   float brickDamp = 1. + .125 * sin(1.57 * (brU + 1.)) * sin(2. * (brV + 1.));
 
   vec2 uuv = vec2(u, v),
@@ -105,7 +105,7 @@ TTextureInfo textureBrick(vec3 fvert, vec3 fnorm, float fdepth, vec2 uv, vec3 br
   }
 
   // Frequency clamping
-  bump += 4. * (1. - smoothstep(0., .005, max(noiseKernel.x, noiseKernel.y))) * noisev;
+  bump += 4. * (1. - smoothstep(0., .00125, max(noiseKernel.x, noiseKernel.y))) * noisev;
 
   return TTextureInfo(
     color,

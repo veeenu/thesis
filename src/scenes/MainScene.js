@@ -10,6 +10,14 @@ var glMatrix = require('glMatrix'),
     BuildingSHG = require('../generators/BuildingSHG.js'),
     City = require('../generators/City.js');
 
+var tlerp = function(start, end, ts) {
+  return (ts - start) / (end - start);
+}
+
+var lerp = function(a, b, t) {
+  return a * (1 - t) + b * t;
+}
+
 var computeBlockMesh = function(block, availColors) {
   var vertices = [],
       normals  = [],
@@ -118,9 +126,24 @@ Context.canvas.parentElement.appendChild(log);
 
   var blocksProgress = 0, blocksCount = city.blocks.length;
 
-  city.roads.forEach(function(r) {
-    lights.push({ x: r.x, y: .05, z: r.y });
-  });
+  (function() {
+  
+    var doneRoads = [];
+
+    city.roads.forEach(function(r) {
+      lights.push({ x: r.x, y: .05, z: r.y });
+      r.conns.forEach(function(r1) {
+        if(doneRoads.indexOf(r1) === -1) {
+          lights.push({
+            x: lerp(r.x, r1.x, .5),
+            y: .05,
+            z: lerp(r.y, r1.y, .5)
+          });
+        }
+      });
+      doneRoads.push(r);
+    });
+  }());
 
   while(city.blocks.length) {
     block = city.blocks.shift();
@@ -249,16 +272,8 @@ var scene = {
 };
 
 var t = 0., pushFn = function(o, i) { o.push(i); return o; },
-    x = 5, y = .19, z = 6, alpha = 0, beta = 0,
+    x = 2, y = .19, z = 1.8, alpha = 0, beta = 0,
     dx = 0, dz = 0;
-
-var tlerp = function(start, end, ts) {
-  return (ts - start) / (end - start);
-}
-
-var lerp = function(a, b, t) {
-  return a * (1 - t) + b * t;
-}
 
 var polyEasing = function(x) { return x * x * x * (x * (6 * x - 15) + 10) };
 

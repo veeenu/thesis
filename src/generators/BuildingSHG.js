@@ -260,14 +260,17 @@ shg.define('Facade', null, function() {
     { s: s, t: t }
   ];
 
+  var quads = SHAPE.fit('x', this, 'Window', 1);
+
   if(this.hasBalcony) {
+    var ratio = (quads.length % 2 === 0 ? 2 : 3) / quads.length;
     var pars = {
       x0: this.points[0].x, z0: this.points[0].z,
       x1: this.points[3].x, z1: this.points[3].z,
       y: this.points[0].y,
       height: dy,
-      width: len * .9,
-      depth: len * .33,
+      width: len * .9 * ratio,
+      depth: len * .4 * ratio,
       angle: Math.atan2(-dz, dx)
     };
 
@@ -278,7 +281,6 @@ shg.define('Facade', null, function() {
     bs.sym = ShapeGrammar.TERMINAL;
 
   }
-  var quads = SHAPE.fit('x', this, 'Window', 1);
 
   for(var i = 0, I = quads.length; i < I; i++)
     quads[i].normal = this.normal;
@@ -608,32 +610,32 @@ module.exports = {
     switch(flId) {
       case 0: // With ledge
         floorLayout.push(
-          { type: 'FL_GndFloor', height: .2, tiles: 'OneDoor', 
+          { type: 'FL_GndFloor', height: .05, tiles: 'OneDoor', 
                                  frontSide: lot.angle },
-          { type: 'FL_Ledge',    height: .025, width: .00625 }
+          { type: 'FL_Ledge',    height: .00625, width: .00625 }
         );
-        for(var i = 0, I = 4 + ~~(rng.random() * 10); i < I; i++)
+        for(var i = 0, I = 4 + ~~(rng.random() * 20); i < I; i++)
           floorLayout.push(
-            { type: 'FL_Floor',  height: .2, windows: 'Double' }
+            { type: 'FL_Floor',  height: .05, windows: 'Double' }
           );
         floorLayout.push(
-          { type: 'FL_Ledge',    height: .025, width: .00625 },
-          { type: 'FL_Floor',    height: .25, windows: 'Single' },
-          { type: 'FL_Rooftop',  height: .025, width: .00625 }
+          { type: 'FL_Ledge',    height: .00625, width: .00625 },
+          { type: 'FL_Floor',    height: .0625, windows: 'Single' },
+          { type: 'FL_Rooftop',  height: .00625, width: .00625 }
         );
         break;
       case 1: // Without ledge
         floorLayout.push(
-          { type: 'FL_GndFloor', height: .2, tiles: 'OneDoor',
+          { type: 'FL_GndFloor', height: .05, tiles: 'OneDoor',
                                  frontSide: lot.angle }
         );
         for(var i = 0, I = 4 + ~~(rng.random() * 10); i < I; i++)
           floorLayout.push(
-            { type: 'FL_Floor',  height: .2, windows: 'Double' }
+            { type: 'FL_Floor',  height: .05, windows: 'Double' }
           );
         floorLayout.push(
-          { type: 'FL_Floor',    height: .25, windows: 'Single' },
-          { type: 'FL_Rooftop',  height: .025, width: .00625 }
+          { type: 'FL_Floor',    height: .0625, windows: 'Single' },
+          { type: 'FL_Rooftop',  height: .00625, width: .00625 }
         );
         break;
     }

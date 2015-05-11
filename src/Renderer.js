@@ -10,18 +10,22 @@ var Util        = require('./lib/util.js'),
     BuildingSHG = require('./generators/BuildingSHG.js');
 
 var programPass  = gl.createProgram(),
+    programSSAO  = gl.createProgram(),
     programLight = gl.createProgram(),
     vshPass      = gl.createShader(gl.VERTEX_SHADER),
     fshPass      = gl.createShader(gl.FRAGMENT_SHADER),
     vshLight     = gl.createShader(gl.VERTEX_SHADER),
     fshLight     = gl.createShader(gl.FRAGMENT_SHADER),
+    vshSSAO      = gl.createShader(gl.VERTEX_SHADER),
+    fshSSAO      = gl.createShader(gl.FRAGMENT_SHADER),
     extDrawbuffers, extDepthTexture, extFloatLinear,
-    vsrcPass, vsrcLight, fsrcPass, fsrcLight;
+    vsrcPass, vsrcLight, fsrcPass, fsrcLight, fsrcSSAO;
 
 vsrcPass  = fs.readFileSync(__dirname + '/shaders/pass-vertex.glsl', 'utf-8');
 fsrcPass  = fs.readFileSync(__dirname + '/shaders/pass-fragment.glsl', 'utf-8');
 vsrcLight = fs.readFileSync(__dirname + '/shaders/light-vertex.glsl', 'utf-8');
 fsrcLight = fs.readFileSync(__dirname + '/shaders/light-fragment.glsl', 'utf-8');
+fsrcSSAO  = fs.readFileSync(__dirname + '/shaders/ssao-fragment.glsl', 'utf-8');
 
 gl.clearColor(0, 0, 0, 0);
 gl.depthFunc(gl.LESS);
@@ -42,6 +46,17 @@ gl.attachShader(programPass, fshPass);
 gl.linkProgram(programPass);
 
 /*******************************************************************************
+ * SSAO shader compilation & linking
+ *******************************************************************************/
+gl.shaderSource(vshSSAO, vsrcLight);
+gl.shaderSource(fshSSAO, fsrcSSAO);
+gl.compileShader(vshSSAO);
+gl.compileShader(fshSSAO);
+gl.attachShader(programSSAO, vshSSAO);
+gl.attachShader(programSSAO, fshSSAO);
+gl.linkProgram(programSSAO);
+
+/*******************************************************************************
  * Light pass shader compilation & linking
  *******************************************************************************/
 gl.shaderSource(vshLight, vsrcLight);
@@ -52,21 +67,26 @@ gl.attachShader(programLight, vshLight);
 gl.attachShader(programLight, fshLight);
 gl.linkProgram(programLight);
 
-console.log('VP:', gl.getShaderInfoLog(vshPass),
-            'FP:', gl.getShaderInfoLog(fshPass),
-            'VL:', gl.getShaderInfoLog(vshLight),
-            'FL:', gl.getShaderInfoLog(fshLight));
+console.log("VP:", gl.getShaderInfoLog(vshPass),
+            "\nFP:", gl.getShaderInfoLog(fshPass),
+            "\nVL:", gl.getShaderInfoLog(vshLight),
+            "\nFL:", gl.getShaderInfoLog(fshLight),
+            "\nFS:", gl.getShaderInfoLog(fshSSAO)
+           );
 
 /*******************************************************************************
  * Texture MRTs setup.
  * Layout:    
  *           | float1 | float2 | float3 | float4 |
  * Target 0: | Encoded normal  | Depth  | Color  |
+ * SSAO:     | Occlusion       |        |        |
  *******************************************************************************/
 
-var target0     = gl.createTexture(),
-    depthTex    = gl.createTexture(),
-    framebuffer = gl.createFramebuffer();
+var target0           = gl.createTexture(),
+    depthTex          = gl.createTexture(),
+    lightTex          = gl.createTexture(),
+    geomFramebuffer   = gl.createFramebuffer(),
+    lightFramebuffer  = gl.createFramebuffer();
 
 gl.bindTexture(gl.TEXTURE_2D, depthTex);
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
@@ -82,12 +102,21 @@ gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, Context.w, Context.h, 0, gl.RGBA, gl.FLOAT, null);
 
+gl.bindTexture(gl.TEXTURE_2D, lightTex);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, extFloatLinear !== null ? gl.LINEAR : gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, extFloatLinear !== null ? gl.LINEAR : gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, Context.w, Context.h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+
 gl.bindTexture(gl.TEXTURE_2D, null);
 
-gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-
+gl.bindFramebuffer(gl.FRAMEBUFFER, geomFramebuffer);
 gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, depthTex, 0);
 gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, target0, 0);
+
+gl.bindFramebuffer(gl.FRAMEBUFFER, lightFramebuffer);
+gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, lightTex, 0);
 
 gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
@@ -106,8 +135,8 @@ for(var i = 0; i < 128; i++) {
 
 // Quad data directly in screen space coordinates
 gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
-//gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(quadArr), gl.STATIC_DRAW);
-gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([1, -1, -1, -1, -1, 1,  1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(quadArr), gl.STATIC_DRAW);
+//gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([1, -1, -1, -1, -1, 1,  1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
 gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
 mat4.perspective(projection, Math.PI / 2, Context.aspectRatio, .001, 1000.);
@@ -125,12 +154,20 @@ mat4.invert(invProjection, projection);
   programPass[i] = gl.getUniformLocation(programPass, i);
 });
 
+['position'].forEach(function(i) {
+  programSSAO[i] = gl.getAttribLocation(programSSAO, i);
+});
+
+['target0', 'lightBuffer'].forEach(function(i) {
+  programSSAO[i] = gl.getUniformLocation(programSSAO, i);
+});
+
+
 ['position', 'lightPosition'].forEach(function(i) {
   programLight[i] = gl.getAttribLocation(programLight, i);
 });
 
-['target0', 'target1', 'target2', 'depthBuffer', 
- 'inverseProjection', 'viewMatrix', 'lightPos'].forEach(function(i) {
+['target0', 'depthBuffer', 'inverseProjection', 'viewMatrix', 'lightPos'].forEach(function(i) {
   programLight[i] = gl.getUniformLocation(programLight, i);
 });
 
@@ -139,7 +176,7 @@ mat4.invert(invProjection, projection);
  *******************************************************************************/
 programPass.activate = function(scene) {
   gl.useProgram(programPass);
-  gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, geomFramebuffer);
 
   gl.enable(gl.DEPTH_TEST);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -175,9 +212,6 @@ programPass.activate = function(scene) {
 
   gl.bindBuffer(gl.ARRAY_BUFFER, null);
 }
-var sc = function(lights) {
-  console.log(lights);
-}
 
 programPass.deactivate = function() {
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -189,10 +223,40 @@ programPass.deactivate = function() {
   gl.disable(gl.DEPTH_TEST);
 }
 
-var __do = false, cnt = 0;
+programSSAO.activate = function(scene) {
+  gl.useProgram(programSSAO);
+
+  gl.clear(gl.COLOR_BUFFER_BIT);
+
+  //
+  // Uniform setup
+  //
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, target0);
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_2D, lightTex);
+
+  gl.uniform1i(programSSAO.target0, 0);
+  gl.uniform1i(programSSAO.lightBuffer, 1);
+
+  //
+  // VBO setup
+  //
+  gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
+  gl.vertexAttribPointer(programSSAO.position, 2, gl.FLOAT, false, 0, 0);
+
+  gl.enableVertexAttribArray(programSSAO.position);
+
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
+}
+
+programSSAO.deactivate = function() {
+  gl.disableVertexAttribArray(programSSAO.position);
+}
 
 programLight.activate = function(scene) {
   gl.useProgram(programLight);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, lightFramebuffer);
 
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.ONE, gl.ONE);
@@ -219,37 +283,19 @@ programLight.activate = function(scene) {
   gl.enableVertexAttribArray(programLight.position);
   //gl.enableVertexAttribArray(programLight.lightPosition);
 
+  /*if(scene.lights.length > 0) {
+    gl.uniform3fv(programLight.lightPos, scene.lights[0]);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+  }*/
   for(var i = 0, I = scene.lights.length; i < I; i++) {
     gl.uniform3fv(programLight.lightPos, scene.lights[i]);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
   }
 
-  //gl.uniform3fv(programLight.lightPos, scene.lightPos);
-  //gl.drawArrays(gl.TRIANGLES, 0, 6);
-  /*var I = scene.lights.length;
-  if(I > 0 && __do === false) {
-
-    var lv = new Float32Array(I * 18);
-    for(var i = 0; i < I; i++) {
-      var ii = i * 3;
-      for(var j = 0; j < 18; j++) {
-        lv[ii + j] = scene.lights[i][j % 3];
-      }
-    }
-    gl.bindBuffer(gl.ARRAY_BUFFER, lightBuf);
-    gl.bufferData(gl.ARRAY_BUFFER, lv, gl.STATIC_DRAW);
-    cnt = I;
-    console.log(cnt)
-    __do = true;
-    
-  }
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, lightBuf);
-  gl.vertexAttribPointer(programLight.lightPosition, 3, gl.FLOAT, false, 0, 0);
-  gl.drawArrays(gl.TRIANGLES, 0, cnt * 6);*/
 }
 
 programLight.deactivate = function() {
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.disableVertexAttribArray(programLight.position);
   gl.disable(gl.BLEND);
 }
@@ -260,5 +306,7 @@ module.exports = {
     programPass.deactivate();
     programLight.activate(scene);
     programLight.deactivate();
+    programSSAO.activate(scene);
+    programSSAO.deactivate();
   }
 }

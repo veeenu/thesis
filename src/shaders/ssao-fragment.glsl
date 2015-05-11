@@ -1,9 +1,7 @@
 #extension GL_OES_standard_derivatives : enable
 precision highp float;
 
-uniform sampler2D target0, depthBuffer;
-uniform mat4 inverseProjection, viewMatrix;
-uniform vec3 lightPos;
+uniform sampler2D target0, lightBuffer;
 
 varying vec2 sscoord, coord;
 
@@ -71,6 +69,7 @@ void main() {
   // SSAO
   //////////////////////////////////////////////////////////////////////////////
 
+  vec3 color = texture2D(lightBuffer, coord).rgb;
   float occlusion = 0., vdepth = readDepth(coord);
   vec2 noisev = vrand(coord);
 
@@ -89,6 +88,8 @@ void main() {
   }
 
   occlusion *= dz;
+
+  gl_FragColor = vec4(mix(color, vec3(0.), occlusion), 1.);
 
   //gl_FragColor = vec4(lambert * att * 2.5 * color, 1.);
 }

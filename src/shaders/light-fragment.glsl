@@ -109,31 +109,15 @@ float calcAO(float depth, vec2 uv, float dw, float dh) {
 }
 
 void main() {
-  /*vec3 lights[4];
-  lights[0] = vec3(6. - .025, .2, 6. - .025);
-  lights[1] = vec3(6. - .025, .2, 6. + .025);
-  lights[2] = vec3(6. + .025, .2, 6. + .025);
-  lights[3] = vec3(6. + .025, .2, 6. - .025);*/
-  /*vec4 t0 = fxaa(target0, coord, res),
-       t1 = fxaa(target1, coord, res),
-       t2 = fxaa(target2, coord, res);*/
-  /*vec2 fw = .5 * fwidth(coord),
-       nfw = vec2(fw.x, -fw.y),
-       c0 = coord - fw,
-       c1 = coord + fw,
-       c2 = coord - nfw,
-       c3 = coord + nfw;*/
 
   vec4 t0 = texture2D(target0, coord);
   if(length(t0.xy) == 0.)
     discard;
 
   vec3  vertex,
-        //normal = normalize(t1.xyz),
-        normal = normalize(unpackNormal(t0.xy)),
-        color  = unpackColor(t0.z);
-        //color  = t2.xyz;
-  float depth  = t0.w;
+        normal    = normalize(unpackNormal(t0.xy)),
+        color     = unpackColor(t0.z);
+  float depth     = t0.w;
 
   vec4 vertexFromDepth = inverseProjection * vec4(sscoord, depth, 1.);
   vertex = vertexFromDepth.xyz / vertexFromDepth.w;
@@ -143,42 +127,5 @@ void main() {
         dist = length(lightDir),
         att = min(1., 1. / (1. + 2.5 * dist + 5. * dist * dist));
 
-  /*float lambert = 0., att = 1.;
-  for(int i = 0; i < 4; i++) {
-    vec3 lightDir = (viewMatrix * vec4(lights[i], 1.)).xyz - vertex;
-    float llambert = max(dot(faceforward(-normal, lightDir, normal), normalize(lightDir)), 0.),
-          dist = length(lightDir),
-          latt = min(1., 1. / (1. + .5 * dist + 5. * dist * dist));
-    lambert += llambert * latt * .25;
-  }*/
-
-  //////////////////////////////////////////////////////////////////////////////
-  // SSAO
-  //////////////////////////////////////////////////////////////////////////////
-
-  /*float occlusion = 0., vdepth = readDepth(coord);
-  vec2 noisev = vrand(coord);
-
-  float w = (.5 / 1280.) / vdepth + (noisev.x * (1. - noisev.x)),
-        h = (.5 / 800.)  / vdepth + (noisev.y * (1. - noisev.y)),
-        dz = 1. / 16.,
-        z = 1. - dz / 2.,
-        l = 0.;
-  for(int i = 0; i <= 16; i++) {
-    float r = sqrt(1. - z),
-          pw = cos(l) * r,
-          ph = sin(l) * r;
-    occlusion += calcAO(vdepth, coord, pw * w, ph * h);
-    z -= dz;
-    l += DL;
-  }
-
-  occlusion *= dz;
-
-  color = clamp(color - occlusion, 0., 1.);*/
   gl_FragColor = vec4(lambert * att * 2.5 * color, 1.);
-  //gl_FragColor = vec4(0., 1. * (1. - occlusion), lambert, 1.);
-  //gl_FragColor = vec4(vec3(1. - occlusion), 1.);
-  //gl_FragColor = vec4(normal, 1.);
-  //gl_FragColor = vec4(color, 1.);
 }
