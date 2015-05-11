@@ -131,12 +131,12 @@ Context.canvas.parentElement.appendChild(log);
     var doneRoads = [];
 
     city.roads.forEach(function(r) {
-      lights.push({ x: r.x, y: .05, z: r.y });
+      lights.push({ x: r.x, y: .25, z: r.y });
       r.conns.forEach(function(r1) {
         if(doneRoads.indexOf(r1) === -1) {
           lights.push({
             x: lerp(r.x, r1.x, .5),
-            y: .05,
+            y: .25,
             z: lerp(r.y, r1.y, .5)
           });
         }
