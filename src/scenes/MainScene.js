@@ -26,14 +26,6 @@ var computeBlockMesh = function(block, availColors) {
       lights   = [],
       count    = 0;
 
-  /*(function() {
-    for(var j = 0, J = block.poly.length; j < J; j++) {
-      var cur = block.poly[j];
-      lights.push({ x: cur.x, y: .05, z: cur.y });
-    }
-
-  }());*/
-
   for(var j = 0, n = block.lots.length; j < n; j++) {
     var lot, h, angle, cx, cy, xm, xM, ym, yM;
     lot = block.lots[j];
@@ -69,10 +61,10 @@ var computeBlockMesh = function(block, availColors) {
 
     for(var l = 0, L = bldgGeom.length; l < L; l++) {
 
-      var bg = bldgGeom[l]; //.shift();
+      var bg = bldgGeom[l];
 
-      if(bg.sym === 'LIGHT')
-        lights.push(bg.lightPos);
+      if('light' in bg)
+        lights.push(bg.light);
       else
         for(var k = 0, K = bg.vertices.length; k < K; k++) {
           vertices.push(bg.vertices[k]);
@@ -171,20 +163,19 @@ Context.canvas.parentElement.appendChild(log);
         qy = Math.abs(yM - ym) / 2;
 
     qtree = new QuadTree(qx, qy, Math.max(qx, qy), 4);
-    qtreeL = new QuadTree(qx, qy, Math.min(qx, qy), 4);
 
     blocks.forEach(function(i) {
+      /*var qtreeL = new QuadTree(i.x, i.y, i.w, 32);
+      i.lights.forEach(function(j) {
+        qtreeL.insert({ x: j.x, y: j.z, pos: j });
+      });
+      i.quadtreeLights = qtreeL;*/
       qtree.insert(i);
     });
 
-    lights.forEach(function(i) {
-      qtreeL.insert({ x: i.x, y: i.z, l: i });
-    });
-
-    console.log(qtreeL, lights)
+    console.log(blocks);
 
     geom.quadtree = qtree;
-    geom.quadtreeLights = qtreeL;
     geom.allLights = lights;
 
   }}(geom, blocks)));
@@ -352,31 +343,38 @@ scene.update = function(timestamp) {
   mat4.rotateY(scene.view, scene.view, beta);
   mat4.translate(scene.view, scene.view, [ -x, -y, -z ]);
 
+  var shownMeshes, shownLights;
+
+  shownMeshes = geom.quadtree.query(x, z, 4);
+  /*shownLights = shownMeshes.reduce(function(o, i) {
+    var ls = i.quadtreeLights.query(x, z, .5);
+    for(var j = 0, J = ls.length; j < J; j++) {
+      for(var k = 0; k < 6; k++)
+        o.push(ls[j].pos.x, ls[j].pos.y, ls[j].pos.z);
+    }
+    return o;
+  }, [])*/
+
   scene.meshes = geom.fixedMeshes.reduce(pushFn, []);
 
-  scene.meshes = geom.quadtree
-    .query(x, z, 4)
+  scene.meshes = shownMeshes
     .map(function(i) { return i.mesh })
     .reduce(pushFn, scene.meshes);
+
+  //scene.lights = shownLights;
+  scene.lights = geom.allLights.reduce(function(o, i) {
+    for(var k = 0; k < 6; k++)
+      o.push(i.x, i.y, i.z);
+    return o;
+  }, []);
 
   log.textContent += "\nVertices: " + scene.meshes.reduce(function(o, i) {
     return o + i.count;
   }, 0);
 
-  /*scene.lights = geom.quadtreeLights
-    .query(x, z, 4)
-    .map(function(i) {
-      var dx = i.l.x - x, dz = i.l.z - z;
-      return [ i.l.x, i.l.y, i.l.z ];
-    });*/
-
-  scene.lights = geom.allLights.map(function(i) {
-    return [i.x, i.y, i.z];
-  });
-
   t += .001;
 
-  log.textContent += "\nLights: " + scene.lights.length;
+  log.textContent += "\nLights: " + scene.lights.length / 18;
 
   //console.log(scene.meshes.reduce(function(o, i) { o += i.count; return o; }, 0));
 

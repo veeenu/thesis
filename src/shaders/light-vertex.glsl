@@ -1,6 +1,7 @@
 uniform mat4 viewMatrix;
-uniform vec3 lightPos;
+//uniform vec3 lightPos;
 
+attribute vec3 lightPos;
 attribute vec2 position;
 varying vec2 sscoord, coord;
 

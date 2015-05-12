@@ -260,7 +260,7 @@ void main() {
   else
     color = textureAsphalt(mod(texUV.yx, 1.)); //textureWindow(uuv, fextra);
 
-  gl_FragColor = vec4(packNormal(normalize(normal)), packColor(clamp(color, 0., 1.)), depth);
+  gl_FragColor = vec4(packNormal(normalize(normal)), packColor(clamp(.25 * pow(color, vec3(1. / 2.2)), 0., 1.)), depth);
   //gl_FragData[0] = vec4(packNormal(normalize(normal)), packColor(clamp(color, 0., 1.)), depth);
   //gl_FragData[1] = vec4(normalize(normal), depth);
   //gl_FragData[2] = vec4(color, pack(clamp(color, 0., 1.)));

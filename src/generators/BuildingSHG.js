@@ -25,7 +25,8 @@ shg.define('Building', null, function() {
       params: fli,
       points: this.points.map(function(i) {
         return { x: i.x, y: i.y + curHeight, z: i.z };
-      })
+      }),
+      facadeLayout: this.facadeLayout
     };
 
     if('frontFacade' in this)
@@ -54,27 +55,10 @@ shg.define('FL_GndFloor', null, (function() {
 
     switch(this.params.tiles) {
       case 'OneDoor':
-        //var doorf = 0, minAD = Number.POSITIVE_INFINITY;
 
         for(var i = 0, I = facades.length; i < I; i++) {
-          facades[i].type = 'Windows';
+          facades[i].type = this.facadeLayout[i] || 'Windows';
         }
-        /*if(!('frontFacade' in this))
-          for(var i = 0, I = facades.length; i < I; i++) {
-            var fi = facades[i],
-                x0 = fi.points[0].x,
-                z0 = fi.points[0].z,
-                x1 = fi.points[3].x,
-                z1 = fi.points[3].z,
-                ad = Math.abs(Math.atan2(z1 - z0, x1 - x0) - th);
-
-            if(ad < minAD) {
-              minAD = ad; doorf = i;
-            }
-
-          }
-        else
-          doorf = this.frontFacade;*/
 
         facades[this.frontFacade].type = 'OneDoor';
         break;
@@ -90,7 +74,7 @@ shg.define('FL_Floor', null, function() {
   var facades = SHAPE.extrudeAll(this.points, this.height, 'Facade', [0, 1, 0]);
 
   for(var i = 0, I = facades.length; i < I; i++) {
-    facades[i].type = 'Windows';
+    facades[i].type = this.facadeLayout[i] || 'Windows';
     facades[i].windows = this.params.windows;
   }
   if('hasBalcony' in this) facades[this.frontFacade].hasBalcony = this.hasBalcony;
@@ -251,7 +235,7 @@ shg.define('Facade', null, function() {
       len = Math.sqrt(dx * dx + dz * dz),
       t  = dy / shg.UVSCALE,
       s  = t * len / dy,
-      bs = null;
+      bs = null, norm = this.normal;
 
   this.uvs = [
     { s: 0, t: t },
@@ -260,7 +244,21 @@ shg.define('Facade', null, function() {
     { s: s, t: t }
   ];
 
-  var quads = SHAPE.fit('x', this, 'Window', 1);
+  var quads = SHAPE.fit('x', this, 'Window', 1).map(function(i) {
+    i.normal = norm;
+    return i;
+  });
+
+  if(this.type === 'Window') {
+    // Do nothing
+  } else if(typeof this.type === 'function') {
+    for(var i = 0, I = quads.length; i < I; i++) {
+      if(!this.type(i)) {
+        quads[i].sym = 'Quad';
+        quads[i].texID = 6;
+      }
+    }
+  }
 
   if(this.hasBalcony) {
     var ratio = (quads.length % 2 === 0 ? 2 : 3) / quads.length;
@@ -299,15 +297,16 @@ shg.define('Window', null, function() {
       vsp = SHAPE.split(hsp[1], [1], [.15, .7, .15], 'Quad'),
       windowPane = vsp[1];
 
+  var isLit = litWindowsRNG.random() > .8;
   var wpuvs = windowPane.uvs;
   windowPane.uvs = null;
-  windowPane.texID = (litWindowsRNG.random() > .3 ? 4 : 5);
+  windowPane.texID = (isLit ? 5 : 4);
 
   hsp[0].texID = hsp[2].texID = vsp[0].texID = vsp[2].texID = 6;
 
   var ret = [ hsp[0], hsp[2], vsp[0], vsp[2] ];
 
-  var norm = Geom.triToNormal([
+  var norm = this.normal || Geom.triToNormal([
     windowPane.points[0].x, windowPane.points[0].y, windowPane.points[0].z, 
     windowPane.points[1].x, windowPane.points[1].y, windowPane.points[1].z, 
     windowPane.points[2].x, windowPane.points[2].y, windowPane.points[2].z
@@ -334,6 +333,24 @@ shg.define('Window', null, function() {
     ret.push(borders[i]);
   }
   ret.push(windowPane);
+
+  /*if(isLit) {
+    var light = {
+      sym: ShapeGrammar.TERMINAL,
+      light: windowPane.points.reduce(function(o, i) {
+        o.x += i.x * .25;
+        o.y += i.y * .25;
+        o.z += i.z * .25;
+        return o;
+      }, { x: 0, y: 0, z: 0 })
+    };
+
+    light.light.x += norm[0] * .0125;
+    light.light.y += norm[1] * .0125;
+    light.light.z += norm[2] * .0125;
+
+    ret.push(light);
+  }*/
 
   return ret;
 
@@ -521,7 +538,7 @@ module.exports = {
         }); 
         frontFacade = 0;
       }
-    } else if(ratio > 1.5 && buildingSidesRNG.random() < .8) {
+    } else if(ratio > 1.1 && buildingSidesRNG.random() < .8) {
       //
       // Building with an inward-extruded part, facing the
       // front of the street
@@ -605,7 +622,9 @@ module.exports = {
       }
     }
 
-    var floorLayout = [], flId = ~~(buildingLayoutRNG.random() * 2);
+    var floorLayout = [], 
+        flId = ~~(buildingLayoutRNG.random() * 2),
+        facadeLayout = [];
 
     switch(flId) {
       case 0: // With ledge
@@ -634,15 +653,32 @@ module.exports = {
             { type: 'FL_Floor',  height: .05, windows: 'Double' }
           );
         floorLayout.push(
-          { type: 'FL_Floor',    height: .0625, windows: 'Single' },
+          { type: 'FL_Floor',    height: .05, windows: 'Single' },
           { type: 'FL_Rooftop',  height: .00625, width: .00625 }
         );
         break;
     }
 
+    for(var i = 0, I = pts.length; i < I; i++) {
+      var ft = ~~(rng.random() * 3);
+
+      switch(ft) {
+        case 0:
+          facadeLayout[i] = 'Windows';
+          break;
+        case 1: 
+          facadeLayout[i] = function(i) { return !(i % 3 === 0) } // Two windows, one space
+          break;
+        case 2:
+          facadeLayout[i] = function(i) { return (i % 2 === 0) } // One window, one space
+          break;
+      }
+    }
+
     var axiom = {
       sym: 'Building',
       floorsLayout: floorLayout,
+      facadeLayout: facadeLayout,
       points: pts
     };
 

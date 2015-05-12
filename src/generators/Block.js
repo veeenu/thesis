@@ -22,7 +22,7 @@ var subdivideStrip = function(block, strip, rng) {
     dy = b1.y - b2.y;
     len = Math.sqrt(dx * dx + dy * dy);
     ang = Math.atan2(dy, dx);
-    m = ~~(rng.random() * 3 + 2);
+    m = 2; //~~(rng.random() * 1 + 2);
     /*if(len < .35)
       m = 1;
     else if(len < .6)
@@ -78,7 +78,7 @@ var Block = function(poly, seed) {
   var rng = new PRNG(seed);
   this.poly = poly;
   this.block = Geom.insetPolygon(this.poly, 0.05);
-  this.lots = subdivideStrip(Geom.insetPolygon(this.block, 0.1), Geom.insetPolygon(this.block, 0.8), rng);
+  this.lots = subdivideStrip(Geom.insetPolygon(this.block, 0.1), Geom.insetPolygon(this.block, 0.6), rng);
 
   var cd = poly.reduce(function(o, i) {
   

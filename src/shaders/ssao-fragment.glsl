@@ -89,7 +89,9 @@ void main() {
 
   occlusion *= dz;
 
-  gl_FragColor = vec4(mix(color, vec3(0.), occlusion), 1.);
+  color = pow(mix(color, vec3(0.), occlusion), vec3(2.2));
+
+  gl_FragColor = vec4(color, 1.);
 
   //gl_FragColor = vec4(lambert * att * 2.5 * color, 1.);
 }

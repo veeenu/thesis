@@ -29,6 +29,7 @@ fsrcSSAO  = fs.readFileSync(__dirname + '/shaders/ssao-fragment.glsl', 'utf-8');
 
 gl.clearColor(0, 0, 0, 0);
 gl.depthFunc(gl.LESS);
+gl.blendFunc(gl.ONE, gl.ONE);
 gl.getExtension('OES_standard_derivatives');
 gl.getExtension('OES_texture_float');
 extFloatLinear = gl.getExtension('OES_texture_float_linear');
@@ -125,17 +126,20 @@ gl.bindFramebuffer(gl.FRAMEBUFFER, null);
  *******************************************************************************/
 var quadBuf       = gl.createBuffer(),
     lightBuf      = gl.createBuffer(),
+    lightArr      = new Float32Array(512 * 3 * 6),
     quadArr       = [],
     projection    = mat4.create(),
     invProjection = mat4.create();
 
-for(var i = 0; i < 128; i++) {
+for(var i = 0; i < 512; i++) {
   quadArr.push(1, -1, -1, -1, -1, 1,  1, -1, -1, 1, 1, 1);
 }
 
 // Quad data directly in screen space coordinates
 gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(quadArr), gl.STATIC_DRAW);
+gl.bindBuffer(gl.ARRAY_BUFFER, lightBuf);
+gl.bufferData(gl.ARRAY_BUFFER, lightArr, gl.STREAM_DRAW);
 //gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([1, -1, -1, -1, -1, 1,  1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
 gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
@@ -162,12 +166,11 @@ mat4.invert(invProjection, projection);
   programSSAO[i] = gl.getUniformLocation(programSSAO, i);
 });
 
-
-['position', 'lightPosition'].forEach(function(i) {
+['position', 'lightPos'].forEach(function(i) {
   programLight[i] = gl.getAttribLocation(programLight, i);
 });
 
-['target0', 'depthBuffer', 'inverseProjection', 'viewMatrix', 'lightPos'].forEach(function(i) {
+['target0', 'depthBuffer', 'inverseProjection', 'viewMatrix'].forEach(function(i) {
   programLight[i] = gl.getUniformLocation(programLight, i);
 });
 
@@ -210,7 +213,7 @@ programPass.activate = function(scene) {
   
   });
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, null);
+  //gl.bindBuffer(gl.ARRAY_BUFFER, null);
 }
 
 programPass.deactivate = function() {
@@ -251,7 +254,7 @@ programSSAO.activate = function(scene) {
 }
 
 programSSAO.deactivate = function() {
-  gl.disableVertexAttribArray(programSSAO.position);
+  //gl.disableVertexAttribArray(programSSAO.position);
 }
 
 programLight.activate = function(scene) {
@@ -259,7 +262,6 @@ programLight.activate = function(scene) {
   gl.bindFramebuffer(gl.FRAMEBUFFER, lightFramebuffer);
 
   gl.enable(gl.BLEND);
-  gl.blendFunc(gl.ONE, gl.ONE);
   gl.clear(gl.COLOR_BUFFER_BIT);
 
   //
@@ -269,7 +271,7 @@ programLight.activate = function(scene) {
   gl.bindTexture(gl.TEXTURE_2D, target0);
 
   gl.uniform1i(programLight.target0, 0);
-  gl.uniform1i(programLight.depthBuffer, 3);
+  //gl.uniform1i(programLight.depthBuffer, 3);
 
   gl.uniformMatrix4fv(programLight.viewMatrix, false, scene.view);
   gl.uniformMatrix4fv(programLight.inverseProjection, false, invProjection);
@@ -280,23 +282,35 @@ programLight.activate = function(scene) {
   gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
   gl.vertexAttribPointer(programLight.position, 2, gl.FLOAT, false, 0, 0);
 
+  gl.bindBuffer(gl.ARRAY_BUFFER, lightBuf);
+  gl.vertexAttribPointer(programLight.lightPos, 3, gl.FLOAT, false, 0, 0);
+
+  var len = Math.min(scene.lights.length, lightArr.length),
+      lightSub = lightArr.subarray(0, len);
+  lightSub.set(scene.lights);
+  gl.bufferSubData(gl.ARRAY_BUFFER, 0, lightSub);
+
   gl.enableVertexAttribArray(programLight.position);
+  gl.enableVertexAttribArray(programLight.lightPos);
+
+  gl.drawArrays(gl.TRIANGLES, 0, len / 3);
+
   //gl.enableVertexAttribArray(programLight.lightPosition);
 
   /*if(scene.lights.length > 0) {
     gl.uniform3fv(programLight.lightPos, scene.lights[0]);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
   }*/
-  for(var i = 0, I = scene.lights.length; i < I; i++) {
+  /*for(var i = 0, I = scene.lights.length; i < I; i++) {
     gl.uniform3fv(programLight.lightPos, scene.lights[i]);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
-  }
+  }*/
 
 }
 
 programLight.deactivate = function() {
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-  gl.disableVertexAttribArray(programLight.position);
+  //gl.disableVertexAttribArray(programLight.position);
   gl.disable(gl.BLEND);
 }
 

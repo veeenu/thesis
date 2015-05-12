@@ -4,7 +4,7 @@ var QuadTree = function(x, y, w, limit) {
 
   this.x = x;
   this.y = y;
-  this.w = w;
+  this.w = Math.abs(w);
   this.limit = limit;
 
   this.points = [];

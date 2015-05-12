@@ -44,7 +44,8 @@ function sceneLoop(ts) {
   mainScene.update(ts - sceneLoop.t0);
   stats.end();
 
-  requestAnimationFrame(sceneLoop);
+  if(window.STAHP !== true)
+    requestAnimationFrame(sceneLoop);
 }
 gl.viewport(0, 0, Context.w, Context.h);
 
