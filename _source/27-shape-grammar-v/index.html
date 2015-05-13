@@ -86,9 +86,10 @@ void main() {
 <script type='application/x-fragment-shader' id='fragment-2d'> 
 precision highp float;
 uniform float ps;
+uniform vec3 color;
 
 void main() {
-  gl_FragColor = vec4(1., 0., 0., 1.);
+  gl_FragColor = vec4(color, 1.);
 }
 
 </script>

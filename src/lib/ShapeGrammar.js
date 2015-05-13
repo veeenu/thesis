@@ -23,9 +23,9 @@ _.prototype.run = function(state) {
 
   state = (state instanceof Array? state : [state]);
 
-  while(state.length) {
+  for(var k = 0, K = state.length; k < K; k++) {
 
-    var lhs = state.shift();
+    var lhs = state[k];
 
     if(lhs.sym === _.TERMINAL) {
       output.push(lhs);
@@ -33,9 +33,9 @@ _.prototype.run = function(state) {
       
       var rule = rules[i];
       if(lhs.sym === rule.lhs && 
-        (rule.cond === null || rule.cond.call(lhs))) {
+        (rule.cond === null || rule.cond.call(lhs, state))) {
         
-        var ret = rule.rhs.call(lhs);
+        var ret = rule.rhs.call(lhs, state);
         ret = (ret instanceof Array? ret : [ret]);
 
         for(var j = 0, J = ret.length; j < J; j++) {

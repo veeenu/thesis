@@ -234,6 +234,7 @@ Object.defineProperty(Scene.prototype, "lightPos", {
   gl.enableVertexAttribArray(gl.getAttribLocation(pprog, 'point'));
   gl.vertexAttribPointer(gl.getAttribLocation(pprog, 'point'), 2, gl.FLOAT, false, 0, 0);
   gl.uniform1f(gl.getUniformLocation(pprog, 'ps'), w / 16);
+  gl.uniform3f(gl.getUniformLocation(pprog, 'color'), 1, 0, 0);
 
   gl.drawArrays(gl.LINES, 0, points.length / 2);
 
@@ -251,11 +252,11 @@ Object.defineProperty(Scene.prototype, "lightPos", {
   newcanv.style.top = (bcr.top + window.scrollY) + 'px';
   newctx.imageSmoothingEnabled = false;
 
-  (function(pp, w, h) {
+  var pathfind = function(pp, w, h, start, end) {
     var frontier = [],
         visited = [];
 
-    var X = 10, Y = 18;
+    var X = end.x, Y = end.y;
 
     var elem = function(x, y) {
       return pp[y * w + x];
@@ -288,8 +289,8 @@ Object.defineProperty(Scene.prototype, "lightPos", {
       return visited[y * w + x] !== undefined;
     }
 
-    frontier.push({ x: 0, y: 0 });
-    visited[0] = null;
+    frontier.push(start);
+    visited[start.y * w + start.x] = null;
     var k = 0;
     while(frontier.length > 0 && k < 10000) {
       k++;
@@ -314,15 +315,46 @@ Object.defineProperty(Scene.prototype, "lightPos", {
       cur = visited[cur.y * w + cur.x];
     }
 
-    path.forEach(function(i) {
-      pixels[(i.y * w + i.x) * 4 + 1] = 255;
-      pixels[(i.y * w + i.x) * 4 + 3] = 255;
-    })
+    path.unshift(end);
 
-  }(pp, tfw, tfh));
+    return path;
+
+  };
+
+  var path = [], rooms;
+
+  rooms = shgResult.rooms.reduce(function(o, i) {
+    o.push({
+      x: ~~(i.x * fw),
+      y: ~~(i.z * fh)
+    });
+
+    return o;
+  }, []);
   
-  imgd.data.set(pixels);
-  newctx.putImageData(imgd, 0, 0);
+  var intv = setInterval(function() {
+    path = pathfind(pp, tfw, tfh, rooms[0], rooms[1]);
+    rooms.shift();
+
+    path.forEach(function(i) {
+      pixels[(i.y * tfw + i.x) * 4 + 1] = 255;
+      pixels[(i.y * tfw + i.x) * 4 + 3] = 255;
+    });
+    
+    imgd.data.set(pixels);
+    newctx.putImageData(imgd, 0, 0);
+    var im = new Image();
+    im.onload = function() {
+      newctx.clearRect(0, 0, newcanv.width, newcanv.height);
+      newctx.drawImage(im, 0, 0);
+    }
+    im.src = newcanv.toDataURL();
+
+    if(rooms.length === 1)
+      clearInterval(intv);
+  
+  }, 1000);
+
   var im = new Image();
   im.onload = function() {
     newctx.clearRect(0, 0, newcanv.width, newcanv.height);

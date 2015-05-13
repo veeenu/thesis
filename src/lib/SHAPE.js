@@ -1,3 +1,5 @@
+var Geom = require('Geom');
+
 /*
  * General rule: only rectangles allowed.
  * p1 p2
@@ -202,6 +204,37 @@ var SHAPE = {
 
       return SHAPE.split(quad, splits, [1], symbol);
     }
+  },
+
+  bounds: function(sym) {
+    var points = sym.points;
+
+    var minX, minZ, maxX, maxZ;
+
+    minX = minZ = Number.POSITIVE_INFINITY;
+    maxX = maxZ = Number.NEGATIVE_INFINITY;
+
+    for(var i = 0, I = points.length; i < I; i++) {
+      var p = points[i];
+      minX = Math.min(p.x, minX);
+      minZ = Math.min(p.z, minZ);
+      maxX = Math.max(p.x, maxX);
+      maxZ = Math.max(p.z, maxZ);
+    }
+
+    return {
+      width: maxX - minX,
+      depth: maxZ - minZ
+    };
+  },
+
+  inset: function(points, len) {
+    return Geom.insetPolygon(
+      points.map(function(i) { return { x: i.x, y: i.z }}),
+      -len
+    ).map(function(i) {
+      return { x: i.x, y: points[0].y, z: i.y }
+    });
   },
 
   lerp: function(a, b, t) {

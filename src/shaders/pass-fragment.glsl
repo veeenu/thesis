@@ -1,5 +1,4 @@
 #extension GL_OES_standard_derivatives : require
-//#extension GL_EXT_draw_buffers : require
 
 precision highp float;
 
@@ -62,12 +61,11 @@ struct TTextureInfo {
 #define textureBrickI(x, p, notp) ((floor(x)*(p))+max(fract(x)-(notp), 0.0))
 TTextureInfo textureBrick(vec3 fvert, vec3 fnorm, float fdepth, vec2 uv, vec3 brickColor) {
 
-  const float bW  = .03125,
-              bH  = .015625,
-              mS  = 1. / 512.,
+  const float bW  = .0625,
+              bH  = .03125,
+              mS  = 1. / 256.,
               mWf = mS * .5 / bW,
               mHf = mS * .5 / bH;
-  //const vec3 mortarColor = vec3(.9, .9, .9);
   const vec3 mortarColor = vec3(.68, .68, .71);
 
   float u = uv.s / bW,
@@ -80,7 +78,6 @@ TTextureInfo textureBrick(vec3 fvert, vec3 fnorm, float fdepth, vec2 uv, vec3 br
   brU = floor(u);
 
   float noisev = 1. +
-                 //snoise(uv * 16.) * .0625 +
                  snoise(uv * 256.) * .125;
   float brickDamp = 1. + .125 * sin(1.57 * (brU + 1.)) * sin(2. * (brV + 1.));
 
@@ -105,7 +102,7 @@ TTextureInfo textureBrick(vec3 fvert, vec3 fnorm, float fdepth, vec2 uv, vec3 br
   }
 
   // Frequency clamping
-  bump += 4. * (1. - smoothstep(0., .00125, max(noiseKernel.x, noiseKernel.y))) * noisev;
+  bump += 8. * (1. - smoothstep(0., .00125, max(noiseKernel.x, noiseKernel.y))) * noisev;
 
   return TTextureInfo(
     color,
@@ -136,17 +133,6 @@ TTextureInfo textureWindow(vec3 fvert, vec3 fnorm, float fdepth, vec2 uv, vec3 w
   float noisev = 1. + 
                  snoise(uv * 16.) * .0625 +
                  abs(snoise(uv * 512.)) * .0625;
-
-  /*vec2 patSample, patKernel = 3. * vec2(fwidth(patF.x), fwidth(patF.y));
-  float bump = 0.;
-
-  for(int x = -1; x <= 1; x++) {
-    for(int y = -1; y <= 1; y++) {
-      patSample = patF + vec2(float(x), float(y)) * patKernel;
-      bump += patSample.x * patSample.y;
-    }
-  }
-  bump *= 1./9.;*/
 
   float bump = patF.x * patF.y;
 
@@ -201,7 +187,7 @@ vec3 textureRoad(vec2 uuv) {
         noiseS = 1. + 
                  abs(snoise(uv * 128.)) * .125;
 
-  return mix(asphaltColor * noiseA, stripColor * noiseS, q);
+  return 6. * mix(asphaltColor * noiseA, stripColor * noiseS, q);
 }
 
 vec3 textureAsphalt(vec2 uuv) {
@@ -212,7 +198,7 @@ vec3 textureAsphalt(vec2 uuv) {
                  abs(snoise(uv * 16.))  * .0625 +
                  abs(snoise(uv * 32.))  * .0625 +
                  abs(snoise(uv * 128.)) * .125;
-  return asphaltColor * 1.5 * noiseA;
+  return asphaltColor * 2.5 * noiseA;
 }
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -231,10 +217,11 @@ vec2 packNormal(in vec3 normal)
 
 void main() {
 
-  TTextureInfo ti; // = textureBrick(vPosition.xyz, vNormal.xyz, vNormal.w, texUV.st, vExtra.xyz);
-  vec3 color, normal;
+  TTextureInfo ti;
+  mat3 tsMatrix;
+  vec3 color, normal, tangent, tsPosition;
 
-  float depth = clipPosition.z / clipPosition.w; //gl_FragCoord.z / gl_FragCoord.w;
+  float depth = clipPosition.z / clipPosition.w;
 
   normal = normalize(faceforward(vNormal, gl_FragCoord.xyz, vNormal));
 
@@ -258,10 +245,9 @@ void main() {
   else if(texUV.z > 1.1)
     color = textureRoad(mod(texUV.xy, 1.));
   else
-    color = textureAsphalt(mod(texUV.yx, 1.)); //textureWindow(uuv, fextra);
+    color = textureAsphalt(mod(texUV.yx, 1.));
 
-  gl_FragColor = vec4(packNormal(normalize(normal)), packColor(clamp(.25 * pow(color, vec3(1. / 2.2)), 0., 1.)), depth);
-  //gl_FragData[0] = vec4(packNormal(normalize(normal)), packColor(clamp(color, 0., 1.)), depth);
-  //gl_FragData[1] = vec4(normalize(normal), depth);
-  //gl_FragData[2] = vec4(color, pack(clamp(color, 0., 1.)));
+  color = clamp(.2 * pow(color, vec3(1. / 2.2)), 0., 1.);
+
+  gl_FragColor = vec4(packNormal(normalize(normal)), packColor(color), depth);
 }

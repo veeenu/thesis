@@ -5,10 +5,6 @@ uniform sampler2D target0, lightBuffer;
 
 varying vec2 sscoord, coord;
 
-////////////////////////////////////////////////////////////////////////////////
-// Main
-////////////////////////////////////////////////////////////////////////////////
-
 #define DL 2.399963229728653
 #define EULER 2.718281828459045
 
@@ -26,26 +22,26 @@ vec2 vrand( const vec2 coord ) {
 }
 
 float readDepth(const vec2 coord) {
-  return (2. * .001) / (1000.001 - texture2D(target0, coord).w * 999.999);
+  return (96. * .001) / (1000.001 - texture2D(target0, coord).w * 999.999);
 }
 
 float cmpDepth(const float d1, const float d2, inout int far) {
 
   float ga = 2., diff = (d1 - d2) * 100.;
 
-  if(diff < .2)
-    ga = .2;
+  if(diff < .4)
+    ga = .3;
   else
     far = 1;
 
-  float dd = diff - .2,
+  float dd = diff - .4,
         gauss = pow(EULER, -2. * dd * dd / (ga * ga));
   
   return gauss;
 }
 
 float calcAO(float depth, vec2 uv, float dw, float dh) {
-  float dd = 20. - depth * 20.;
+  float dd = 5. - depth * 5.;
 
   vec2 vv = vec2(dw, dh),
        coord1 = uv + dd * vv,
@@ -65,18 +61,16 @@ float calcAO(float depth, vec2 uv, float dw, float dh) {
 
 void main() {
 
-  //////////////////////////////////////////////////////////////////////////////
-  // SSAO
-  //////////////////////////////////////////////////////////////////////////////
-
-  vec3 color = texture2D(lightBuffer, coord).rgb;
-  float occlusion = 0., vdepth = readDepth(coord);
+  vec3 color = 4. * texture2D(lightBuffer, coord).rgb;
+  float occlusion = 0., 
+        vdepth = readDepth(coord),
+        tt = clamp(vdepth, .5, 1.);
   vec2 noisev = vrand(coord);
 
-  float w = (.5 / 1280.) / vdepth + (noisev.x * (1. - noisev.x)),
-        h = (.5 / 800.)  / vdepth + (noisev.y * (1. - noisev.y)),
+  float w = (1. / 1280.) / tt + (noisev.x * (1. - noisev.x)),
+        h = (1. / 800.)  / tt + (noisev.y * (1. - noisev.y)),
         dz = 1. / 16.,
-        z = 1. - dz / 2.,
+        z = 1. - dz * .5,
         l = 0.;
   for(int i = 0; i <= 16; i++) {
     float r = sqrt(1. - z),
@@ -89,7 +83,9 @@ void main() {
 
   occlusion *= dz;
 
-  color = pow(mix(color, vec3(0.), occlusion), vec3(2.2));
+  color = mix(color, vec3(0.), occlusion);
+  color = pow(color, vec3(2.2));
+  //color = mix(color, vec3(1. - occlusion), .5);
 
   gl_FragColor = vec4(color, 1.);
 

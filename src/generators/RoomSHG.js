@@ -1,8 +1,13 @@
-var shgResult = { vertices: [], normals: [], uvs: [] };
+var ShapeGrammar = require('ShapeGrammar'),
+    SHAPE        = require('../lib/SHAPE.js'),
+    earcut       = require('earcut'),
+    Geom         = require('Geom'),
+    PRNG         = require('PRNG');
 
-// http://procworld.blogspot.it/2012/03/building-rooms.html
 var shgRoom = new ShapeGrammar(),
-    rng = new MersenneTwister(12345);
+    rng     = new PRNG(12345);
+
+// Inspired by http://procworld.blogspot.it/2012/03/building-rooms.html
 
 shgRoom.define('Room', 
   function() {
@@ -240,7 +245,7 @@ shgRoom.define('Quad', null, (function() {
 
     uvs = this.uvs || defaultUVS;
     u0 = uvs[0], u1 = uvs[1], u2 = uvs[2], u3 = uvs[3];
-    texID = this.texID || 0;
+    texID = this.texID || 3;
 
     uvs = [
       u0.s, u0.t, texID, u1.s, u1.t, texID, u2.s, u2.t, texID,
@@ -286,88 +291,77 @@ shgRoom.ratio = .61;
 shgRoom.floorHeight = 1.5;
 shgRoom.wallDepth = .2;
 
-shgResult = shgRoom.run({
-  sym: 'Room',
-  points: [
-    { x: -3, y: 0, z: -5 },
-    { x: -3, y: 0, z: 5 },
-    { x: 3, y: 0, z: 5 },
-    { x: 3, y: 0, z: -5 }
-  ]
-}).reduce(function(o, i) {
+module.exports = {
+  shg: shgRoom,
+  create: function(points) {
+  
+    var ret = shgRoom.run({
+      sym: 'Room',
+      points: points
+    }).reduce(function(o, i) {
+      if(i.isWall)
+        o.walls.push(i);
+      else if('roomCentroid' in i)
+        o.rooms.push(i.roomCentroid);
+      else {
+        for(var j = 0, J = i.vertices.length; j < J; j++) {
+          o.vertices.push(i.vertices[j]);
+          o.normals.push(i.normals[j]);
+          o.uvs.push(i.uvs[j]);
+        }
+      }
 
-  /*if(i.isDoor) {
-    o.graph.push({ point: i.point, angle: i.angle });
-  }*/
-  if(i.isWall)
-    o.walls.push(i);
-  else if('roomCentroid' in i)
-    o.rooms.push(i.roomCentroid);
-  else
-    for(var j = 0, J = i.vertices.length; j < J; j++) {
-      o.vertices.push(i.vertices[j]);
-      o.normals.push(i.normals[j]);
-      o.uvs.push(i.uvs[j]);
-    }
+      return o;
+    }, {
+      vertices: [], normals: [], uvs: [], walls: [], rooms: []
+    });
+    
+    var bbox = points.reduce(function(o, i) {
+      o.minX = Math.min(i.x, o.minX);
+      o.minZ = Math.min(i.z, o.minZ);
+      o.maxX = Math.max(i.x, o.maxX);
+      o.maxZ = Math.max(i.z, o.maxZ);
 
-  return o;
+      return o;
 
-}, { vertices: [], normals: [], uvs: [], walls: [], rooms: [] });
+    }, { 
+      minX: Number.POSITIVE_INFINITY, maxX: Number.NEGATIVE_INFINITY,
+      minZ: Number.POSITIVE_INFINITY, maxZ: Number.NEGATIVE_INFINITY,
+    });
 
-/*var bbox = shgResult.walls.reduce(function(o, i) {
-  o.minX = Math.min(i.point.x, o.minX);
-  o.minZ = Math.min(i.point.z, o.minZ);
-  o.maxX = Math.max(i.point.x, o.maxX);
-  o.maxZ = Math.max(i.point.z, o.maxZ);
+    bbox.lenX = bbox.maxX - bbox.minX;
+    bbox.lenZ = bbox.maxZ - bbox.minZ;
 
-  return o;
+    ret.lines = ret.walls.reduce(function(o, i) {
 
-}, { 
-  minX: Number.POSITIVE_INFINITY, maxX: Number.NEGATIVE_INFINITY,
-  minZ: Number.POSITIVE_INFINITY, maxZ: Number.NEGATIVE_INFINITY,
-});*/
+      o.push(
+        (i.p0.x - bbox.minX) / bbox.lenX, 
+        (i.p0.z - bbox.minZ) / bbox.lenZ, 
+        (i.p1.x - bbox.minX) / bbox.lenX, 
+        (i.p1.z - bbox.minZ) / bbox.lenZ
+      );
+      return o;
 
-var bbox = {
-  minX: -3, maxX: 3,
-  minZ: -5, maxZ: 5
+    }, []);
+
+    ret.roomsWorld = ret.rooms;
+    ret.rooms = ret.rooms.reduce(function(o, i) {
+
+      o.push({
+        x: (i.x - bbox.minX) / bbox.lenX,
+        y: (i.y - bbox.minY) / bbox.lenY,
+        z: (i.z - bbox.minZ) / bbox.lenZ
+      });
+
+      return o;
+
+    }, []);
+
+    ret.width = bbox.lenX;
+    ret.height = bbox.lenZ;
+    ret.bbox = bbox;
+
+    return ret;
+
+  }
 }
-
-bbox.lenX = bbox.maxX - bbox.minX;
-bbox.lenZ = bbox.maxZ - bbox.minZ;
-console.log(bbox)
-
-/*shgResult.points = shgResult.graph.reduce(function(o, i) {
-
-  o.push((i.point.x - bbox.minX) / bbox.lenX, (i.point.z - bbox.minZ) / bbox.lenZ, i.angle);
-  return o;
-
-}, [])*/
-
-shgResult.lines = shgResult.walls.reduce(function(o, i) {
-
-  o.push(
-    (i.p0.x - bbox.minX) / bbox.lenX, 
-    (i.p0.z - bbox.minZ) / bbox.lenZ, 
-    (i.p1.x - bbox.minX) / bbox.lenX, 
-    (i.p1.z - bbox.minZ) / bbox.lenZ
-  );
-  return o;
-
-}, []);
-
-shgResult.rooms = shgResult.rooms.reduce(function(o, i) {
-
-  o.push({
-    x: (i.x - bbox.minX) / bbox.lenX,
-    y: (i.y - bbox.minY) / bbox.lenY,
-    z: (i.z - bbox.minZ) / bbox.lenZ
-  });
-
-  return o;
-
-}, [])
-
-shgResult.width = bbox.lenX;
-shgResult.height = bbox.lenZ;
-
-console.log(shgResult);
