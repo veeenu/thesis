@@ -41,8 +41,9 @@ function sceneLoop(ts) {
     sceneLoop.t0 = ts;
 
   stats.begin();
-  Renderer.render(roomScene);
+  Renderer.render(mainScene);
   mainScene.update(ts - sceneLoop.t0);
+  //Renderer.render(roomScene);
   //roomScene.update(ts - sceneLoop.t0);
   stats.end();
 
