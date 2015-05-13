@@ -6,10 +6,10 @@ var glMatrix = require('glMatrix'),
     Loader   = require('Loader'),
     City     = require('./generators/City.js'),
     Stats    = require('stats-js'),
-    //mainScene = require('./scenes/MainScene.js'),
-    roomScene = require('./scenes/RoomScene.js');
+    mainScene = require('./scenes/MainScene.js'),
+    //roomScene = require('./scenes/RoomScene.js');
+    stats = new Stats();
 
-var stats = new Stats();
 stats.setMode(0);
 
 stats.domElement.style.position = 'absolute';

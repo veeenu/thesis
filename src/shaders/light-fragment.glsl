@@ -46,15 +46,15 @@ void main() {
   vec3 lightDir = lPos - vertex;
 
   float dist = length(lightDir);
-  //if(dist > 4.)
-  //  discard;
+  if(dist > 4.)
+    discard;
 
-  vec3 normal    = -normalize(unpackNormal(t0.xy)),
-       color     = unpackColor(t0.z);
+  vec3 normal = -normalize(unpackNormal(t0.xy)),
+       color  = unpackColor(t0.z);
 
   float lambert = max(dot(faceforward(-normal, lightDir, normal), normalize(lightDir)), 0.),
         att = min(1., 1. / (.2 + .1 * dist + .8 * dist * dist));
 
   gl_FragColor = vec4(lambert * att * color, 1.);
-  gl_FragColor = vec4(color, 1.);
+  //gl_FragColor = vec4(color, 1.);
 }

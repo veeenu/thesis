@@ -61,7 +61,7 @@ float calcAO(float depth, vec2 uv, float dw, float dh) {
 
 void main() {
 
-  vec3 color = 4. * texture2D(lightBuffer, coord).rgb;
+  vec3 color = texture2D(lightBuffer, coord).rgb;
   float occlusion = 0., 
         vdepth = readDepth(coord),
         tt = clamp(vdepth, .5, 1.);
@@ -83,7 +83,7 @@ void main() {
 
   occlusion *= dz;
 
-  color = mix(color, vec3(0.), occlusion);
+//  color = mix(color, vec3(0.), occlusion);
   color = pow(color, vec3(2.2));
   //color = mix(color, vec3(1. - occlusion), .5);
 
