@@ -52,6 +52,6 @@ function sceneLoop(ts) {
 }
 gl.viewport(0, 0, Context.w, Context.h);
 
-//loadingLoop();
-sceneLoop();
+loadingLoop();
+//sceneLoop();
 
