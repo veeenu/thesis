@@ -2,34 +2,77 @@ var glMatrix = require('glMatrix'),
     Context  = require('Context'),
     Mesh     = require('Mesh'),
     Geom     = require('Geom'),
+    Spline   = require('cardinal-spline'),
     QuadTree = require('QuadTree'),
     Loader   = require('Loader'),
     vec3     = glMatrix.vec3,
     mat4     = glMatrix.mat4,
     gl       = Context.gl,
     RoomSHG  = require('../generators/RoomSHG.js'),
-    grid, pathFind, geom;
+    grid, pathFind, geom, apt;
 
 var scene = {
   meshes: [],
   lights: [],
+  lightParameters: [ 6, 0, .2, 2 ],
   view: mat4.create(),
   model: mat4.create(),
   count: 0
 };
 
+var rsm = 20;
+
 ////////////////////////////////////////////////////////////////////////////////
 // Compute geometry
 ////////////////////////////////////////////////////////////////////////////////
 
-var computeGeometry = function(room) {
+var computeGeometry = function(room, path) {
 
   var vertices = room.vertices,
       normals  = room.normals,
       uvs      = room.uvs,
       extra    = [], 
-      lights   = [ { x: 0, y: 0, z: 0 } ],
+      lights   = [],
       count    = 0;
+
+  path = path.reduce(function(o, i) {
+  
+    if(i.door !== undefined)
+      o.push(i.door.point);
+
+    o.push(i.room.roomCentroid);
+
+    return o;
+
+  }, []);
+
+  /*for(var i = 0, I = path.length; i < I - 1; i++) {
+    var a = path[i], b = path[(i + 1) % I],
+        th = Math.atan2(b.z - a.z, b.x - a.x),
+          cos = Math.cos(th) * .025 + .025, sin = Math.sin(th) * .025 + .025,
+          p0 = { x: a.x - cos, y: .5, z: a.z - sin },
+          p1 = { x: a.x + cos, y: .5, z: a.z + sin },
+          p3 = { x: b.x - cos, y: .5, z: b.z - sin },
+          p2 = { x: b.x + cos, y: .5, z: b.z + sin };
+
+    vertices.push(
+      p0.x, p0.y, p0.z,
+      p1.x, p1.y, p1.z,
+      p2.x, p2.y, p2.z,
+      p0.x, p0.y, p0.z,
+      p2.x, p2.y, p2.z,
+      p3.x, p3.y, p3.z
+    );
+    normals.push(
+      0, 1, 0, 0, 1, 0, 0, 1, 0,
+      0, 1, 0, 0, 1, 0, 0, 1, 0
+    );
+    uvs.push(
+      0, 1, 4, 1, 1, 4, 1, 0, 4,
+      0, 1, 4, 1, 0, 4, 0, 0, 4
+    );
+    
+  }*/
 
   extra = vertices.map(function(i, idx) {
     return .4;
@@ -38,182 +81,72 @@ var computeGeometry = function(room) {
   return {
     room: room,
     mesh: new Mesh(vertices, normals, uvs, extra),
-    lights: lights
+    lights: room.roomsWorld.map(function(i) {
+      return {
+        x: i.x, y: i.y + 1, z: i.z
+      }
+    }),
+    path: path
   };
 
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// Generate a coarse occlusion grid from the room layout
-////////////////////////////////////////////////////////////////////////////////
+var AStarr = function(from, to, nodes) {
 
-var computeGrid = function(room) {
+  var frontier = [ from ],
+      cameFrom = [], 
+      via = [],
+      path = [], cur, cn;
 
-  var lines  = new Float32Array(room.lines),
-      canvas = document.createElement('canvas'),
-      gl     = canvas.getContext('webgl'),
-      prog   = gl.createProgram(),
-      vsh    = gl.createShader(gl.VERTEX_SHADER),
-      fsh    = gl.createShader(gl.FRAGMENT_SHADER),
-      vsrc   = "attribute vec2 point;\nvoid main() { gl_Position = vec4(-1. + 2. * point.xy, 0., 1.); }",
-      fsrc   = "precision highp float;\nvoid main() { gl_FragColor = vec4(1.); }",
-      lBuf   = gl.createBuffer(),
-      tex    = gl.createTexture(),
-      fb     = gl.createFramebuffer(),
-      width  = Math.round(room.width * 10),
-      height = Math.round(room.height * 10),
-      tw     = width,
-      th     = height,
-      grid   = [],
-      pixels;
+  cameFrom[nodes.indexOf(from)] = null;
 
+  while(frontier.length > 0) {
+    cur = frontier.shift();
 
-  // Next power of two
-  [1,2,4,8,16].forEach(function(i) { tw |= tw >> i; th |= th >> i; });
-  tw++, th++;
-  
-  pixels = new Uint8Array(tw * th * 4);
-  
-  gl.shaderSource(vsh, vsrc);
-  gl.shaderSource(fsh, fsrc);
-  gl.compileShader(vsh);
-  gl.compileShader(fsh);
-  gl.attachShader(prog, vsh);
-  gl.attachShader(prog, fsh);
-  gl.linkProgram(prog);
-  gl.useProgram(prog);
+    if(cur === to) break;
 
-  gl.bindTexture(gl.TEXTURE_2D, tex);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, tw, th, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    cur.neighbors.forEach(function(i) {
+      var cn = nodes.indexOf(i.r);
 
-  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
-  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+      if(cameFrom[cn] === undefined) {
+        frontier.push(i.r);
+        cameFrom[cn] = cur;
+        via[cn] = i.via;
+      }
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, lBuf);
-  gl.bufferData(gl.ARRAY_BUFFER, lines, gl.STATIC_DRAW);
-  gl.viewport(0, 0, width, height);
-
-  gl.lineWidth(1);
-  gl.enableVertexAttribArray(gl.getAttribLocation(prog, 'point'));
-  gl.vertexAttribPointer(gl.getAttribLocation(prog, 'point'), 2, gl.FLOAT, false, 0, 0);
-
-  gl.drawArrays(gl.LINES, 0, lines.length / 2);
-
-  gl.readPixels(0, 0, tw, th, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-  for(var i = 0, I = pixels.length; i < I; i += 4)
-    grid.push(pixels[i]);
-
-  return { grid: grid, w: tw, h: th };
-
-};
-
-////////////////////////////////////////////////////////////////////////////////
-// A* algorithm as a curried function. Replace with partial application
-// as soon as the grid is ready.
-////////////////////////////////////////////////////////////////////////////////
-
-var AStar = function(grid, w, h) {
-  
-  var el, neigh, hasBeenVisited;
- 
-  el = function(x, y) {
-    return y * w + x;
-  };
-
-  neigh = function(x, y) {
-    var ret = [];
-
-    if(y > 0) ret.push({ x: x, y: y - 1 });
-    if(y < h) ret.push({ x: x, y: y + 1 });
-    if(x > 0) ret.push({ x: x - 1, y: y });
-    if(x < w) ret.push({ x: x + 1, y: y });
-    if(y > 0 && x > 0)
-      ret.push({ x: x - 1, y: y - 1});
-    if(y > 0 && x < w)
-      ret.push({ x: x + 1, y: y - 1});
-    if(y < h && x < w)
-      ret.push({ x: x + 1, y: y + 1});
-    if(y < h && x > 0)
-      ret.push({ x: x - 1, y: y + 1});
-
-    return ret.reduce(function(o, i) {
-      if(grid[ el(i.x, i.y) ] === 0)
-        o.push(i);
-      return o;
-    }, []);
-
+    });
   }
 
-  return function(from, to) {
-    var frontier = [ from ],
-        visited = [],
-        path = [], cur,
-        k = 0, cn;
+  cur = to;
 
-    visited[el(from.x, from.y)] = null;
-
-    while(frontier.length > 0 && k++ < 10000) {
-      cur = frontier.shift();
-
-      if(cur.x === to.x && cur.y === to.y)
-        break;
-
-      neigh(cur.x, cur.y).forEach(function(i) {
-        cn = el(i.x, i.y);
-        if(visited[cn] === undefined) {
-          frontier.push(i);
-          visited[cn] = cur;
-        }
+  while(cur !== null) {
+    cn = nodes.indexOf(cur);
+    if(via[cn] !== undefined)
+      path.unshift({
+        room: cur,
+        door: via[cn]
       });
-    }
-
-    cur = visited[el(to.x, to.y)];
-
-    while(cur !== null && path.length < 5000) {
-      path.unshift(cur);
-      cur = visited[el(cur.x, cur.y)];
-    }
-
-    return path;
+    cur = cameFrom[cn];
   }
-};
 
-geom = computeGeometry(RoomSHG.create([
+  return path;
+
+}
+
+apt = RoomSHG.create([
   { x: -3, y: 0, z: -5 },
   { x: -3, y: 0, z:  5 },
   { x:  3, y: 0, z:  5 },
   { x:  3, y: 0, z: -5 }
-]));
+]);
+var p = [];
 
-grid = computeGrid(geom.room);
-pathFind = AStar(grid.grid, grid.w, grid.h);
+for(var i = 0, I = apt.nodes.length; i < I; i++)
+  p = p.concat(AStarr(apt.nodes[i], apt.nodes[(i + 1) % I], apt.nodes));
 
-var roomCenters = geom.room.rooms.map(function(i) {
-      return {
-        x: ~~(i.x * geom.room.width * 10),
-        y: ~~(i.z * geom.room.height * 10)
-      };
-
-    }),
-    path = [];
-
-for(var i = 0, I = roomCenters.length; i < I; i++) {
-  path = path.concat(pathFind(roomCenters[i], roomCenters[(i + 1) % I]));
-}
+geom = computeGeometry(apt, p);
 
 var bbox = geom.room.bbox;
-
-path = path.map(function(i) {
-  return {
-    x: bbox.minX + bbox.lenX * (i.x / (geom.room.width * 10)),
-    y: bbox.minZ + bbox.lenZ * (i.y / (geom.room.height * 10))
-  }
-});
-
 
 scene.meshes = [ geom.mesh ];
 scene.lights = geom.lights.reduce(function(o, i) {
@@ -223,34 +156,83 @@ scene.lights = geom.lights.reduce(function(o, i) {
   return o;
 }, []);
 
+var pathFn = (function(path, us) { 
+  
+  var samples = [];
+
+  for(var i = 0, I = path.length; i < I; i++) {
+  
+    var a = path[i], b = path[(i + 1) % I],
+        dx = b.x - a.x,
+        dz = b.z - a.z,
+        arclen = Math.sqrt(dx * dx + dz * dz),
+        swidth = us / arclen, t = 0;
+
+    for(var j = 0, J = ~~(arclen / us); j < J; j++) {
+      t = j / J;
+      samples.push({ 
+        x: a.x * (1 - t) + b.x * t,
+        y: a.y * (1 - t) + b.y * t,
+        z: a.z * (1 - t) + b.z * t
+      });
+    }
+
+  }
+
+  console.log(samples)
+
+  return function(x) {
+
+    var t = x * x * (22 + x * x * (-17 + 4 * x * x)) / 9;
+
+    var I = samples.length,
+        j = t * I, i = ~~j,
+        d = j - i,
+        a = samples[i], b = samples[(i + 1) % I];
+
+    return {
+      x: a.x * (1 - d) + b.x * d,
+      y: a.y * (1 - d) + b.y * d,
+      z: a.z * (1 - d) + b.z * d
+    }
+
+  }
+}(geom.path, .025));
+
 mat4.translate(scene.view, scene.view, [0,0, -8]);
 mat4.rotateX(scene.view, scene.view, Math.PI / 2);
 
 scene.update = function(timestamp) {
 
-  var t = (timestamp % 80) / 80,
-      dt = ((timestamp + 40) % 80) / 80,
-      i = ~~(timestamp / 80) % path.length,
-      rc  = path[i],
-      rc2 = path[(i + 1) % path.length],
-      rc3 = path[(i + 2) % path.length],
-      x = rc.x * (1 - t) + rc2.x * t,
-      y = rc.y * (1 - t) + rc2.y * t,
-      x1 = rc2.x * (1 - t) + rc3.x * t,
-      y1 = rc2.y * (1 - t) + rc3.y * t,
+  /*var path = geom.path;
+  var t  = (timestamp % 30000) / 30000,
+      I  = path.length,
+      i  = ~~(t * I),
+      dt = t * I - i,
+      x  = path[i].x,  y  = path[i].z,
+      x1 = path[(i + 1) % I].x,  y1 = path[(i + 1) % I].z,
+      x2 = path[(i + 2) % I].x,  y2 = path[(i + 2) % I].z,
       dx = x1 - x, dy = y1 - y,
-      angle = Math.atan2(-dy, dx) - Math.PI / 2,
-      cos = Math.cos(angle), sin = Math.sin(angle);
-    //x - .0625, .25, y + .0625,
-    //x, .25, y - .0625,
-    //x + .0625, .25, y + .0625
+      angle = Math.atan2(-dy, dx) - Math.PI / 2;
+
+  x = (1 - dt) * x + dt * x1;
+  y = (1 - dt) * y + dt * y1;*/
+
+  var p = pathFn((timestamp % 30000) / 30000),
+      p1 = pathFn( ((timestamp + 1250) % 30000) / 30000 ),
+      //p2 = pathFn( ((timestamp + 500) % 30000) / 30000 ),
+      x = p.x, y = p.z,
+      th1 = Math.atan2(- p1.z + p.z, p1.x - p.x) - Math.PI / 2,
+      //th2 = Math.atan2(- p2.z + p1.z, p2.x - p1.x) - Math.PI / 2,
+      angle = th1;
 
   var p0 = vec3.fromValues(-.0625, .25, .0625),
-      p1 = vec3.fromValues(0, .25, -.0625),
+      p1 = vec3.fromValues(0, .25, -.25),
       p2 = vec3.fromValues(.0625, .25, .0625),
       m  = mat4.create();
 
   mat4.translate(m, m, [ x, 0, y ]);
+  mat4.scale(m, m, [2,1,2]);
   mat4.rotateY(m, m, angle);
   vec3.transformMat4(p0, p0, m);
   vec3.transformMat4(p1, p1, m);
@@ -268,10 +250,10 @@ scene.update = function(timestamp) {
     0, 1, 0, 0, 1, 0, 0, 1, 0
   ]);
 
-  mat4.identity(scene.view);
-  mat4.rotateX(scene.view, scene.view, Math.PI / 12);
+  /*mat4.identity(scene.view);
+  mat4.rotateX(scene.view, scene.view, Math.PI / 6);
   mat4.rotateY(scene.view, scene.view, -angle);
-  mat4.translate(scene.view, scene.view, [ -x, -.5, -y ]);
+  mat4.translate(scene.view, scene.view, [ -x, -.75, -y ]);*/
 
 }
 

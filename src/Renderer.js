@@ -170,7 +170,7 @@ mat4.invert(invProjection, projection);
   programLight[i] = gl.getAttribLocation(programLight, i);
 });
 
-['target0', 'depthBuffer', 'inverseProjection', 'viewMatrix'].forEach(function(i) {
+['target0', 'lightParameters', 'inverseProjection', 'viewMatrix'].forEach(function(i) {
   programLight[i] = gl.getUniformLocation(programLight, i);
 });
 
@@ -254,7 +254,7 @@ programSSAO.activate = function(scene) {
 }
 
 programSSAO.deactivate = function() {
-  //gl.disableVertexAttribArray(programSSAO.position);
+  gl.disableVertexAttribArray(programSSAO.position);
 }
 
 programLight.activate = function(scene) {
@@ -271,7 +271,7 @@ programLight.activate = function(scene) {
   gl.bindTexture(gl.TEXTURE_2D, target0);
 
   gl.uniform1i(programLight.target0, 0);
-  //gl.uniform1i(programLight.depthBuffer, 3);
+  gl.uniform4fv(programLight.lightParameters, scene.lightParameters);
 
   gl.uniformMatrix4fv(programLight.viewMatrix, false, scene.view);
   gl.uniformMatrix4fv(programLight.inverseProjection, false, invProjection);
@@ -295,7 +295,7 @@ programLight.activate = function(scene) {
 
   gl.drawArrays(gl.TRIANGLES, 0, len / 3);
 
-  //gl.enableVertexAttribArray(programLight.lightPosition);
+  gl.enableVertexAttribArray(programLight.lightPosition);
 
   /*if(scene.lights.length > 0) {
     gl.uniform3fv(programLight.lightPos, scene.lights[0]);
@@ -310,7 +310,7 @@ programLight.activate = function(scene) {
 
 programLight.deactivate = function() {
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-  //gl.disableVertexAttribArray(programLight.position);
+  gl.disableVertexAttribArray(programLight.position);
   gl.disable(gl.BLEND);
 }
 

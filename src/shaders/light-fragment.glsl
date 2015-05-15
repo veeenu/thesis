@@ -1,8 +1,9 @@
 #extension GL_OES_standard_derivatives : enable
 precision highp float;
 
-uniform sampler2D target0, depthBuffer;
+uniform sampler2D target0;
 uniform mat4 inverseProjection, viewMatrix;
+uniform vec4 lightParameters;
 
 varying vec2 sscoord, coord;
 varying vec3 lPos;
@@ -39,21 +40,28 @@ void main() {
   if(length(t0.xy) == 0.)
     discard;
 
-  float depth     = t0.w;
+  float depth = t0.w;
 
   vec4 vertexFromDepth = inverseProjection * vec4(sscoord, depth, 1.);
   vec3 vertex = vertexFromDepth.xyz / vertexFromDepth.w;
   vec3 lightDir = lPos - vertex;
 
   float dist = length(lightDir);
-  if(dist > 4.)
-    discard;
+  //if(dist > 2.)
+  //  discard;
 
   vec3 normal = -normalize(unpackNormal(t0.xy)),
        color  = unpackColor(t0.z);
 
   float lambert = max(dot(faceforward(-normal, lightDir, normal), normalize(lightDir)), 0.),
-        att = min(1., 1. / (.2 + .1 * dist + .8 * dist * dist));
+        att = lightParameters.x * min(1.,
+                1. /
+                (
+                  lightParameters.y + 
+                  lightParameters.z * dist + 
+                  lightParameters.w * dist * dist
+                )
+              );
 
   gl_FragColor = vec4(lambert * att * color, 1.);
   //gl_FragColor = vec4(color, 1.);

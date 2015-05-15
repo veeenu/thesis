@@ -21,7 +21,9 @@ shgRoom.define('Room',
   },
   function() {
     
-    return SHAPE.splitXZ(this, [ shgRoom.ratio, 1 - shgRoom.ratio ], [1], 'Room');
+    var ret = SHAPE.splitXZ(this, [ shgRoom.ratio, 1 - shgRoom.ratio ], [1], 'Room');
+
+    return ret;
 
   });
 
@@ -37,12 +39,15 @@ shgRoom.define('Room',
   },
   function() {
     
-    return SHAPE.splitXZ(this, [1], [ shgRoom.ratio, 1 - shgRoom.ratio ], 'Room');
+    var ret = SHAPE.splitXZ(this, [1], [ shgRoom.ratio, 1 - shgRoom.ratio ], 'Room');
+
+    return ret;
 
   });
 
 shgRoom.define('Room', null,
   function(context) {
+
     var pts = this.points, ret = [], ptsI = SHAPE.inset(this.points, .05), ret = [];
 
     for(var i = 0, I = pts.length; i < I; i++) {
@@ -91,15 +96,24 @@ shgRoom.define('Room', null,
 
     var ipts = 1 / pts.length;
 
-    ret.push({
-      sym: ShapeGrammar.TERMINAL,
+    var gnode = {
+      sym: 'GraphNode',
+      isTerminal: true,
+      neighbors: [],
       roomCentroid: this.points.reduce(function(o, i) {
         o.x += ipts * i.x;
         o.y += ipts * i.y;
         o.z += ipts * i.z;
         return o;
       }, { x: 0, y: 0, z: 0 })
+    };
+
+    ret.forEach(function(i) {
+      if(i.sym === 'Wall')
+        i.room = gnode;
     })
+
+    ret.push(gnode);
 
     return ret;
   });
@@ -108,11 +122,8 @@ shgRoom.define('Wall', function(context) {
     return !context.reduce(function(o, i) { return o || i.sym === 'Room' }, false);
   },
   function(context) {
-    //return SHAPE.extrude('Quad', this.points[0], this.points[1], .5, [0,1,0]);
-    //return SHAPE.extrudeAll(this.boundaries, .1, 'Quad')
-
-    // A wall is occluded, and thus pruned, if its boundaries collide with 
-    // the boundaries of a smaller wall
+    // A wall is occluded if its boundaries collide with 
+    // the boundaries of a larger wall
     var maxX = this.boundaries.maxX,
         maxZ = this.boundaries.maxZ,
         minX = this.boundaries.minX,
@@ -120,27 +131,29 @@ shgRoom.define('Wall', function(context) {
         _self = this,
         length = this.length,
         occluded = context.reduce(function(o, ii) {
-          if(o || ii === _self || ii.occluded === true || ii.sym !== 'Wall')
+          if(o.occluded || ii === _self || ii.sym !== 'Wall')
             return o;
 
           var i = ii.boundaries;
 
-          return o || (
-            ii.length >= length && 
-            !(
-              maxX < i.minX || i.maxX < minX || maxZ < i.minZ || i.maxZ < minZ
-            )
-          );
-        }, false);
+          if(ii.length >= length && 
+             !(maxX < i.minX || i.maxX < minX || maxZ < i.minZ || i.maxZ < minZ)) {
+            o.occluded = true;
+            o.by = ii.room;
+          }
+
+          return o;
+        }, { occluded: false, by: null });
 
     // Prevent next walls to take this one into account
-    if(occluded) {
+    if(occluded.occluded) {
       this.occluded = true; 
 
       return {
         sym: 'OccludedWall',
         points: this.points,
         angle: this.angle,
+        connects: [ this.room, occluded.by ],
         length: this.length
       }
     }
@@ -162,14 +175,15 @@ shgRoom.define('OccludedWall', null, function() {
       p20 = { x: p0.x - cos, y: p0.y, z: p0.z - sin },
       p21 = { x: p1.x - cos, y: p1.y, z: p1.z - sin },
       extr1 = SHAPE.extrude('OccludedWall', p10, p11, shgRoom.floorHeight, [0,1,0]),
-      extr2 = SHAPE.extrude('OccludedWall', p20, p21, shgRoom.floorHeight, [0,1,0])
+      extr2 = SHAPE.extrude('OccludedWall', p20, p21, shgRoom.floorHeight, [0,1,0]),
       hspace = .5 / this.length, chspace = (1 - hspace) / 2,
       hsp1 = SHAPE.split(extr1, [ chspace, hspace, chspace ], [1], 'Quad'),
       vsp1 = SHAPE.split(hsp1[1], [1], [ .7, .3 ], 'Quad'),
       hsp2 = SHAPE.split(extr2, [ chspace, hspace, chspace ], [1], 'Quad'),
       vsp2 = SHAPE.split(hsp2[1], [1], [ .7, .3 ], 'Quad'),
       q0 = vsp1[0], q1 = vsp2[0],
-      lA = chspace, lB = chspace + hspace,
+      //lA = chspace, lB = chspace + hspace,
+      lA = (1 - hspace / 8) / 2, lB = lA + hspace / 8,
       wsA = { 
         x: SHAPE.lerp(p0.x, p1.x, lA),
         y: SHAPE.lerp(p0.y, p1.y, lA),
@@ -179,7 +193,38 @@ shgRoom.define('OccludedWall', null, function() {
         x: SHAPE.lerp(p0.x, p1.x, lB),
         y: SHAPE.lerp(p0.y, p1.y, lB),
         z: SHAPE.lerp(p0.z, p1.z, lB)
-      };
+      }, door, arc0, arc1;
+
+  door = {
+    sym: 'Door',
+    angle: angle,
+    point: {
+      x: .5 * (p0.x + p1.x),
+      y: .5 * (p0.y + p1.y),
+      z: .5 * (p0.z + p1.z)
+    }
+  }; 
+  arc0 = {
+    sym: 'GraphArc',
+    isTerminal: true,
+    a: this.connects[0],
+    b: this.connects[1],
+    c: door
+  }; 
+  arc1 = {
+    sym: 'GraphArc',
+    isTerminal: true,
+    a: this.connects[1],
+    b: this.connects[0],
+    c: door
+  };
+
+  this.connects[0].neighbors.push({
+    r: this.connects[1], via: door
+  });
+  this.connects[1].neighbors.push({
+    r: this.connects[0], via: door
+  });
 
   return [ 
     hsp1[0], hsp1[2], vsp1[1],
@@ -196,22 +241,21 @@ shgRoom.define('OccludedWall', null, function() {
       sym: 'Quad',
       points: [ q1.points[2], q1.points[1], q0.points[1], q0.points[2] ]
     },
-    /*{
-      sym: 'Door',
-      angle: angle,
-      point: {
-        x: .5 * (p0.x + p1.x),
-        y: .5 * (p0.y + p1.y),
-        z: .5 * (p0.z + p1.z)
-      }
-    }*/
+    door,
+    //
+    // Wall segments are oversized to occupy part of the
+    // door frame, so the pathfinding algorithm can
+    // compute points somewhere around the middle of the
+    // door and not close to the wall
+    //
     {
       sym: 'WallSegment',
       points: [ p0, wsA ]
     }, {
       sym: 'WallSegment',
       points: [ wsB, p1 ]
-    }
+    },
+    arc0, arc1
   ];
 
 });
@@ -253,7 +297,8 @@ shgRoom.define('Quad', null, (function() {
     ];
 
     return {
-      sym: ShapeGrammar.TERMINAL,
+      sym: 'Quad',
+      isTerminal: true,
       vertices: vertices,
       normals: normals,
       uvs: uvs
@@ -266,8 +311,8 @@ shgRoom.define('Quad', null, (function() {
 shgRoom.define('Door', null, function() {
 
   return {
-    sym: ShapeGrammar.TERMINAL,
-    isDoor: true,
+    sym: 'Door',
+    isTerminal: true,
     point: this.point,
     angle: this.angle
   }
@@ -277,8 +322,8 @@ shgRoom.define('Door', null, function() {
 shgRoom.define('WallSegment', null, function() {
 
   return {
-    sym: ShapeGrammar.TERMINAL,
-    isWall: true,
+    sym: 'Wall',
+    isTerminal: true,
     p0: this.points[0],
     p1: this.points[1]
   }
@@ -299,22 +344,36 @@ module.exports = {
       sym: 'Room',
       points: points
     }).reduce(function(o, i) {
-      if(i.isWall)
-        o.walls.push(i);
-      else if('roomCentroid' in i)
-        o.rooms.push(i.roomCentroid);
-      else {
-        for(var j = 0, J = i.vertices.length; j < J; j++) {
-          o.vertices.push(i.vertices[j]);
-          o.normals.push(i.normals[j]);
-          o.uvs.push(i.uvs[j]);
-        }
+      switch(i.sym) {
+        case 'Quad':
+          for(var j = 0, J = i.vertices.length; j < J; j++) {
+            o.vertices.push(i.vertices[j]);
+            o.normals.push(i.normals[j]);
+            o.uvs.push(i.uvs[j]);
+          }
+          break;
+        case 'Wall':
+          o.walls.push(i);
+          break;
+        case 'Door':
+          o.doors.push(i);
+          break;
+        case 'GraphNode':
+          o.rooms.push(i);
+          o.nodes.push(i);
+          break;
+        case 'GraphArc':
+          o.arcs.push(i);
+          break;
       }
 
       return o;
     }, {
-      vertices: [], normals: [], uvs: [], walls: [], rooms: []
+      vertices: [], normals: [], uvs: [], 
+      walls: [], rooms: [], nodes: [], arcs: [], doors: [],
     });
+
+    console.log(ret)
     
     var bbox = points.reduce(function(o, i) {
       o.minX = Math.min(i.x, o.minX);
@@ -344,13 +403,13 @@ module.exports = {
 
     }, []);
 
-    ret.roomsWorld = ret.rooms;
+    ret.roomsWorld = ret.rooms.map(function(i) { return i.roomCentroid });
     ret.rooms = ret.rooms.reduce(function(o, i) {
 
       o.push({
-        x: (i.x - bbox.minX) / bbox.lenX,
-        y: (i.y - bbox.minY) / bbox.lenY,
-        z: (i.z - bbox.minZ) / bbox.lenZ
+        x: (i.roomCentroid.x - bbox.minX) / bbox.lenX,
+        y: (i.roomCentroid.y - bbox.minY) / bbox.lenY,
+        z: (i.roomCentroid.z - bbox.minZ) / bbox.lenZ
       });
 
       return o;

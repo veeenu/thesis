@@ -101,8 +101,10 @@ TTextureInfo textureBrick(vec3 fvert, vec3 fnorm, float fdepth, vec2 uv, vec3 br
     }
   }
 
+  bump *= 1.75;
+
   // Frequency clamping
-  bump += 8. * (1. - smoothstep(0., .00125, max(noiseKernel.x, noiseKernel.y))) * noisev;
+  bump -= 8. * (1. - smoothstep(0., .00125, max(noiseKernel.x, noiseKernel.y))) * noisev;
 
   return TTextureInfo(
     color,
@@ -187,7 +189,7 @@ vec3 textureRoad(vec2 uuv) {
         noiseS = 1. + 
                  abs(snoise(uv * 128.)) * .125;
 
-  return 6. * mix(asphaltColor * noiseA, stripColor * noiseS, q);
+  return mix(asphaltColor * noiseA, stripColor * noiseS, q);
 }
 
 vec3 textureAsphalt(vec2 uuv) {
@@ -218,8 +220,7 @@ vec2 packNormal(in vec3 normal)
 void main() {
 
   TTextureInfo ti;
-  mat3 tsMatrix;
-  vec3 color, normal, tangent, tsPosition;
+  vec3 color, normal;
 
   float depth = clipPosition.z / clipPosition.w;
 
@@ -247,7 +248,8 @@ void main() {
   else
     color = textureAsphalt(mod(texUV.yx, 1.));
 
-  color = clamp(.2 * pow(color, vec3(1. / 2.2)), 0., 1.);
+  //color = clamp(.2 * pow(color, vec3(1. / 2.2)), 0., 1.);
+  color = clamp(.2 * color, 0., 1.);
 
   gl_FragColor = vec4(packNormal(normalize(normal)), packColor(color), depth);
 }

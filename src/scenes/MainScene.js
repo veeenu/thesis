@@ -256,7 +256,7 @@ Context.canvas.parentElement.appendChild(log);
 var scene = {
   meshes: [],
   lights: [],
-  lightPos: vec3.create(),
+  lightParameters: [ 16, 0, 8, 64 ],
   view:  mat4.create(),
   model: mat4.create(),
   count: 0
@@ -336,7 +336,6 @@ scene.update = function(timestamp) {
     (Math.PI / beta).toFixed(2);
   //////////////////////////////////////////////////////////////////////////////
 
-  vec3.set(scene.lightPos, 5,.05, 6);
   mat4.identity(scene.view);
 
   mat4.rotateX(scene.view, scene.view, alpha);

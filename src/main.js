@@ -6,8 +6,8 @@ var glMatrix = require('glMatrix'),
     Loader   = require('Loader'),
     City     = require('./generators/City.js'),
     Stats    = require('stats-js'),
-    mainScene = require('./scenes/MainScene.js'),
-    //roomScene = require('./scenes/RoomScene.js');
+    //mainScene = require('./scenes/MainScene.js'),
+    roomScene = require('./scenes/RoomScene.js'),
     stats = new Stats();
 
 stats.setMode(0);
@@ -41,10 +41,10 @@ function sceneLoop(ts) {
     sceneLoop.t0 = ts;
 
   stats.begin();
-  Renderer.render(mainScene);
-  mainScene.update(ts - sceneLoop.t0);
-  //Renderer.render(roomScene);
-  //roomScene.update(ts - sceneLoop.t0);
+  //Renderer.render(mainScene);
+  //mainScene.update(ts - sceneLoop.t0);
+  Renderer.render(roomScene);
+  roomScene.update(ts - sceneLoop.t0);
   stats.end();
 
   if(window.STAHP !== true)
@@ -52,6 +52,6 @@ function sceneLoop(ts) {
 }
 gl.viewport(0, 0, Context.w, Context.h);
 
-loadingLoop();
-//sceneLoop();
+//loadingLoop();
+sceneLoop();
 

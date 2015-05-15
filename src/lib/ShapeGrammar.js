@@ -25,9 +25,9 @@ _.prototype.run = function(state) {
 
   for(var k = 0, K = state.length; k < K; k++) {
 
-    var lhs = state[k];
+    var lhs = state[k], foundNT = false;
 
-    if(lhs.sym === _.TERMINAL) {
+    if(lhs.sym === _.TERMINAL || lhs.isTerminal) {
       output.push(lhs);
     } else for(var i = 0, I = rules.length; i < I; i++) {
       
