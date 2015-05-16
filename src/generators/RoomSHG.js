@@ -8,6 +8,18 @@ var shgRoom = new ShapeGrammar(),
     rng     = new PRNG(12345);
 
 // Inspired by http://procworld.blogspot.it/2012/03/building-rooms.html
+shgRoom.define('Apartment', null, function() {
+
+  var outerWalls = SHAPE.extrudeAll(this.points, shgRoom.floorHeight, 'Quad', [0, 1, 0]);
+
+  outerWalls.push({
+    sym: 'Room',
+    points: this.points
+  });
+
+  return outerWalls;
+
+});
 
 shgRoom.define('Room', 
   function() {
@@ -92,6 +104,16 @@ shgRoom.define('Room', null,
     ret.push({
       sym: 'Quad',
       points: this.points
+    });
+    ret.push({
+      sym: 'Quad',
+      points: this.points.map(function(i) {
+        return {
+          x: i.x,
+          y: i.y + shgRoom.floorHeight,
+          z: i.z
+        }
+      })
     });
 
     var ipts = 1 / pts.length;
@@ -341,7 +363,7 @@ module.exports = {
   create: function(points) {
   
     var ret = shgRoom.run({
-      sym: 'Room',
+      sym: 'Apartment',
       points: points
     }).reduce(function(o, i) {
       switch(i.sym) {

@@ -91,7 +91,7 @@ var computeGeometry = function(room, path) {
 
 }
 
-var AStarr = function(from, to, nodes) {
+var AStar = function(from, to, nodes) {
 
   var frontier = [ from ],
       cameFrom = [], 
@@ -141,8 +141,10 @@ apt = RoomSHG.create([
 ]);
 var p = [];
 
+//apt.nodes = apt.nodes.sort(function(i) { return Math.random() - .5; });
+
 for(var i = 0, I = apt.nodes.length; i < I; i++)
-  p = p.concat(AStarr(apt.nodes[i], apt.nodes[(i + 1) % I], apt.nodes));
+  p = p.concat(AStar(apt.nodes[i], apt.nodes[(i + 1) % I], apt.nodes));
 
 geom = computeGeometry(apt, p);
 
@@ -162,10 +164,12 @@ var pathFn = (function(path, us) {
 
   for(var i = 0, I = path.length; i < I; i++) {
   
-    var a = path[i], b = path[(i + 1) % I],
+    var a = path[i], b = path[(i + 1) % I], c = path[(i + 2) % I],
         dx = b.x - a.x,
         dz = b.z - a.z,
         arclen = Math.sqrt(dx * dx + dz * dz),
+        th1 = (Math.atan2(-b.z + a.z, b.x - a.x) + Math.PI * 3 / 2) % (2 * Math.PI),
+        th2 = (Math.atan2(-c.z + b.z, c.x - b.x) + Math.PI * 3 / 2) % (2 * Math.PI),
         swidth = us / arclen, t = 0;
 
     for(var j = 0, J = ~~(arclen / us); j < J; j++) {
@@ -173,7 +177,8 @@ var pathFn = (function(path, us) {
       samples.push({ 
         x: a.x * (1 - t) + b.x * t,
         y: a.y * (1 - t) + b.y * t,
-        z: a.z * (1 - t) + b.z * t
+        z: a.z * (1 - t) + b.z * t,
+        th: th1 * (1 - t) + th2 * t
       });
     }
 
@@ -183,7 +188,7 @@ var pathFn = (function(path, us) {
 
   return function(x) {
 
-    var t = x * x * (22 + x * x * (-17 + 4 * x * x)) / 9;
+    var t = x; //x * x * (22 + x * x * (-17 + 4 * x * x)) / 9;
 
     var I = samples.length,
         j = t * I, i = ~~j,
@@ -193,7 +198,8 @@ var pathFn = (function(path, us) {
     return {
       x: a.x * (1 - d) + b.x * d,
       y: a.y * (1 - d) + b.y * d,
-      z: a.z * (1 - d) + b.z * d
+      z: a.z * (1 - d) + b.z * d,
+      th: a.th * (1 - d) + b.th * d
     }
 
   }
@@ -204,27 +210,8 @@ mat4.rotateX(scene.view, scene.view, Math.PI / 2);
 
 scene.update = function(timestamp) {
 
-  /*var path = geom.path;
-  var t  = (timestamp % 30000) / 30000,
-      I  = path.length,
-      i  = ~~(t * I),
-      dt = t * I - i,
-      x  = path[i].x,  y  = path[i].z,
-      x1 = path[(i + 1) % I].x,  y1 = path[(i + 1) % I].z,
-      x2 = path[(i + 2) % I].x,  y2 = path[(i + 2) % I].z,
-      dx = x1 - x, dy = y1 - y,
-      angle = Math.atan2(-dy, dx) - Math.PI / 2;
-
-  x = (1 - dt) * x + dt * x1;
-  y = (1 - dt) * y + dt * y1;*/
-
   var p = pathFn((timestamp % 30000) / 30000),
-      p1 = pathFn( ((timestamp + 1250) % 30000) / 30000 ),
-      //p2 = pathFn( ((timestamp + 500) % 30000) / 30000 ),
-      x = p.x, y = p.z,
-      th1 = Math.atan2(- p1.z + p.z, p1.x - p.x) - Math.PI / 2,
-      //th2 = Math.atan2(- p2.z + p1.z, p2.x - p1.x) - Math.PI / 2,
-      angle = th1;
+      x = p.x, y = p.z, angle = p.th;
 
   var p0 = vec3.fromValues(-.0625, .25, .0625),
       p1 = vec3.fromValues(0, .25, -.25),
@@ -238,7 +225,7 @@ scene.update = function(timestamp) {
   vec3.transformMat4(p1, p1, m);
   vec3.transformMat4(p2, p2, m);
 
-  scene.meshes[1] = new Mesh([
+  /*scene.meshes[1] = new Mesh([
     p0[0], p0[1], p0[2],
     p1[0], p1[1], p1[2],
     p2[0], p2[1], p2[2]
@@ -248,12 +235,12 @@ scene.update = function(timestamp) {
     0, 0, 6, 0, 1, 6, 1, 1, 6
   ], [
     0, 1, 0, 0, 1, 0, 0, 1, 0
-  ]);
+  ]);*/
 
-  /*mat4.identity(scene.view);
-  mat4.rotateX(scene.view, scene.view, Math.PI / 6);
+  mat4.identity(scene.view);
+  //mat4.rotateX(scene.view, scene.view, Math.PI / 6);
   mat4.rotateY(scene.view, scene.view, -angle);
-  mat4.translate(scene.view, scene.view, [ -x, -.75, -y ]);*/
+  mat4.translate(scene.view, scene.view, [ -x, -.75, -y ]);
 
 }
 

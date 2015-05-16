@@ -46,8 +46,10 @@ float snoise(vec2 v) {
 
 vec3 bumpMap(vec3 fvert, vec3 fnorm, float bump) {
 
-  vec3 bU = dFdx(bump) * cross(fnorm, normalize(dFdy(fvert))),
-       bV = dFdy(bump) * cross(normalize(dFdx(fvert)), fnorm),
+  vec3 ddx = normalize(dFdx(fvert)),
+       ddy = normalize(dFdy(fvert)),
+       bU = dFdx(bump) * cross(fnorm, ddy),
+       bV = dFdy(bump) * cross(ddx, fnorm),
        bD = fnorm + (bU + bV);
 
   return normalize(bD);
@@ -248,7 +250,6 @@ void main() {
   else
     color = textureAsphalt(mod(texUV.yx, 1.));
 
-  //color = clamp(.2 * pow(color, vec3(1. / 2.2)), 0., 1.);
   color = clamp(.2 * color, 0., 1.);
 
   gl_FragColor = vec4(packNormal(normalize(normal)), packColor(color), depth);

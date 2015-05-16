@@ -34,6 +34,7 @@ function loadingLoop() {
   Loader.render();
 }
 
+//var screencast = [], scLen = 60 * 10;
 
 function sceneLoop(ts) {
 
@@ -49,9 +50,28 @@ function sceneLoop(ts) {
 
   if(window.STAHP !== true)
     requestAnimationFrame(sceneLoop);
+
+  //if(screencast.length < scLen)
+  //  screencast.push(canvas.toDataURL());
+
 }
 gl.viewport(0, 0, Context.w, Context.h);
 
-//loadingLoop();
+loadingLoop();
 sceneLoop();
 
+/*window.downloadScreencast = function() {
+  if(screencast.length < scLen) {
+    console.log((600 - screencast.length) + ' more frames');
+    return;
+  }
+
+  var ws = new WebSocket('ws://localhost:4001');
+  ws.onopen = function() {
+  
+    screencast.forEach(function(i, idx) {
+      ws.send(idx + ' --- ' + i);
+    })
+  }
+
+}*/

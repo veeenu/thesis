@@ -18,7 +18,6 @@ var programPass  = gl.createProgram(),
     fshLight     = gl.createShader(gl.FRAGMENT_SHADER),
     vshSSAO      = gl.createShader(gl.VERTEX_SHADER),
     fshSSAO      = gl.createShader(gl.FRAGMENT_SHADER),
-    extDrawbuffers, extDepthTexture, extFloatLinear,
     vsrcPass, vsrcLight, fsrcPass, fsrcLight, fsrcSSAO;
 
 vsrcPass  = fs.readFileSync(__dirname + '/shaders/pass-vertex.glsl', 'utf-8');
@@ -30,10 +29,9 @@ fsrcSSAO  = fs.readFileSync(__dirname + '/shaders/ssao-fragment.glsl', 'utf-8');
 gl.clearColor(0, 0, 0, 0);
 gl.depthFunc(gl.LESS);
 gl.blendFunc(gl.ONE, gl.ONE);
-gl.getExtension('OES_standard_derivatives');
-gl.getExtension('OES_texture_float');
-extFloatLinear = gl.getExtension('OES_texture_float_linear');
-extDepthTexture = gl.getExtension('WEBGL_depth_texture');
+var extSD, extTF, extFL, extDT;
+extSD = gl.getExtension('OES_standard_derivatives');
+extTF = gl.getExtension('OES_texture_float');
 
 /*******************************************************************************
  * Geometry pass shader compilation & linking
@@ -68,12 +66,27 @@ gl.attachShader(programLight, vshLight);
 gl.attachShader(programLight, fshLight);
 gl.linkProgram(programLight);
 
-console.log("VP:", gl.getShaderInfoLog(vshPass),
+/*console.log("VP:", gl.getShaderInfoLog(vshPass),
             "\nFP:", gl.getShaderInfoLog(fshPass),
             "\nVL:", gl.getShaderInfoLog(vshLight),
             "\nFL:", gl.getShaderInfoLog(fshLight),
             "\nFS:", gl.getShaderInfoLog(fshSSAO)
-           );
+           );*/
+var p = document.createElement('pre');
+p.textContent = [
+  "VP:", gl.getShaderInfoLog(vshPass),
+  "\nFP:", gl.getShaderInfoLog(fshPass),
+  "\nLP:", gl.getProgramInfoLog(programPass),
+  "\nVL:", gl.getShaderInfoLog(vshLight),
+  "\nFL:", gl.getShaderInfoLog(fshLight),
+  "\nLL:", gl.getProgramInfoLog(programLight),
+  "\nFS:", gl.getShaderInfoLog(fshSSAO),
+  "\nLS:", gl.getProgramInfoLog(programSSAO),
+  "\nExt:", 
+    extSD !== null ? 'OES_standard derivatives' : '', 
+    extTF !== null ? 'OES_texture_float' : ''
+].join(' ');
+document.body.appendChild(p)
 
 /*******************************************************************************
  * Texture MRTs setup.
@@ -84,28 +97,24 @@ console.log("VP:", gl.getShaderInfoLog(vshPass),
  *******************************************************************************/
 
 var target0           = gl.createTexture(),
-    depthTex          = gl.createTexture(),
     lightTex          = gl.createTexture(),
+    depthBuf          = gl.createRenderbuffer(),
     geomFramebuffer   = gl.createFramebuffer(),
     lightFramebuffer  = gl.createFramebuffer();
 
-gl.bindTexture(gl.TEXTURE_2D, depthTex);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT, Context.w, Context.h, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_SHORT, null);
+gl.bindRenderbuffer(gl.RENDERBUFFER, depthBuf);
+gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, Context.w, Context.h);
     
 gl.bindTexture(gl.TEXTURE_2D, target0);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, extFloatLinear !== null ? gl.LINEAR : gl.NEAREST);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, extFloatLinear !== null ? gl.LINEAR : gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, Context.w, Context.h, 0, gl.RGBA, gl.FLOAT, null);
 
 gl.bindTexture(gl.TEXTURE_2D, lightTex);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, extFloatLinear !== null ? gl.LINEAR : gl.NEAREST);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, extFloatLinear !== null ? gl.LINEAR : gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, Context.w, Context.h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
@@ -113,7 +122,7 @@ gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, Context.w, Context.h, 0, gl.RGBA, gl.UN
 gl.bindTexture(gl.TEXTURE_2D, null);
 
 gl.bindFramebuffer(gl.FRAMEBUFFER, geomFramebuffer);
-gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, depthTex, 0);
+gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depthBuf);
 gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, target0, 0);
 
 gl.bindFramebuffer(gl.FRAMEBUFFER, lightFramebuffer);
