@@ -37,8 +37,8 @@ vec3 unpackNormal(in vec2 enc)
 void main() {
 
   vec4 t0 = texture2D(target0, coord);
-  if(length(t0.xy) == 0.)
-    discard;
+  /*if(length(t0.xy) == 0.)
+    discard;*/
 
   float depth = t0.w;
 
@@ -65,4 +65,5 @@ void main() {
 
   gl_FragColor = vec4(lambert * att * color, 1.);
   //gl_FragColor = vec4(color, 1.);
+
 }

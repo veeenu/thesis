@@ -1,5 +1,3 @@
-var Geom = require('Geom');
-
 /*
  * General rule: only rectangles allowed.
  * p1 p2
@@ -240,7 +238,4 @@ var SHAPE = {
   lerp: function(a, b, t) {
     return a * (1 - t) + b * t;
   }
-
 };
-
-module.exports = SHAPE;

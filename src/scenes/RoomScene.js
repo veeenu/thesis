@@ -14,11 +14,21 @@ var glMatrix = require('glMatrix'),
 var scene = {
   meshes: [],
   lights: [],
-  lightParameters: [ 6, 0, .2, 2 ],
+  lightParameters: [ 6, 0, 2, .1 ],
   view: mat4.create(),
   model: mat4.create(),
-  count: 0
+  count: 0,
+  texture: gl.createTexture()
 };
+
+gl.bindTexture(gl.TEXTURE_2D, scene.texture);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, Context.w, Context.h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+
+gl.bindTexture(gl.TEXTURE_2D, null);
 
 var rsm = 20;
 
@@ -81,9 +91,21 @@ var computeGeometry = function(room, path) {
   return {
     room: room,
     mesh: new Mesh(vertices, normals, uvs, extra),
+    lampMesh: new Mesh(
+      new Float32Array(room.lamp.vertices),
+      new Float32Array(room.lamp.normals),
+      new Float32Array(room.lamp.uvs),
+      new Float32Array(room.lamp.extra)
+    ),
+    tableMesh: new Mesh(
+      new Float32Array(room.table.vertices),
+      new Float32Array(room.table.normals),
+      new Float32Array(room.table.uvs),
+      new Float32Array(room.table.extra)
+    ),
     lights: room.roomsWorld.map(function(i) {
       return {
-        x: i.x, y: i.y + 1, z: i.z
+        x: i.x, y: i.y + .75, z: i.z
       }
     }),
     path: path
@@ -134,10 +156,10 @@ var AStar = function(from, to, nodes) {
 }
 
 apt = RoomSHG.create([
-  { x: -3, y: 0, z: -5 },
-  { x: -3, y: 0, z:  5 },
-  { x:  3, y: 0, z:  5 },
-  { x:  3, y: 0, z: -5 }
+  { x: -4, y: 0, z: -8 },
+  { x: -4, y: 0, z:  8 },
+  { x:  4, y: 0, z:  8 },
+  { x:  4, y: 0, z: -8 }
 ]);
 var p = [];
 
@@ -150,7 +172,7 @@ geom = computeGeometry(apt, p);
 
 var bbox = geom.room.bbox;
 
-scene.meshes = [ geom.mesh ];
+scene.meshes = [ geom.mesh, geom.lampMesh, geom.tableMesh ];
 scene.lights = geom.lights.reduce(function(o, i) {
   for(var k = 0; k < 6; k++)
     o.push(i.x, i.y, i.z);
@@ -210,7 +232,7 @@ mat4.rotateX(scene.view, scene.view, Math.PI / 2);
 
 scene.update = function(timestamp) {
 
-  var p = pathFn((timestamp % 30000) / 30000),
+  var p = pathFn((timestamp % 60000) / 60000),
       x = p.x, y = p.z, angle = p.th;
 
   var p0 = vec3.fromValues(-.0625, .25, .0625),

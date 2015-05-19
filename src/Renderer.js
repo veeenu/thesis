@@ -9,22 +9,29 @@ var Util        = require('./lib/util.js'),
     gl          = Context.gl,
     BuildingSHG = require('./generators/BuildingSHG.js');
 
-var programPass  = gl.createProgram(),
-    programSSAO  = gl.createProgram(),
-    programLight = gl.createProgram(),
-    vshPass      = gl.createShader(gl.VERTEX_SHADER),
-    fshPass      = gl.createShader(gl.FRAGMENT_SHADER),
-    vshLight     = gl.createShader(gl.VERTEX_SHADER),
-    fshLight     = gl.createShader(gl.FRAGMENT_SHADER),
-    vshSSAO      = gl.createShader(gl.VERTEX_SHADER),
-    fshSSAO      = gl.createShader(gl.FRAGMENT_SHADER),
-    vsrcPass, vsrcLight, fsrcPass, fsrcLight, fsrcSSAO;
+var programPass         = gl.createProgram(),
+    programLight        = gl.createProgram(),
+    programSSAO         = gl.createProgram(),
+    programPassthrough  = gl.createProgram(),
+    vshPass             = gl.createShader(gl.VERTEX_SHADER),
+    fshPass             = gl.createShader(gl.FRAGMENT_SHADER),
+    vshLight            = gl.createShader(gl.VERTEX_SHADER),
+    fshLight            = gl.createShader(gl.FRAGMENT_SHADER),
+    vshSSAO             = gl.createShader(gl.VERTEX_SHADER),
+    fshSSAO             = gl.createShader(gl.FRAGMENT_SHADER),
+    vshPassthrough      = gl.createShader(gl.VERTEX_SHADER),
+    fshPassthrough      = gl.createShader(gl.FRAGMENT_SHADER),
+    vsrcPass, vsrcLight, fsrcPass, fsrcLight, fsrcSSAO,
+    vsrcPassthrough, fsrcPassthrough;
 
-vsrcPass  = fs.readFileSync(__dirname + '/shaders/pass-vertex.glsl', 'utf-8');
-fsrcPass  = fs.readFileSync(__dirname + '/shaders/pass-fragment.glsl', 'utf-8');
-vsrcLight = fs.readFileSync(__dirname + '/shaders/light-vertex.glsl', 'utf-8');
-fsrcLight = fs.readFileSync(__dirname + '/shaders/light-fragment.glsl', 'utf-8');
-fsrcSSAO  = fs.readFileSync(__dirname + '/shaders/ssao-fragment.glsl', 'utf-8');
+vsrcPass          = fs.readFileSync(__dirname + '/shaders/pass-vertex.glsl', 'utf-8');
+fsrcPass          = fs.readFileSync(__dirname + '/shaders/pass-fragment.glsl', 'utf-8');
+vsrcLight         = fs.readFileSync(__dirname + '/shaders/light-vertex.glsl', 'utf-8');
+fsrcLight         = fs.readFileSync(__dirname + '/shaders/light-fragment.glsl', 'utf-8');
+vsrcSSAO          = fs.readFileSync(__dirname + '/shaders/ssao-vertex.glsl', 'utf-8');
+fsrcSSAO          = fs.readFileSync(__dirname + '/shaders/ssao-fragment.glsl', 'utf-8');
+vsrcPassthrough   = fs.readFileSync(__dirname + '/shaders/pt-vertex.glsl', 'utf-8');
+fsrcPassthrough   = fs.readFileSync(__dirname + '/shaders/pt-fragment.glsl', 'utf-8');
 
 gl.clearColor(0, 0, 0, 0);
 gl.depthFunc(gl.LESS);
@@ -47,7 +54,7 @@ gl.linkProgram(programPass);
 /*******************************************************************************
  * SSAO shader compilation & linking
  *******************************************************************************/
-gl.shaderSource(vshSSAO, vsrcLight);
+gl.shaderSource(vshSSAO, vsrcSSAO);
 gl.shaderSource(fshSSAO, fsrcSSAO);
 gl.compileShader(vshSSAO);
 gl.compileShader(fshSSAO);
@@ -66,12 +73,17 @@ gl.attachShader(programLight, vshLight);
 gl.attachShader(programLight, fshLight);
 gl.linkProgram(programLight);
 
-/*console.log("VP:", gl.getShaderInfoLog(vshPass),
-            "\nFP:", gl.getShaderInfoLog(fshPass),
-            "\nVL:", gl.getShaderInfoLog(vshLight),
-            "\nFL:", gl.getShaderInfoLog(fshLight),
-            "\nFS:", gl.getShaderInfoLog(fshSSAO)
-           );*/
+/*******************************************************************************
+ * Passthrough (final blending) shader compilation & linking
+ *******************************************************************************/
+gl.shaderSource(vshPassthrough, vsrcPassthrough);
+gl.shaderSource(fshPassthrough, fsrcPassthrough);
+gl.compileShader(vshPassthrough);
+gl.compileShader(fshPassthrough);
+gl.attachShader(programPassthrough, vshPassthrough);
+gl.attachShader(programPassthrough, fshPassthrough);
+gl.linkProgram(programPassthrough);
+
 var p = document.createElement('pre');
 p.textContent = [
   "VP:", gl.getShaderInfoLog(vshPass),
@@ -80,8 +92,12 @@ p.textContent = [
   "\nVL:", gl.getShaderInfoLog(vshLight),
   "\nFL:", gl.getShaderInfoLog(fshLight),
   "\nLL:", gl.getProgramInfoLog(programLight),
+  "\nVS:", gl.getShaderInfoLog(vshSSAO),
   "\nFS:", gl.getShaderInfoLog(fshSSAO),
   "\nLS:", gl.getProgramInfoLog(programSSAO),
+  "\nVT:", gl.getShaderInfoLog(vshPassthrough),
+  "\nFT:", gl.getShaderInfoLog(fshPassthrough),
+  "\nLT:", gl.getProgramInfoLog(programPassthrough),
   "\nExt:", 
     extSD !== null ? 'OES_standard derivatives' : '', 
     extTF !== null ? 'OES_texture_float' : ''
@@ -100,7 +116,8 @@ var target0           = gl.createTexture(),
     lightTex          = gl.createTexture(),
     depthBuf          = gl.createRenderbuffer(),
     geomFramebuffer   = gl.createFramebuffer(),
-    lightFramebuffer  = gl.createFramebuffer();
+    lightFramebuffer  = gl.createFramebuffer(),
+    sceneFramebuffer  = gl.createFramebuffer();
 
 gl.bindRenderbuffer(gl.RENDERBUFFER, depthBuf);
 gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, Context.w, Context.h);
@@ -163,16 +180,8 @@ mat4.invert(invProjection, projection);
   programPass[i] = gl.getAttribLocation(programPass, i);
 });
 
-['projection', 'viewmodel', 'normalM'].forEach(function(i) {
+['projection', 'viewmodel', 'normalM', 'mainScene', 'roomScene'].forEach(function(i) {
   programPass[i] = gl.getUniformLocation(programPass, i);
-});
-
-['position'].forEach(function(i) {
-  programSSAO[i] = gl.getAttribLocation(programSSAO, i);
-});
-
-['target0', 'lightBuffer'].forEach(function(i) {
-  programSSAO[i] = gl.getUniformLocation(programSSAO, i);
 });
 
 ['position', 'lightPos'].forEach(function(i) {
@@ -181,6 +190,22 @@ mat4.invert(invProjection, projection);
 
 ['target0', 'lightParameters', 'inverseProjection', 'viewMatrix'].forEach(function(i) {
   programLight[i] = gl.getUniformLocation(programLight, i);
+});
+
+['position'].forEach(function(i) {
+  programPassthrough[i] = gl.getAttribLocation(programPassthrough, i);
+});
+
+['tex'].forEach(function(i) {
+  programPassthrough[i] = gl.getUniformLocation(programPassthrough, i);
+});
+
+['position'].forEach(function(i) {
+  programSSAO[i] = gl.getAttribLocation(programSSAO, i);
+});
+
+['target0', 'lightBuffer'].forEach(function(i) {
+  programSSAO[i] = gl.getUniformLocation(programSSAO, i);
 });
 
 /*******************************************************************************
@@ -199,6 +224,14 @@ programPass.activate = function(scene) {
   var viewmodel = mat4.create(), normalM = mat3.create();
   mat4.mul(viewmodel, scene.view, scene.model);
   mat3.normalFromMat4(normalM, viewmodel);
+
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, programPass.textures.mainScene);
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_2D, programPass.textures.roomScene);
+
+  gl.uniform1i(programPass.mainScene, 0);
+  gl.uniform1i(programPass.roomScene, 1);
 
   gl.uniformMatrix4fv(programPass.projection, false, projection);
   gl.uniformMatrix4fv(programPass.viewmodel, false, viewmodel);
@@ -233,37 +266,6 @@ programPass.deactivate = function() {
   gl.disableVertexAttribArray(programPass.uv);
   gl.disableVertexAttribArray(programPass.extra);
   gl.disable(gl.DEPTH_TEST);
-}
-
-programSSAO.activate = function(scene) {
-  gl.useProgram(programSSAO);
-
-  gl.clear(gl.COLOR_BUFFER_BIT);
-
-  //
-  // Uniform setup
-  //
-  gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, target0);
-  gl.activeTexture(gl.TEXTURE1);
-  gl.bindTexture(gl.TEXTURE_2D, lightTex);
-
-  gl.uniform1i(programSSAO.target0, 0);
-  gl.uniform1i(programSSAO.lightBuffer, 1);
-
-  //
-  // VBO setup
-  //
-  gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
-  gl.vertexAttribPointer(programSSAO.position, 2, gl.FLOAT, false, 0, 0);
-
-  gl.enableVertexAttribArray(programSSAO.position);
-
-  gl.drawArrays(gl.TRIANGLES, 0, 6);
-}
-
-programSSAO.deactivate = function() {
-  gl.disableVertexAttribArray(programSSAO.position);
 }
 
 programLight.activate = function(scene) {
@@ -320,10 +322,70 @@ programLight.activate = function(scene) {
 programLight.deactivate = function() {
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.disableVertexAttribArray(programLight.position);
+  gl.disableVertexAttribArray(programLight.lightPos);
   gl.disable(gl.BLEND);
 }
 
+programSSAO.activate = function(scene) {
+  gl.useProgram(programSSAO);
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, sceneFramebuffer);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, scene.texture, 0);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+
+  //
+  // Uniform setup
+  //
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, target0);
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_2D, lightTex);
+
+  gl.uniform1i(programSSAO.target0, 0);
+  gl.uniform1i(programSSAO.lightBuffer, 1);
+
+  //
+  // VBO setup
+  //
+  gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
+  gl.vertexAttribPointer(programSSAO.position, 2, gl.FLOAT, false, 0, 0);
+
+  gl.enableVertexAttribArray(programSSAO.position);
+
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
+}
+
+programSSAO.deactivate = function() {
+  gl.disableVertexAttribArray(programSSAO.position);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+}
+
+programPassthrough.activate = function(texture) {
+
+  gl.useProgram(programPassthrough);
+
+  gl.clear(gl.COLOR_BUFFER_BIT);
+
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+
+  gl.uniform1i(programPassthrough.tex, 0);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
+  gl.vertexAttribPointer(programPassthrough.position, 2, gl.FLOAT, false, 0, 0);
+
+  gl.enableVertexAttribArray(programPassthrough.position);
+
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
+}
+
 module.exports = {
+  init: function(mainScene, roomScene) {
+    programPass.textures = {
+      mainScene: mainScene.texture,
+      roomScene: roomScene.texture
+    };
+  },
   render: function(scene) {
     programPass.activate(scene);
     programPass.deactivate();
@@ -331,5 +393,7 @@ module.exports = {
     programLight.deactivate();
     programSSAO.activate(scene);
     programSSAO.deactivate();
+    programPassthrough.activate(scene.texture);
+    //programPassthrough.deactivate();
   }
 }

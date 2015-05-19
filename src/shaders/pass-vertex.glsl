@@ -9,10 +9,11 @@ varying vec3 texUV, vNormal, vExtra;
 void main() {
   
   vec4 viewPos = viewmodel * vec4(vertex, 1.);
-  clipPosition = gl_Position = projection * viewPos;
+  clipPosition = projection * viewPos;
+  gl_Position = clipPosition;
 
   vPosition = viewPos;
-  vNormal = normalize(normalM * normal);
+  vNormal = normalM * normal;
   vExtra = extra;
   texUV = uv;
 

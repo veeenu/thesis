@@ -2,7 +2,8 @@ var ShapeGrammar = require('ShapeGrammar'),
     SHAPE        = require('../lib/SHAPE.js'),
     earcut       = require('earcut'),
     Geom         = require('Geom'),
-    PRNG         = require('PRNG');
+    PRNG         = require('PRNG'),
+    FurnitureSHG = require('./FurnitureSHG.js');
 
 var shgRoom = new ShapeGrammar(),
     rng     = new PRNG(12345);
@@ -60,7 +61,8 @@ shgRoom.define('Room',
 shgRoom.define('Room', null,
   function(context) {
 
-    var pts = this.points, ret = [], ptsI = SHAPE.inset(this.points, .05), ret = [];
+    var pts = this.points, ret = [], ptsI = SHAPE.inset(this.points, .05), 
+        bds = SHAPE.bounds(this), ret = [];
 
     for(var i = 0, I = pts.length; i < I; i++) {
       var p0  = ptsI[i], p1 = ptsI[(i + 1) % I], P0, P1,
@@ -136,6 +138,72 @@ shgRoom.define('Room', null,
     })
 
     ret.push(gnode);
+
+    ret.push({
+      sym: 'Quad',
+      texID: 8,
+      points: [
+        { x: gnode.roomCentroid.x - .25, y: gnode.roomCentroid.y + .5, z: gnode.roomCentroid.z - .25},
+        { x: gnode.roomCentroid.x - .25, y: gnode.roomCentroid.y + 1, z: gnode.roomCentroid.z - .25},
+        { x: gnode.roomCentroid.x + .25, y: gnode.roomCentroid.y + 1, z: gnode.roomCentroid.z - .25},
+        { x: gnode.roomCentroid.x + .25, y: gnode.roomCentroid.y + .5, z: gnode.roomCentroid.z - .25}
+      ]
+    });
+
+    ret.push({
+      sym: 'Quad',
+      texID: 8,
+      points: [
+        { x: gnode.roomCentroid.x - .25, y: gnode.roomCentroid.y + .5, z: gnode.roomCentroid.z + .25},
+        { x: gnode.roomCentroid.x - .25, y: gnode.roomCentroid.y + 1, z: gnode.roomCentroid.z + .25},
+        { x: gnode.roomCentroid.x + .25, y: gnode.roomCentroid.y + 1, z: gnode.roomCentroid.z + .25},
+        { x: gnode.roomCentroid.x + .25, y: gnode.roomCentroid.y + .5, z: gnode.roomCentroid.z + .25}
+      ]
+    });
+
+    ret.push({
+      sym: 'Quad',
+      texID: 8,
+      points: [
+        { x: gnode.roomCentroid.x - .25, y: gnode.roomCentroid.y + .5, z: gnode.roomCentroid.z  - .25},
+        { x: gnode.roomCentroid.x - .25, y: gnode.roomCentroid.y + 1, z: gnode.roomCentroid.z - .25},
+        { x: gnode.roomCentroid.x - .25, y: gnode.roomCentroid.y + 1, z: gnode.roomCentroid.z + .25},
+        { x: gnode.roomCentroid.x - .25, y: gnode.roomCentroid.y + .5, z: gnode.roomCentroid.z + .25}
+      ]
+    });
+    ret.push({
+      sym: 'Quad',
+      texID: 8,
+      points: [
+        { x: gnode.roomCentroid.x + .25, y: gnode.roomCentroid.y + .5, z: gnode.roomCentroid.z - .25},
+        { x: gnode.roomCentroid.x + .25, y: gnode.roomCentroid.y + 1, z: gnode.roomCentroid.z - .25},
+        { x: gnode.roomCentroid.x + .25, y: gnode.roomCentroid.y + 1, z: gnode.roomCentroid.z + .25},
+        { x: gnode.roomCentroid.x + .25, y: gnode.roomCentroid.y + .5, z: gnode.roomCentroid.z + .25 }
+      ]
+    });
+
+    ret.push({
+      sym: 'Lamp',
+      isTerminal: true,
+      point: {
+        x: gnode.roomCentroid.x,
+        y: this.points[0].y + shgRoom.floorHeight,
+        z: gnode.roomCentroid.z
+      }
+    });
+
+    console.log(bds.width * bds.depth)
+
+    if(bds.width * bds.depth > 10)
+      ret.push({
+        sym: 'Table',
+        isTerminal: true,
+        point: {
+          x: gnode.roomCentroid.x + bds.width * .7 * (Math.random() - .5),
+          y: this.points[0].y,
+          z: gnode.roomCentroid.z + bds.depth * .7 * (Math.random() - .5)
+        }
+      });
 
     return ret;
   });
@@ -351,8 +419,8 @@ shgRoom.define('WallSegment', null, function() {
   }
 });
 
-shgRoom.minWidth = 2.5;
-shgRoom.maxWidth = 5;
+shgRoom.minWidth = 4;
+shgRoom.maxWidth = 7;
 shgRoom.density = .8;
 shgRoom.ratio = .61;
 shgRoom.floorHeight = 1.5;
@@ -374,6 +442,33 @@ module.exports = {
             o.uvs.push(i.uvs[j]);
           }
           break;
+        case 'Lamp':
+          var lamp = FurnitureSHG.lamp(i.point.x, i.point.y, i.point.z);
+          for(var j = 0, J = lamp.vertices.length; j < J; j++) {
+            o.lamp.vertices.push(lamp.vertices[j]);
+            o.lamp.normals.push(lamp.normals[j]);
+            o.lamp.uvs.push(lamp.uvs[j]);
+            o.lamp.extra.push(lamp.extra[j]);
+          }
+          break;
+        case 'Table':
+          var table = FurnitureSHG.table(i.point.x, i.point.y, i.point.z);
+          for(var j = 0, J = table.vertices.length; j < J; j++) {
+            o.table.vertices.push(table.vertices[j]);
+            o.table.normals.push(table.normals[j]);
+            o.table.uvs.push(table.uvs[j]);
+            o.table.extra.push(table.extra[j]);
+          }
+          break;
+        case 'Chair':
+          var chair = FurnitureSHG.chair(i.point.x, i.point.y, i.point.z);
+          for(var j = 0, J = chair.vertices.length; j < J; j++) {
+            o.chair.vertices.push(chair.vertices[j]);
+            o.chair.normals.push(chair.normals[j]);
+            o.chair.uvs.push(chair.uvs[j]);
+            o.chair.extra.push(chair.extra[j]);
+          }
+          break;
         case 'Wall':
           o.walls.push(i);
           break;
@@ -393,6 +488,9 @@ module.exports = {
     }, {
       vertices: [], normals: [], uvs: [], 
       walls: [], rooms: [], nodes: [], arcs: [], doors: [],
+      lamp: { vertices: [], normals: [], uvs: [], extra: [] },
+      table: { vertices: [], normals: [], uvs: [], extra: [] },
+      chair: { vertices: [], normals: [], uvs: [], extra: [] }
     });
 
     console.log(ret)

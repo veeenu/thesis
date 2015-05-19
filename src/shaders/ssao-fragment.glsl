@@ -3,7 +3,7 @@ precision highp float;
 
 uniform sampler2D target0, lightBuffer;
 
-varying vec2 sscoord, coord;
+varying vec2 coord;
 
 #define DL 2.399963229728653
 #define EULER 2.718281828459045
@@ -72,7 +72,7 @@ void main() {
         dz = 1. / 16.,
         z = 1. - dz * .5,
         l = 0.;
-  for(int i = 0; i <= 16; i++) {
+  for(int i = 0; i < 16; i++) {
     float r = sqrt(1. - z),
           pw = cos(l) * r,
           ph = sin(l) * r;

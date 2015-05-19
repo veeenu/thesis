@@ -259,8 +259,18 @@ var scene = {
   lightParameters: [ 16, 0, 8, 64 ],
   view:  mat4.create(),
   model: mat4.create(),
-  count: 0
+  count: 0,
+  texture: gl.createTexture()
 };
+
+gl.bindTexture(gl.TEXTURE_2D, scene.texture);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, Context.w, Context.h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+
+gl.bindTexture(gl.TEXTURE_2D, null);
 
 var t = 0., pushFn = function(o, i) { o.push(i); return o; },
     x = 2, y = .19, z = 1.8, alpha = 0, beta = 0,
@@ -366,6 +376,9 @@ scene.update = function(timestamp) {
       o.push(i.x, i.y, i.z);
     return o;
   }, []);
+
+  //for(var k = 0; k < 6; k++)
+  //  scene.lights.push(x, y, z);
 
   log.textContent += "\nVertices: " + scene.meshes.reduce(function(o, i) {
     return o + i.count;

@@ -378,7 +378,7 @@ var transform = function(model) {
     }
   }
 
-}
+};
 
 module.exports = {
   createBalcony: transform(balconyOnly),

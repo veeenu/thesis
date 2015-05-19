@@ -2,6 +2,8 @@
 
 precision highp float;
 
+uniform sampler2D mainScene, roomScene;
+
 varying vec4 vPosition, clipPosition;
 varying vec3 texUV, vNormal, vExtra;
 
@@ -204,6 +206,20 @@ vec3 textureAsphalt(vec2 uuv) {
                  abs(snoise(uv * 128.)) * .125;
   return asphaltColor * 2.5 * noiseA;
 }
+
+vec3 textureWood(vec3 str) {
+  const vec3 color0 = vec3(.64, .48, .11),
+             color1 = vec3(.49, .34, .08);
+
+  float noise = 
+    .5 * snoise(str.xz * .125) * snoise(str.xy * .125) +
+    .25 * (snoise(str.xz * .25) * snoise(str.xy * .25)) +
+    .125 * (snoise(str.xz * .5) * snoise(str.xy * .5)) +
+    .0625 * (snoise(str.xz) * snoise(str.xy));
+
+  return mix(color0, color1, mod(length(str.xz) + noise, 1.));
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 float packColor(vec3 v) {
@@ -228,7 +244,13 @@ void main() {
 
   normal = normalize(faceforward(vNormal, gl_FragCoord.xyz, vNormal));
 
-  if(texUV.z > 5.1) {
+  if(texUV.z > 7.1) {
+    color = texture2D(mainScene, texUV.xy).rgb;
+  }
+  else if(texUV.z > 6.1) {
+    color = textureWood(8. * (vExtra - .5));
+  }
+  else if(texUV.z > 5.1) {
     ti = textureBrick(vPosition.xyz, vNormal, gl_FragCoord.z, mod(texUV.xy, 1.), vExtra);
     color = ti.color;
     normal = ti.normal;

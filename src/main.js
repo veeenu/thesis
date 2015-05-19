@@ -6,7 +6,7 @@ var glMatrix = require('glMatrix'),
     Loader   = require('Loader'),
     City     = require('./generators/City.js'),
     Stats    = require('stats-js'),
-    //mainScene = require('./scenes/MainScene.js'),
+    mainScene = require('./scenes/MainScene.js'),
     roomScene = require('./scenes/RoomScene.js'),
     stats = new Stats();
 
@@ -25,6 +25,9 @@ Loader.subscribe('Blocks', function() {
   console.log('Loading complete');
   loadingStatus = 1;
   t0 = NaN;
+
+  Renderer.init(mainScene, roomScene);
+
   sceneLoop();
 });
 
@@ -42,8 +45,8 @@ function sceneLoop(ts) {
     sceneLoop.t0 = ts;
 
   stats.begin();
-  //Renderer.render(mainScene);
-  //mainScene.update(ts - sceneLoop.t0);
+  Renderer.render(mainScene);
+  mainScene.update(ts - sceneLoop.t0);
   Renderer.render(roomScene);
   roomScene.update(ts - sceneLoop.t0);
   stats.end();
@@ -58,7 +61,6 @@ function sceneLoop(ts) {
 gl.viewport(0, 0, Context.w, Context.h);
 
 loadingLoop();
-sceneLoop();
 
 /*window.downloadScreencast = function() {
   if(screencast.length < scLen) {
