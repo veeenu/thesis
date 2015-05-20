@@ -46,10 +46,14 @@ var SHAPE = {
   split: function(quad, xSplits, ySplits, symbols) {
     var out = [], symI = 0, sioa = symbols instanceof Array,
         qp = quad.points, qu = quad.uvs,
-        p0 = qp[0], p1 = qp[1], p2 = qp[2], p3 = qp[3],
-        x0 = p0.x, x1 = p1.x, x2 = p2.x, x3 = p3.x,
+        //p0 = qp[0], p1 = qp[1], p2 = qp[2], p3 = qp[3],
+        p0 = qp[0], p1 = qp[1], p3 = qp[3],
+        x0 = p0.x, x3 = p3.x,
+        y0 = p0.y, y1 = p1.y,
+        z0 = p0.z, z3 = p3.z,
+        /*x0 = p0.x, x1 = p1.x, x2 = p2.x, x3 = p3.x,
         y0 = p0.y, y1 = p1.y, y2 = p2.y, y3 = p3.y,
-        z0 = p0.z, z1 = p1.z, z2 = p2.z, z3 = p3.z,
+        z0 = p0.z, z1 = p1.z, z2 = p2.z, z3 = p3.z,*/
         ds = 1, dt = 1, ms = 0, mt = 0;
 
     if(qu instanceof Array)
@@ -94,10 +98,14 @@ var SHAPE = {
   splitXZ: function(quad, xSplits, zSplits, symbols) {
     var out = [], symI = 0,
         qp = quad.points,
-        p0 = qp[0], p1 = qp[1], p2 = qp[2], p3 = qp[3],
-        x0 = p0.x, x1 = p1.x, x2 = p2.x, x3 = p3.x,
+        //p0 = qp[0], p1 = qp[1], p2 = qp[2], p3 = qp[3],
+        p0 = qp[0], p1 = qp[1], p3 = qp[3],
+        x0 = p0.x, x3 = p3.x,
+        y0 = p0.y, y1 = p1.y,
+        z0 = p0.z, z1 = p1.z;
+        /*x0 = p0.x, x1 = p1.x, x2 = p2.x, x3 = p3.x,
         y0 = p0.y, y1 = p1.y, y2 = p2.y, y3 = p3.y,
-        z0 = p0.z, z1 = p1.z, z2 = p2.z, z3 = p3.z;
+        z0 = p0.z, z1 = p1.z, z2 = p2.z, z3 = p3.z;*/
 
     var accZ = 0;
     for(var z = 0, Z = zSplits.length; z < Z; ++z) {
@@ -130,10 +138,14 @@ var SHAPE = {
   splitZX: function(quad, xSplits, zSplits, symbols) {
     var out = [], symI = 0,
         qp = quad.points,
-        p0 = qp[0], p1 = qp[1], p2 = qp[2], p3 = qp[3],
-        x0 = p0.x, x1 = p1.x, x2 = p2.x, x3 = p3.x,
+        p0 = qp[0], p1 = qp[1], p3 = qp[3],
+        //p0 = qp[0], p1 = qp[1], p2 = qp[2], p3 = qp[3],
+        x0 = p0.x, x1 = p1.x,
+        y0 = p0.y, y1 = p1.y,
+        z0 = p0.z, z3 = p3.z;
+        /*x0 = p0.x, x1 = p1.x, x2 = p2.x, x3 = p3.x,
         y0 = p0.y, y1 = p1.y, y2 = p2.y, y3 = p3.y,
-        z0 = p0.z, z1 = p1.z, z2 = p2.z, z3 = p3.z;
+        z0 = p0.z, z1 = p1.z, z2 = p2.z, z3 = p3.z;*/
 
     var accZ = 0;
     for(var z = 0, Z = zSplits.length; z < Z; ++z) {
@@ -170,10 +182,14 @@ var SHAPE = {
     ratio = ratio || 1;
 
     var qp = quad.points,
-        p0 = qp[0], p1 = qp[1], p2 = qp[2], p3 = qp[3],
-        x0 = p0.x, x1 = p1.x, x2 = p2.x, x3 = p3.x,
+        p0 = qp[0], p1 = qp[1], p3 = qp[3],
+        //p0 = qp[0], p1 = qp[1], p2 = qp[2], p3 = qp[3],
+        x0 = p0.x, x3 = p3.x,
+        y0 = p0.y, y1 = p1.y,
+        z0 = p0.z, z1 = p1.z, z3 = p3.z,
+        /*x0 = p0.x, x1 = p1.x, x2 = p2.x, x3 = p3.x,
         y0 = p0.y, y1 = p1.y, y2 = p2.y, y3 = p3.y,
-        z0 = p0.z, z1 = p1.z, z2 = p2.z, z3 = p3.z,
+        z0 = p0.z, z1 = p1.z, z2 = p2.z, z3 = p3.z,*/
         dx = x3 - x0, dy = y1 - y0, dz = z3 - z0, dzdy = z1 - z0;
 
     if(axis === 'x') {

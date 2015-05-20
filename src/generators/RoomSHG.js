@@ -1,7 +1,6 @@
 var ShapeGrammar = require('ShapeGrammar'),
     Context      = require('Context'),
     SHAPE        = require('../lib/SHAPE.js'),
-    earcut       = require('earcut'),
     Geom         = require('Geom'),
     PRNG         = require('PRNG'),
     FurnitureSHG = require('./FurnitureSHG.js');
@@ -413,7 +412,7 @@ shgRoom.define('OccludedWall', null, function() {
         x: SHAPE.lerp(p0.x, p1.x, lB),
         y: SHAPE.lerp(p0.y, p1.y, lB),
         z: SHAPE.lerp(p0.z, p1.z, lB)
-      }, door, arc0, arc1;
+      }, door;
 
   door = {
     sym: 'Door',
@@ -424,20 +423,6 @@ shgRoom.define('OccludedWall', null, function() {
       z: .5 * (p0.z + p1.z)
     }
   }; 
-  /*arc0 = {
-    sym: 'GraphArc',
-    isTerminal: true,
-    a: this.connects[0],
-    b: this.connects[1],
-    c: door
-  }; 
-  arc1 = {
-    sym: 'GraphArc',
-    isTerminal: true,
-    a: this.connects[1],
-    b: this.connects[0],
-    c: door
-  };*/
 
   // TODO warning: duplication
   this.connects[0].neighbors.push({
@@ -476,7 +461,6 @@ shgRoom.define('OccludedWall', null, function() {
       sym: 'WallSegment',
       points: [ wsB, p1 ]
     }
-    //arc0, arc1
   ];
 
 });

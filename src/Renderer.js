@@ -1,13 +1,10 @@
 var fs          = require('fs');
 //var glslify     = require('glslify');
-var Util        = require('./lib/util.js'),
-    glMatrix    = require('glMatrix'),
-    vec3        = glMatrix.vec3,
+var glMatrix    = require('glMatrix'),
     mat3        = glMatrix.mat3,
     mat4        = glMatrix.mat4,
     Context     = require('Context'),
-    gl          = Context.gl,
-    BuildingSHG = require('./generators/BuildingSHG.js');
+    gl          = Context.gl;
 
 var programPass         = gl.createProgram(),
     programLight        = gl.createProgram(),
@@ -36,7 +33,7 @@ fsrcPassthrough   = fs.readFileSync(__dirname + '/shaders/pt-fragment.glsl', 'ut
 gl.clearColor(0, 0, 0, 0);
 gl.depthFunc(gl.LESS);
 gl.blendFunc(gl.ONE, gl.ONE);
-var extSD, extTF, extFL, extDT;
+var extSD, extTF;
 extSD = gl.getExtension('OES_standard_derivatives');
 extTF = gl.getExtension('OES_texture_float');
 

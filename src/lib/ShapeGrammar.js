@@ -1,10 +1,3 @@
-var Geom = require('Geom'),
-    SHAPE = require('./SHAPE.js'),
-    glMatrix = require('glMatrix'),
-    earcut = require('earcut'),
-    vec3 = glMatrix.vec3,
-    mat4 = glMatrix.mat4;
-
 var _ = function() {
   this.rules = [];
 };
@@ -25,7 +18,7 @@ _.prototype.run = function(state) {
 
   for(var k = 0, K = state.length; k < K; k++) {
 
-    var lhs = state[k], foundNT = false;
+    var lhs = state[k];
 
     if(lhs.sym === _.TERMINAL || lhs.isTerminal) {
       output.push(lhs);

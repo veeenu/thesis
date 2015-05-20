@@ -1,10 +1,8 @@
 var glMatrix = require('glMatrix'),
     Context  = require('Context'),
     Mesh     = require('Mesh'),
-    Geom     = require('Geom'),
     QuadTree = require('QuadTree'),
     Loader   = require('Loader'),
-    vec3     = glMatrix.vec3,
     mat4     = glMatrix.mat4,
     gl       = Context.gl,
     BuildingSHG = require('../generators/BuildingSHG.js'),
@@ -23,8 +21,7 @@ var computeBlockMesh = function(block, availColors) {
       normals  = [],
       uvs      = [],
       extra    = [],
-      lights   = [],
-      count    = 0;
+      lights   = [];
 
   for(var j = 0, n = block.lots.length; j < n; j++) {
     var lot, h, angle, cx, cy, xm, xM, ym, yM;
@@ -108,13 +105,10 @@ Context.canvas.parentElement.appendChild(log);
       normals  = [],
       uvs      = [],
       extra    = [],
-      count = 0,
-      block, blockq, lot, h, col,
-      mI = 0,
-      meshes = [],
+      block,
       blocks = [],
       lights = [],
-      qtree, qtreeL;
+      qtree;
 
   var blocksProgress = 0, blocksCount = city.blocks.length;
 
@@ -165,11 +159,6 @@ Context.canvas.parentElement.appendChild(log);
     qtree = new QuadTree(qx, qy, Math.max(qx, qy), 4);
 
     blocks.forEach(function(i) {
-      /*var qtreeL = new QuadTree(i.x, i.y, i.w, 32);
-      i.lights.forEach(function(j) {
-        qtreeL.insert({ x: j.x, y: j.z, pos: j });
-      });
-      i.quadtreeLights = qtreeL;*/
       qtree.insert(i);
     });
 
@@ -224,8 +213,8 @@ Context.canvas.parentElement.appendChild(log);
         a.x - dx, 0, a.y - dy,  b.x + dx, 0, b.y + dy,  a.x + dx, 0, a.y + dy
       ], uvs = U.map(function(i, idx) {
         switch(idx % 3) {
-          case 0: return i; break;
-          case 1: return i * len; break;
+          case 0: return i;
+          case 1: return i * len;
           default: return i;
         }
        return i;
@@ -352,17 +341,7 @@ scene.update = function(timestamp) {
   mat4.rotateY(scene.view, scene.view, beta);
   mat4.translate(scene.view, scene.view, [ -x, -y, -z ]);
 
-  var shownMeshes, shownLights;
-
-  shownMeshes = geom.quadtree.query(x, z, 4);
-  /*shownLights = shownMeshes.reduce(function(o, i) {
-    var ls = i.quadtreeLights.query(x, z, .5);
-    for(var j = 0, J = ls.length; j < J; j++) {
-      for(var k = 0; k < 6; k++)
-        o.push(ls[j].pos.x, ls[j].pos.y, ls[j].pos.z);
-    }
-    return o;
-  }, [])*/
+  var shownMeshes = geom.quadtree.query(x, z, 4);
 
   scene.meshes = geom.fixedMeshes.reduce(pushFn, []);
 

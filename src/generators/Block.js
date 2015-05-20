@@ -1,6 +1,5 @@
 var PRNG = require('PRNG'),
-    Geom = require('Geom'),
-    ShapeGrammar = require('ShapeGrammar');
+    Geom = require('Geom');
 
 var lerp = function(a, b, t) { return (1 - t) * a + t * b; }
 

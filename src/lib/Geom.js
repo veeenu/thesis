@@ -1,6 +1,3 @@
-var glMatrix = require('glMatrix'),
-    vec3 = glMatrix.vec3;
-
 var Geom = {
   // http://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html
   pnpoly: function(poly, x, y) {
@@ -60,7 +57,7 @@ var Geom = {
         dx2 = c.x - b.x, dy2 = b.y - c.y,
         dist1 = Math.sqrt(dx1 * dx1 + dy1 * dy1),
         dist2 = Math.sqrt(dx2 * dx2 + dy2 * dy2),
-        insX1, insX2, insY1, insY2, insp,
+        insX1, insX2, insY1, insY2,
         b1 = { x: b.x, y: b.y },
         b2 = { x: b.x, y: b.y };
 

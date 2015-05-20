@@ -1,16 +1,12 @@
 var glMatrix = require('glMatrix'),
     Context  = require('Context'),
     Mesh     = require('Mesh'),
-    Geom     = require('Geom'),
-    Spline   = require('cardinal-spline'),
-    QuadTree = require('QuadTree'),
-    Loader   = require('Loader'),
     vec3     = glMatrix.vec3,
     mat4     = glMatrix.mat4,
     gl       = Context.gl,
     RoomSHG  = require('../generators/RoomSHG.js'),
     PRNG     = require('PRNG'),
-    grid, pathFind, geom, apt;
+    geom, apt;
 
 var scene = {
   meshes: [],
@@ -33,8 +29,6 @@ gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, Context.w, Context.h, 0, gl.RGBA, gl.UN
 
 gl.bindTexture(gl.TEXTURE_2D, null);
 
-var rsm = 20;
-
 ////////////////////////////////////////////////////////////////////////////////
 // Compute geometry
 ////////////////////////////////////////////////////////////////////////////////
@@ -44,9 +38,7 @@ var computeGeometry = function(room, path) {
   var vertices = room.vertices,
       normals  = room.normals,
       uvs      = room.uvs,
-      extra    = [], 
-      lights   = [],
-      count    = 0;
+      extra    = [];
 
   path = path.reduce(function(o, i) {
   
@@ -161,8 +153,6 @@ p.push({
 
 geom = computeGeometry(apt, p);
 
-var bbox = geom.room.bbox;
-
 scene.meshes = [ geom.mesh, geom.lampMesh, geom.tableMesh ];
 scene.lights = geom.lights.reduce(function(o, i) {
   for(var k = 0; k < 6; k++)
@@ -180,14 +170,10 @@ var pathFn = (function(path, us) {
     var a = path[i], b = path[Math.min(i + 1, I - 1)], c = path[Math.min(i + 2, I - 1)],
         dx = b.x - a.x,
         dz = b.z - a.z,
-        v1x = dx,
-        v1z = dz,
-        v2x = c.x - b.x,
-        v2z = c.z - b.z,
         arclen = Math.sqrt(dx * dx + dz * dz),
         th1 = (Math.atan2(-b.z + a.z, b.x - a.x) + Math.PI * 3 / 2) % (2 * Math.PI),
         th2 = (Math.atan2(-c.z + b.z, c.x - b.x) + Math.PI * 3 / 2) % (2 * Math.PI),
-        swidth = us / arclen, t = 0;
+        t = 0;
 
     if(i >= I - 4)
       th2 = th1;
@@ -232,8 +218,7 @@ mat4.translate(scene.view, scene.view, [0,0, -8]);
 mat4.rotateX(scene.view, scene.view, Math.PI / 2);
 mat4.rotateY(scene.view, scene.view, Math.PI / 2);
 
-var arrowidx = scene.meshes.length, 
-    totalTime = 500 * geom.path.length,
+var totalTime = 750 * geom.path.length,
     wobbleFreq = Math.PI * 2 / 1000;
 
 scene.update = function(timestamp) {

@@ -1,7 +1,6 @@
 var ShapeGrammar = require('ShapeGrammar'),
     SHAPE        = require('../lib/SHAPE.js'),
-    Geom         = require('Geom'),
-    PRNG         = require('PRNG');
+    Geom         = require('Geom');
 
 var shgBalcony = new ShapeGrammar(),
     shgStaircase = new ShapeGrammar();
@@ -63,13 +62,10 @@ shgBalcony.define('BalconyFloor', null, function() {
 
 shgBalcony.define('Fence', null, function() {
   var stickBase = SHAPE.fit('x', this, 'StickBase', .25),
-      p0 = this.points[0], p1 = this.points[1],
-      p2 = this.points[2], p3 = this.points[3],
+      p0 = this.points[0], p1 = this.points[1], p3 = this.points[3],
       dx = p3.x - p0.x,
-      dy = p1.y - p0.y,
       dz = p3.z - p0.z,
       angle = Math.atan2(dz, dx) - Math.PI / 2,
-      width = Math.sqrt(dx * dx + dz * dz),
       cosa = Math.cos(angle) * .05,
       sina = Math.sin(angle) * .05,
       pa = { // Handle base

@@ -1,8 +1,6 @@
 var ShapeGrammar = require('ShapeGrammar'),
     SHAPE        = require('../lib/SHAPE.js'),
-    earcut       = require('earcut'),
-    Geom         = require('Geom'),
-    PRNG         = require('PRNG');
+    Geom         = require('Geom');
 
 var shgFurniture = new ShapeGrammar();
 
@@ -108,7 +106,7 @@ shgFurniture.define('Table', null, function() {
 
   var wt = this.woodThk, w = this.width, h = this.height,
       a = 2 * wt - .5, b = -a, cy = this.cy,
-      hw = w / 2, hh = h / 2, wwt = 2 * wt,
+      hw = w / 2, wwt = 2 * wt,
       legTop = [
           { x: a, z: a }, { x: a, z: b }, { x: b, z: b }, { x: b, z: a }
         ].map(function(i) {
@@ -291,9 +289,9 @@ var transform = function(mesh) {
     return {
       vertices: mesh.vertices.map(function(i, idx) {
         switch(idx % 3) {
-          case 0: return i + x; break;
-          case 1: return i + y; break;
-          case 2: return i + z; break;
+          case 0: return i + x;
+          case 1: return i + y;
+          case 2: return i + z;
         }
       }),
       normals: mesh.normals,

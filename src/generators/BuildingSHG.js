@@ -44,14 +44,11 @@ shg.define('Building', null, function() {
 });
 
 shg.define('FL_GndFloor', null, (function() {
-
-  var p2 = Math.PI * 2, p4 = 2 * p2,
-      fixTH = function(th) { return (th + p4) % p2 };
   
   return function() {
   
-    var facades = SHAPE.extrudeAll(this.points, this.height, 'Facade', [0, 1, 0]),
-        th = this.params.frontSide;
+    var facades = SHAPE.extrudeAll(this.points, this.height, 'Facade', [0, 1, 0]);
+    
 
     switch(this.params.tiles) {
       case 'OneDoor':
@@ -87,13 +84,13 @@ shg.define('FL_Ledge', null, function() {
 
   var extrPoints = [], h = this.height, yy = this.points[0].y;
 
-  for(var i = 0, I = this.points.length; i < I; i++) {
+  /*for(var i = 0, I = this.points.length; i < I; i++) {
     var p0 = this.points[i], p1 = this.points[(i + 1) % I],
         angle = Math.atan2(p1.z - p0.z, p1.x - p0.x),
         anglep = angle - Math.PI / 2,
         cos = Math.cos(angle) + Math.cos(anglep),
         sin = Math.sin(angle) + Math.sin(anglep);
-  }
+  }*/
 
   extrPoints = Geom.insetPolygon(this.points.map(function(i) { 
                  return { x: i.x, y: i.z }
@@ -141,13 +138,13 @@ shg.define('FL_Rooftop', null, function() {
 
   var extrPoints = [], h = this.height, yy = this.points[0].y;
 
-  for(var i = 0, I = this.points.length; i < I; i++) {
+  /*for(var i = 0, I = this.points.length; i < I; i++) {
     var p0 = this.points[i], p1 = this.points[(i + 1) % I],
         angle = Math.atan2(p1.z - p0.z, p1.x - p0.x),
         anglep = angle - Math.PI / 2,
         cos = Math.cos(angle) + Math.cos(anglep),
         sin = Math.sin(angle) + Math.sin(anglep);
-  }
+  }*/
 
   extrPoints = Geom.insetPolygon(this.points.map(function(i) { 
                  return { x: i.x, y: i.z }
@@ -298,7 +295,6 @@ shg.define('Window', null, function() {
       windowPane = vsp[1];
 
   var isLit = litWindowsRNG.random() > .8;
-  var wpuvs = windowPane.uvs;
   windowPane.uvs = null;
   windowPane.texID = (isLit ? 5 : 4);
 
@@ -362,7 +358,6 @@ shg.define('Door', null, function() {
       vsp = SHAPE.split(hsp[1], [1], [.7, .3 ], 'Quad'),
       windowPane = vsp[0];
 
-  var wpuvs = windowPane.uvs;
   windowPane.uvs = null;
   windowPane.texID = (litWindowsRNG.random() > .3 ? 4 : 5);
 

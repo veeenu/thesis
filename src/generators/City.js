@@ -1,8 +1,7 @@
 var PRNG  = new (require('PRNG')),
     Geom  = require('Geom'),
     Roads = require('./Roads.js'),
-    Block = require('./Block.js'),
-    ShapeGrammar = require('../lib/ShapeGrammar.js');
+    Block = require('./Block.js');
 
 var traverse = (function() {
 

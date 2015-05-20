@@ -41,8 +41,7 @@ module.exports = {
   
   },
   render: function() {
-    var str = '', li;
-    for(i in dict) {
+    for(var i in dict) {
       var pct = parseInt(dict[i].value * 100), sp = '' + pct;
       while(sp.length < 4) sp = '_' + sp;
       sp = sp.replace(/_/g, '&nbsp;');

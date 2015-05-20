@@ -1,5 +1,4 @@
-var glMatrix = require('glMatrix'),
-    Context  = require('Context'),
+var Context  = require('Context'),
     gl       = Context.gl;
 
 var Mesh = function(vertices, normals, uvs, extra) {
