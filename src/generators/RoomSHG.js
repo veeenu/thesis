@@ -1,4 +1,5 @@
 var ShapeGrammar = require('ShapeGrammar'),
+    Context      = require('Context'),
     SHAPE        = require('../lib/SHAPE.js'),
     earcut       = require('earcut'),
     Geom         = require('Geom'),
@@ -107,7 +108,7 @@ shgRoom.define('Room', null,
       sym: 'Quad',
       points: this.points
     });
-    ret.push({
+    /*ret.push({
       sym: 'Quad',
       points: this.points.map(function(i) {
         return {
@@ -116,7 +117,7 @@ shgRoom.define('Room', null,
           z: i.z
         }
       })
-    });
+    });*/
 
     var ipts = 1 / pts.length;
 
@@ -124,6 +125,8 @@ shgRoom.define('Room', null,
       sym: 'GraphNode',
       isTerminal: true,
       neighbors: [],
+      width: bds.width,
+      depth: bds.depth,
       roomCentroid: this.points.reduce(function(o, i) {
         o.x += ipts * i.x;
         o.y += ipts * i.y;
@@ -137,9 +140,14 @@ shgRoom.define('Room', null,
         i.room = gnode;
     })
 
-    ret.push(gnode);
-
+    //ret.push(gnode);
     ret.push({
+      sym: 'LastRoomCandidate',
+      node: gnode,
+      points: pts
+    });
+
+    /*ret.push({
       sym: 'Quad',
       texID: 8,
       points: [
@@ -180,7 +188,7 @@ shgRoom.define('Room', null,
         { x: gnode.roomCentroid.x + .25, y: gnode.roomCentroid.y + 1, z: gnode.roomCentroid.z + .25},
         { x: gnode.roomCentroid.x + .25, y: gnode.roomCentroid.y + .5, z: gnode.roomCentroid.z + .25 }
       ]
-    });
+    });*/
 
     ret.push({
       sym: 'Lamp',
@@ -191,8 +199,6 @@ shgRoom.define('Room', null,
         z: gnode.roomCentroid.z
       }
     });
-
-    console.log(bds.width * bds.depth)
 
     if(bds.width * bds.depth > 10)
       ret.push({
@@ -206,6 +212,130 @@ shgRoom.define('Room', null,
       });
 
     return ret;
+  });
+
+// Passthrough until all rooms have been processed
+shgRoom.define('LastRoomCandidate', 
+  function(context) { 
+    return context.filter(function(i) { return i.sym === 'Room' }).length > 0; 
+  },
+  function(context) {
+    return this;
+  });
+
+shgRoom.define('LastRoomCandidate', 
+  function(context) {
+    return context
+      .filter(function(i) { return i.sym === 'LastRoomCandidate' })
+      .indexOf(this) === 0;
+  },
+  function(context) {
+    this.node.isFirst = true;
+    return this.node;
+  });
+
+shgRoom.define('LastRoomCandidate', 
+  function(context) {
+    return context
+      .filter(function(i) { return i.sym === 'LastRoomCandidate' })
+      .reverse()
+      .indexOf(this) === 0;
+  },
+  function(context) {
+    this.node.isLast = true;
+    return [
+      this.node,
+      {
+        sym: 'LastRoom',
+        node: this.node
+      }
+    ];
+  });
+
+shgRoom.define('LastRoomCandidate', null,
+  function(context) {
+    return this.node;
+  });
+
+// Passthrough until the graph is known
+shgRoom.define('LastRoom', 
+  function(context) { 
+    return context.filter(function(i) { return i.sym === 'OccludedWall' }).length > 0; 
+  },
+  function() { 
+    return this; 
+  });
+
+shgRoom.define('LastRoom', null,
+  function() { 
+
+    console.log(this.node)
+
+    var wallPositions, 
+        neigh = this.node.neighbors.map(function(i) { return i.r.roomCentroid }), 
+        c = this.node.roomCentroid,
+        w = .99 * this.node.width / 2, d = .99 * this.node.depth / 2;
+   
+    wallPositions = [
+      { x: c.x, y: c.y, z: c.z + d, mdd: Number.POSITIVE_INFINITY, th: Math.atan2(d, 0) },
+      { x: c.x, y: c.y, z: c.z - d, mdd: Number.POSITIVE_INFINITY, th: Math.atan2(-d, 0) },
+      { x: c.x + w, y: c.y, z: c.z, mdd: Number.POSITIVE_INFINITY, th: Math.atan2(0, w) },
+      { x: c.x - w, y: c.y, z: c.z, mdd: Number.POSITIVE_INFINITY, th: Math.atan2(0, -w) }
+    ];
+
+    wallPositions.forEach(function(i) {
+      neigh.forEach(function(j) {
+        // Use distance squared since sqrt is strictly monotonic
+        var dx = j.x - i.x, dz = j.z - i.z;
+        i.mdd = Math.min(i.mdd, dx * dx + dz * dz);
+      });
+    });
+
+    var cw = wallPositions
+      .sort(function(a, b) {
+        if(a.mdd > b.mdd)
+          return -1;
+        if(b.mdd > a.mdd)
+          return 1;
+        return 0;
+      })
+      .shift();
+
+    var mm = .025,
+        dx = Math.sin(cw.th) * mm * Context.aspectRatio, 
+        dz = Math.cos(cw.th) * mm * Context.aspectRatio;
+
+    var monitor = {
+      sym: 'Quad',
+      texID: 8,
+      points: [
+        { x: cw.x + dx, y: cw.y + .75 + mm, z: cw.z - dz },
+        { x: cw.x + dx, y: cw.y + .75 - mm,  z: cw.z - dz },
+        { x: cw.x - dx, y: cw.y + .75 - mm,  z: cw.z + dz },
+        { x: cw.x - dx, y: cw.y + .75 + mm, z: cw.z + dz }
+      ]
+    }
+
+    var gnode = {
+      sym: 'GraphFinalNode',
+      isTerminal: true,
+      roomCentroid: cw,
+      neighbors: [this.node],
+      isMonitor: true,
+      door: {
+        angle: cw.th,
+        point: c
+      }
+    };
+
+    this.node.neighbors.push({
+      r: gnode,
+      via: gnode.door
+    });
+
+    console.log(monitor);
+
+    return [ monitor, gnode ];
   });
 
 shgRoom.define('Wall', function(context) {
@@ -294,7 +424,7 @@ shgRoom.define('OccludedWall', null, function() {
       z: .5 * (p0.z + p1.z)
     }
   }; 
-  arc0 = {
+  /*arc0 = {
     sym: 'GraphArc',
     isTerminal: true,
     a: this.connects[0],
@@ -307,8 +437,9 @@ shgRoom.define('OccludedWall', null, function() {
     a: this.connects[1],
     b: this.connects[0],
     c: door
-  };
+  };*/
 
+  // TODO warning: duplication
   this.connects[0].neighbors.push({
     r: this.connects[1], via: door
   });
@@ -344,8 +475,8 @@ shgRoom.define('OccludedWall', null, function() {
     }, {
       sym: 'WallSegment',
       points: [ wsB, p1 ]
-    },
-    arc0, arc1
+    }
+    //arc0, arc1
   ];
 
 });
@@ -479,9 +610,12 @@ module.exports = {
           o.rooms.push(i);
           o.nodes.push(i);
           break;
-        case 'GraphArc':
-          o.arcs.push(i);
+        case 'GraphFinalNode':
+          o.monitor = i;
           break;
+        /*case 'GraphArc':
+          o.arcs.push(i);
+          break;*/
       }
 
       return o;
@@ -490,11 +624,10 @@ module.exports = {
       walls: [], rooms: [], nodes: [], arcs: [], doors: [],
       lamp: { vertices: [], normals: [], uvs: [], extra: [] },
       table: { vertices: [], normals: [], uvs: [], extra: [] },
-      chair: { vertices: [], normals: [], uvs: [], extra: [] }
+      chair: { vertices: [], normals: [], uvs: [], extra: [] },
+      monitor: null
     });
 
-    console.log(ret)
-    
     var bbox = points.reduce(function(o, i) {
       o.minX = Math.min(i.x, o.minX);
       o.minZ = Math.min(i.z, o.minZ);

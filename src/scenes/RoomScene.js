@@ -9,6 +9,7 @@ var glMatrix = require('glMatrix'),
     mat4     = glMatrix.mat4,
     gl       = Context.gl,
     RoomSHG  = require('../generators/RoomSHG.js'),
+    PRNG     = require('PRNG'),
     grid, pathFind, geom, apt;
 
 var scene = {
@@ -20,6 +21,8 @@ var scene = {
   count: 0,
   texture: gl.createTexture()
 };
+
+var rng = new PRNG(54321);
 
 gl.bindTexture(gl.TEXTURE_2D, scene.texture);
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
@@ -55,34 +58,6 @@ var computeGeometry = function(room, path) {
     return o;
 
   }, []);
-
-  /*for(var i = 0, I = path.length; i < I - 1; i++) {
-    var a = path[i], b = path[(i + 1) % I],
-        th = Math.atan2(b.z - a.z, b.x - a.x),
-          cos = Math.cos(th) * .025 + .025, sin = Math.sin(th) * .025 + .025,
-          p0 = { x: a.x - cos, y: .5, z: a.z - sin },
-          p1 = { x: a.x + cos, y: .5, z: a.z + sin },
-          p3 = { x: b.x - cos, y: .5, z: b.z - sin },
-          p2 = { x: b.x + cos, y: .5, z: b.z + sin };
-
-    vertices.push(
-      p0.x, p0.y, p0.z,
-      p1.x, p1.y, p1.z,
-      p2.x, p2.y, p2.z,
-      p0.x, p0.y, p0.z,
-      p2.x, p2.y, p2.z,
-      p3.x, p3.y, p3.z
-    );
-    normals.push(
-      0, 1, 0, 0, 1, 0, 0, 1, 0,
-      0, 1, 0, 0, 1, 0, 0, 1, 0
-    );
-    uvs.push(
-      0, 1, 4, 1, 1, 4, 1, 0, 4,
-      0, 1, 4, 1, 0, 4, 0, 0, 4
-    );
-    
-  }*/
 
   extra = vertices.map(function(i, idx) {
     return .4;
@@ -164,9 +139,25 @@ apt = RoomSHG.create([
 var p = [];
 
 //apt.nodes = apt.nodes.sort(function(i) { return Math.random() - .5; });
+var nodes = apt.nodes.reduce(function(o, i) {
+      if(i.isFirst) o.first = i;
+      if(i.isLast) o.last = i;
+      return o;
+    }, { first: null, last: null }),
+    shuffledNodes = apt.nodes.filter(function(i) { return !i.isMonitor });
+    
+shuffledNodes.sort(function() { var ret = rng.random() - .5; return ret; });
 
-for(var i = 0, I = apt.nodes.length; i < I; i++)
-  p = p.concat(AStar(apt.nodes[i], apt.nodes[(i + 1) % I], apt.nodes));
+for(var i = 0, I = apt.nodes.length; i < I - 1; i++)
+  p = p.concat(AStar(shuffledNodes[i], shuffledNodes[(i + 1) % I], shuffledNodes));
+p = p.concat(AStar(shuffledNodes[shuffledNodes.length - 1], nodes.first, shuffledNodes));
+
+p = p.concat(AStar(nodes.first, nodes.last, apt.nodes));
+
+p.push({
+  door: apt.monitor.door,
+  room: apt.monitor
+});
 
 geom = computeGeometry(apt, p);
 
@@ -184,15 +175,27 @@ var pathFn = (function(path, us) {
   
   var samples = [];
 
-  for(var i = 0, I = path.length; i < I; i++) {
+  for(var i = 0, I = path.length; i < I - 1; i++) {
   
-    var a = path[i], b = path[(i + 1) % I], c = path[(i + 2) % I],
+    var a = path[i], b = path[Math.min(i + 1, I - 1)], c = path[Math.min(i + 2, I - 1)],
         dx = b.x - a.x,
         dz = b.z - a.z,
+        v1x = dx,
+        v1z = dz,
+        v2x = c.x - b.x,
+        v2z = c.z - b.z,
         arclen = Math.sqrt(dx * dx + dz * dz),
         th1 = (Math.atan2(-b.z + a.z, b.x - a.x) + Math.PI * 3 / 2) % (2 * Math.PI),
         th2 = (Math.atan2(-c.z + b.z, c.x - b.x) + Math.PI * 3 / 2) % (2 * Math.PI),
         swidth = us / arclen, t = 0;
+
+    if(i >= I - 4)
+      th2 = th1;
+
+    while(th2 - th1 > Math.PI)
+      th2 -= 2 * Math.PI;
+    while(th1 - th2 > Math.PI)
+      th1 -= 2 * Math.PI;
 
     for(var j = 0, J = ~~(arclen / us); j < J; j++) {
       t = j / J;
@@ -206,14 +209,12 @@ var pathFn = (function(path, us) {
 
   }
 
-  console.log(samples)
-
   return function(x) {
 
     var t = x; //x * x * (22 + x * x * (-17 + 4 * x * x)) / 9;
 
     var I = samples.length,
-        j = t * I, i = ~~j,
+        j = t * (I - 1), i = Math.floor(j),
         d = j - i,
         a = samples[i], b = samples[(i + 1) % I];
 
@@ -229,11 +230,27 @@ var pathFn = (function(path, us) {
 
 mat4.translate(scene.view, scene.view, [0,0, -8]);
 mat4.rotateX(scene.view, scene.view, Math.PI / 2);
+mat4.rotateY(scene.view, scene.view, Math.PI / 2);
+
+var arrowidx = scene.meshes.length, 
+    totalTime = 500 * geom.path.length,
+    wobbleFreq = Math.PI * 2 / 1000;
 
 scene.update = function(timestamp) {
 
-  var p = pathFn((timestamp % 60000) / 60000),
-      x = p.x, y = p.z, angle = p.th;
+  var px = Math.min(timestamp / totalTime, 1),
+      p = pathFn(isNaN(px) ? 0 : px),
+      x = p.x, y = p.z, angle = p.th,
+      wobble = 0, wobbleX = 0, wobbleZ = 0;
+
+  /*if(px < 1) {
+    var wobbleTh = angle + Math.PI, 
+        wcos = -Math.cos(timestamp * wobbleFreq) * .125,
+        wsin = Math.sin(timestamp * wobbleFreq) * .125;
+    wobble  = wsin;
+    wobbleX = Math.cos(wobbleTh) * wcos;
+    wobbleZ = Math.sin(wobbleTh) * wcos;
+  }*/
 
   var p0 = vec3.fromValues(-.0625, .25, .0625),
       p1 = vec3.fromValues(0, .25, -.25),
@@ -247,7 +264,7 @@ scene.update = function(timestamp) {
   vec3.transformMat4(p1, p1, m);
   vec3.transformMat4(p2, p2, m);
 
-  /*scene.meshes[1] = new Mesh([
+  /*scene.meshes[arrowidx] = new Mesh([
     p0[0], p0[1], p0[2],
     p1[0], p1[1], p1[2],
     p2[0], p2[1], p2[2]
@@ -262,7 +279,7 @@ scene.update = function(timestamp) {
   mat4.identity(scene.view);
   //mat4.rotateX(scene.view, scene.view, Math.PI / 6);
   mat4.rotateY(scene.view, scene.view, -angle);
-  mat4.translate(scene.view, scene.view, [ -x, -.75, -y ]);
+  mat4.translate(scene.view, scene.view, [ -x + wobbleX, -.75 + wobble, -y + wobbleZ ]);
 
 }
 
