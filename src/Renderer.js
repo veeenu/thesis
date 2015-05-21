@@ -81,7 +81,24 @@ gl.attachShader(programPassthrough, vshPassthrough);
 gl.attachShader(programPassthrough, fshPassthrough);
 gl.linkProgram(programPassthrough);
 
-var p = document.createElement('pre');
+console.log(
+  "VP:", gl.getShaderInfoLog(vshPass),
+  "\nFP:", gl.getShaderInfoLog(fshPass),
+  "\nLP:", gl.getProgramInfoLog(programPass),
+  "\nVL:", gl.getShaderInfoLog(vshLight),
+  "\nFL:", gl.getShaderInfoLog(fshLight),
+  "\nLL:", gl.getProgramInfoLog(programLight),
+  "\nVS:", gl.getShaderInfoLog(vshSSAO),
+  "\nFS:", gl.getShaderInfoLog(fshSSAO),
+  "\nLS:", gl.getProgramInfoLog(programSSAO),
+  "\nVT:", gl.getShaderInfoLog(vshPassthrough),
+  "\nFT:", gl.getShaderInfoLog(fshPassthrough),
+  "\nLT:", gl.getProgramInfoLog(programPassthrough),
+  "\nExt:", 
+    extSD !== null ? 'OES_standard derivatives' : '', 
+    extTF !== null ? 'OES_texture_float' : ''
+);
+/*var p = document.createElement('pre');
 p.textContent = [
   "VP:", gl.getShaderInfoLog(vshPass),
   "\nFP:", gl.getShaderInfoLog(fshPass),
@@ -99,7 +116,7 @@ p.textContent = [
     extSD !== null ? 'OES_standard derivatives' : '', 
     extTF !== null ? 'OES_texture_float' : ''
 ].join(' ');
-document.body.appendChild(p)
+document.body.appendChild(p)*/
 
 /*******************************************************************************
  * Texture MRTs setup.
@@ -190,19 +207,19 @@ mat4.invert(invProjection, projection);
 });
 
 ['position'].forEach(function(i) {
-  programPassthrough[i] = gl.getAttribLocation(programPassthrough, i);
-});
-
-['tex'].forEach(function(i) {
-  programPassthrough[i] = gl.getUniformLocation(programPassthrough, i);
-});
-
-['position'].forEach(function(i) {
   programSSAO[i] = gl.getAttribLocation(programSSAO, i);
 });
 
 ['target0', 'lightBuffer'].forEach(function(i) {
   programSSAO[i] = gl.getUniformLocation(programSSAO, i);
+});
+
+['position'].forEach(function(i) {
+  programPassthrough[i] = gl.getAttribLocation(programPassthrough, i);
+});
+
+['tex', 'fade'].forEach(function(i) {
+  programPassthrough[i] = gl.getUniformLocation(programPassthrough, i);
 });
 
 /*******************************************************************************
@@ -357,16 +374,17 @@ programSSAO.deactivate = function() {
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 }
 
-programPassthrough.activate = function(texture) {
+programPassthrough.activate = function(scene) {
 
   gl.useProgram(programPassthrough);
 
   gl.clear(gl.COLOR_BUFFER_BIT);
 
   gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.bindTexture(gl.TEXTURE_2D, scene.texture);
 
   gl.uniform1i(programPassthrough.tex, 0);
+  gl.uniform1f(programPassthrough.fade, 'fade' in scene ? scene.fade : 1);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
   gl.vertexAttribPointer(programPassthrough.position, 2, gl.FLOAT, false, 0, 0);
@@ -383,14 +401,15 @@ module.exports = {
       roomScene: roomScene.texture
     };
   },
-  render: function(scene) {
+  render: function(scene, doPassthrough) {
     programPass.activate(scene);
     programPass.deactivate();
     programLight.activate(scene);
     programLight.deactivate();
     programSSAO.activate(scene);
     programSSAO.deactivate();
-    programPassthrough.activate(scene.texture);
+    if(doPassthrough === true)
+      programPassthrough.activate(scene);
     //programPassthrough.deactivate();
   }
 }

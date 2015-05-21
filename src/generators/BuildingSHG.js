@@ -516,7 +516,12 @@ module.exports = {
         x0 = lot.x - dx, x1 = lot.x + dx,
         y0 = lot.y - dy, y1 = lot.y + dy,
         ratio = Math.max(dx / dy, dy / dx),
+        seed = (x1 + x0 + y1 + y0) * 1000,
         frontFacade = null, hasBalcony = false;
+
+    litWindowsRNG.seed(seed);
+    buildingSidesRNG.seed(seed);
+    buildingLayoutRNG.seed(seed);
 
     var pts = [];
 

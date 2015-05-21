@@ -32,6 +32,7 @@
       "glMatrix": "./lib/glMatrixSubset",
       "QuadTree": "./lib/QuadTree",
       "Loader": "./lib/Loader",
+      "Timeline": "./lib/Timeline",
       "Mesh": "./lib/Mesh",
       "Context": "./Context",
       "PRNG": "./generators/PRNG",

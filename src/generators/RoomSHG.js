@@ -268,12 +268,10 @@ shgRoom.define('LastRoom',
 shgRoom.define('LastRoom', null,
   function() { 
 
-    console.log(this.node)
-
     var wallPositions, 
         neigh = this.node.neighbors.map(function(i) { return i.r.roomCentroid }), 
         c = this.node.roomCentroid,
-        w = .99 * this.node.width / 2, d = .99 * this.node.depth / 2;
+        w = .9 * this.node.width / 2, d = .9 * this.node.depth / 2;
    
     wallPositions = [
       { x: c.x, y: c.y, z: c.z + d, mdd: Number.POSITIVE_INFINITY, th: Math.atan2(d, 0) },
@@ -300,7 +298,7 @@ shgRoom.define('LastRoom', null,
       })
       .shift();
 
-    var mm = .025,
+    var mm = .15,
         dx = Math.sin(cw.th) * mm * Context.aspectRatio, 
         dz = Math.cos(cw.th) * mm * Context.aspectRatio;
 
@@ -309,8 +307,8 @@ shgRoom.define('LastRoom', null,
       texID: 8,
       points: [
         { x: cw.x + dx, y: cw.y + .75 + mm, z: cw.z - dz },
-        { x: cw.x + dx, y: cw.y + .75 - mm,  z: cw.z - dz },
-        { x: cw.x - dx, y: cw.y + .75 - mm,  z: cw.z + dz },
+        { x: cw.x + dx, y: cw.y + .75 - mm, z: cw.z - dz },
+        { x: cw.x - dx, y: cw.y + .75 - mm, z: cw.z + dz },
         { x: cw.x - dx, y: cw.y + .75 + mm, z: cw.z + dz }
       ]
     }
@@ -318,7 +316,11 @@ shgRoom.define('LastRoom', null,
     var gnode = {
       sym: 'GraphFinalNode',
       isTerminal: true,
-      roomCentroid: cw,
+      roomCentroid: {
+        x: cw.x - dz * .519,
+        y: cw.y,
+        z: cw.z - dx * .519
+      },
       neighbors: [this.node],
       isMonitor: true,
       door: {
@@ -331,8 +333,6 @@ shgRoom.define('LastRoom', null,
       r: gnode,
       via: gnode.door
     });
-
-    console.log(monitor);
 
     return [ monitor, gnode ];
   });
