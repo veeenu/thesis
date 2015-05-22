@@ -66,7 +66,7 @@ function sceneLoop(ts) {
 
   stats.begin();
 
-  var dt = (ts - sceneLoop.t0) + 26000;
+  var dt = (ts - sceneLoop.t0);
 
   if(dt < 32000) {
     mainScene.update(dt);
