@@ -66,26 +66,25 @@ function sceneLoop(ts) {
 
   stats.begin();
 
-  var dt = (ts - sceneLoop.t0);
+  var dt = (ts - sceneLoop.t0) + 26000;
 
   if(dt < 32000) {
     mainScene.update(dt);
     Renderer.render(mainScene, true);
   } else {
-
-    dt = dt % (32000 + roomScene.totalTime);
-
-    if(dt < 32000) {
-      mainScene.update(dt + 4000); //+ roomScene.totalTime - 2000);
+    dt -= 4000;
+    dt %= 28000 + roomScene.totalTime;
+    if(dt < 28000) {
+      mainScene.update(dt + 4000);
       Renderer.render(mainScene, true);
     } else {
-      mainScene.update(Math.max(0, dt - 32000 - (roomScene.totalTime - 4000)));
-      roomScene.update(dt - 32000);
+      mainScene.update(Math.max(0, dt - (28000 + roomScene.totalTime) + 4000));
+      roomScene.update(dt - 28000);
       Renderer.render(mainScene);
       Renderer.render(roomScene, true);
-    
     }
-  }
+  } 
+
   stats.end();
 
   if(window.STAHP !== true)
