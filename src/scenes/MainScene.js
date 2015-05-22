@@ -290,104 +290,49 @@ var t = 0., pushFn = function(o, i) { o.push(i); return o; },
     _x = 2, _y = .19, _z = 1.8, _alpha = 0, _beta = 0,
     dx = 0, dz = 0;
 
-/*var polyEasing = function(x) { return x * x * x * (x * (6 * x - 15) + 10) };
+var timeline = new Timeline();
 
-var calcPositions = function(ts) {
+(function() {
+  var x = timeline.property('x'), y = timeline.property('y'),
+      z = timeline.property('z'), a = timeline.property('a'),
+      b = timeline.property('b'), f = timeline.property('f');
 
-  log.textContent = parseInt(ts);
-  if(ts < 5000) {
-    var t = polyEasing(tlerp(0, 5000, ts));
-    y = lerp(20, .05, t);
-  }
+  f.at(    0, 0).at( 2000, 1, 'h01')
 
-  if(ts >= 4000 && ts < 5000) {
-    var t = polyEasing(tlerp(4000, 5000, ts));
-    alpha = lerp(Math.PI / 2, 0, t);
-    beta = lerp(0, Math.PI, t);
-  }
+  x.at(    0,  1.54).at( 2000,  1.54, 'no').at( 8000,  1.91, 'h01')
+  y.at(    0,  1.19)
+  z.at(    0,   .19).at( 2000,   .19, 'no').at( 8000,   .03, 'h01')
+  a.at(    0,  0   ).at( 2000,  0   , 'no').at( 8000,   .24, 'h01')
+  b.at(    0, -3.54).at( 2000, -3.54, 'no').at( 8000, -3.45, 'h01')
 
-  if(ts >= 4000 && ts < 20000) {
-    var t = polyEasing(tlerp(4000, 20000, ts));
-    x = lerp(6, 10, t);
-  }
+  x.at( 9000,   .78, 'no')
+  y.at( 9000,   .10, 'no')
+  z.at( 9000,  2.03, 'no')
+  a.at( 9000, - .75, 'no').at(12000, - .65, 'h01')
+  b.at( 9000,   .65, 'no').at(12000,   .75, 'h01')
 
-  if(ts >= 5000 && ts < 19500) {
-    var t = polyEasing(tlerp(5000, 20000, ts));
-    beta = lerp(Math.PI, Math.PI * 3/2, t);
-  }
+  x.at(13000,  2.97, 'no')
+  y.at(13000,   .97, 'no').at(14500,   .02, 'h01')
+  z.at(13000,  2.16, 'no')
+  a.at(13000,   .34, 'no').at(14500, - .04, 'h01')
+  //b.at(13000, -3.66, 'no').at(14500, -5.53, 'h01');
+  b.at(13000, -3.66, 'no').at(15500, -6.84, 'h01')
 
-  if(ts >= 19500 && ts < 20500) {
-    var t = polyEasing(tlerp(19500, 20500, ts));
-    alpha = lerp(0, - Math.PI / 2, t);
-  }
+  f.at(15400,  1,    'no').at(15500,  0   , 'h01').at(15600,  1, 'h01')
+  x.at(15500,  5.45, 'no').at(16500,  5.45, 'in3').at(17500,  5.45, 'lin').at(18500,  5.45, 'out3')
+  y.at(15500,  1.28, 'no').at(16500,  1.28, 'in3').at(17500,   .08, 'lin').at(18500,   .08, 'out3')
+  z.at(15500,   .56, 'no').at(16500,   .09, 'in3').at(17500,  0   , 'lin').at(18500,  0   , 'out3')
+  a.at(15500,   .26, 'no').at(16500,  1.24, 'in3').at(17000,  1.56, 'lin').at(18500,   .37, 'out3')
+  b.at(15500, -2.72, 'no').at(16500,   .04, 'in3').at(17000,  0   , 'lin').at(18500, -1.61, 'out3')
 
-  if(ts >= 20000 && ts < 22500) {
-    var t = polyEasing(tlerp(20000, 22500, ts));
-    beta = lerp(Math.PI * 3 / 2, Math.PI, t);
-    y = lerp(.05, 1.05, t);
-    z = lerp(6, 0, t);
-  }
+  x.at(20000,  4   , 'h01').at(26000,  4,    'no') .at(30000,  3.84, 'out2')
+  y.at(20000,   .01, 'h01').at(26000,   .01, 'no') .at(30000,   .28, 'out2')
+  z.at(20000,   .02, 'h01').at(26000,  4.65, 'in2').at(30000,  5.20, 'out2')
+  a.at(20000,  0   , 'h01').at(26000,   .17, 'in2').at(30000,  0   , 'out2')
+  b.at(20000, -3.14, 'h01').at(26000, -3.14, 'no') .at(30000, -1.56, 'out2')
+}());
 
-  if(ts >= 20500 && ts < 22500) {
-    var t = polyEasing(tlerp(20500, 22500, ts));
-    alpha = lerp(- Math.PI / 2, 0, t);
-  }
-
-  if(ts >= 22500 && ts < 30000) {
-    var t = polyEasing(tlerp(22500, 30000, ts));
-    z = lerp(0, 14, t);
-  }
-
-  if(ts >= 30000) {
-    var t = tlerp(30000, 40000, ts);
-    z = 0;
-    alpha = Math.PI / 8;
-    x = lerp(12, 0, t);
-  }
-
-}*/
-
-var timeline = new Timeline({
-  x: 0, y: 0, z: 0,
-  a: 0, b: 0, f: 1
-});
-
-timeline.addKeyframe(0,    { x:  1.54, y:  1.19, z:  .19, a:  0,     b: -3.54, f: 0 });
-timeline.addKeyframe(2000, { x:  1.54, y:  1.19, z:   .19, a:  0,    b: -3.54, f:  1 }, 'h01');
-timeline.addKeyframe(6000, { x:  1.91, y:  1.18, z:   .03, a:  0.24, b: -3.45, f:  1 }, 'h01');
-timeline.addKeyframe(1000, { x:   .78, y:   .10, z:  2.03, a: - .75, b:   .65, f:  1 }, 'no');
-timeline.addKeyframe(3000, { x:   .78, y:   .10, z:  2.03, a: - .65, b:   .75, f:  1 }, 'h01');
-timeline.addKeyframe(1000, { x:  2.97, y:   .97, z:  2.16, a:   .34, b: -3.66, f:  1 }, 'no');
-timeline.addKeyframe(1000, { x:  2.97, y:   .02, z:  2.16, a:   .34, b: -3.66, f:  1 }, 'h01');
-timeline.addKeyframe( 500, { x:  2.97, y:   .02, z:  2.16, a: - .04, b: -5.53, f:  1 }, 'h01');
-timeline.addKeyframe(1000, { x:  3.05, y:   .02, z:  2.08, a: - .04, b: -5.53, f:  1 }, 'h01');
-timeline.addKeyframe( 500, { x:  5.45, y:  1.28, z:   .56, a:   .26, b: -2.72, f:  1 }, 'no');
-timeline.addKeyframe( 500, { x:  5.45, y:  1.28, z:   .56, a:   .26, b: -2.72, f:  1 }, 'no');
-timeline.addKeyframe(1000, { x:  5.41, y:  1.28, z:   .40, a:   .63, b: -1.73, f:  1 }, 'h01');
-timeline.addKeyframe(1000, { x:  5.26, y:  1.21, z:   .08, a:  1.57, b: -1.57, f:  1 }, 'h01');
-timeline.addKeyframe(1500, { x:  5.34, y:   .10, z:   .01, a:  1.57, b: -1.57, f:  1 }, 'quadratic');
-timeline.addKeyframe( 200, { x:  5.34, y:   .01, z:   .01, a:   .0 , b: -1.57, f:  1 }, 'h01');
-timeline.addKeyframe(1800, { x:  4   , y:   .01, z:   .02, a:   .0 , b: -3.14, f:  1 }, 'h01');
-timeline.addKeyframe(4000, { x:  4   , y:   .01, z:  4.65, a:   .17, b: -3.14, f:  1 }, 'quadratic');
-timeline.addKeyframe( 500, { x:  3.84, y:   .01, z:  5.01, a:   .0 , b: -1.57, f:  1 }, 'linear');
-timeline.addKeyframe( 500, { x:  3.76, y:   .2 , z:  5.01, a: -1.57, b: -1.57, f:  1 }, 'quadratic');
-timeline.addKeyframe(1000, { x:  3.76, y:   .87, z:  5.01, a: -1.57, b: 11.00, f:  1 }, 'quadratic');
-/*timeline.addKeyframe(0, { x:  1.54, y:  1.19, z:  .19, a:  0,     b: -3.54, f: 0 });
-timeline.addKeyframe(2000, { x:  1.54, y:  1.19, z:   .19, a:  0,    b: -3.54, f:  1 }, 'h01');
-timeline.addKeyframe(8000, { x:  1.91, y:  1.18, z:   .03, a:  0.24, b: -3.45, f:  1 }, 'h01');
-timeline.addKeyframe(9000, { x:   .78, y:   .10, z:  2.03, a: - .75, b:   .65, f:  1 }, 'no');
-timeline.addKeyframe(12000, { x:   .78, y:   .10, z:  2.03, a: - .65, b:   .75, f:  1 }, 'h01');
-timeline.addKeyframe(13000, { x:  2.97, y:   .97, z:  2.16, a:   .34, b: -3.66, f:  1 }, 'no');
-timeline.addKeyframe(14000, { x:  2.97, y:   .02, z:  2.16, a:   .34, b: -3.66, f:  1 }, 'h01');
-timeline.addKeyframe(14500, { x:  2.97, y:   .02, z:  2.16, a: - .04, b: -5.53, f:  1 }, 'h01');
-timeline.addKeyframe(15500, { x:  3.05, y:   .02, z:  2.08, a: - .04, b: -5.53, f:  1 }, 'h01');
-timeline.addKeyframe(16000, { x:  5.45, y:  1.28, z:   .56, a:   .26, b: -2.72, f:  1 }, 'no');
-timeline.addKeyframe(16500, { x:  5.45, y:  1.28, z:   .56, a:   .26, b: -2.72, f:  1 }, 'no');
-timeline.addKeyframe(17500, { x:  5.41, y:  1.28, z:   .40, a:   .63, b: -1.73, f:  1 }, 'h01');
-timeline.addKeyframe(18500, { x:  5.26, y:  1.21, z:   .08, a:  1.57, b: -1.57, f:  1 }, 'h01');
-timeline.addKeyframe(20000, { x:  5.34, y:   .10, z:   .01, a:  1.57, b: -1.57, f:  1 }, 'quadratic');
-timeline.addKeyframe(20200, { x:  5.34, y:   .01, z:   .01, a:   .0 , b: -1.57, f:  1 }, 'h01');
-timeline.addKeyframe(22000, { x:  4   , y:   .01, z:   .02, a:   .0 , b: -3.14, f:  1 }, 'h01');
+/*
 timeline.addKeyframe(26000, { x:  4   , y:   .01, z:  4.65, a:   .17, b: -3.14, f:  1 }, 'quadratic');
 timeline.addKeyframe(26500, { x:  3.84, y:   .01, z:  5.01, a:   .0 , b: -1.57, f:  1 }, 'linear');
 timeline.addKeyframe(27000, { x:  3.76, y:   .2 , z:  5.01, a: -1.57, b: -1.57, f:  1 }, 'quadratic');
@@ -450,13 +395,14 @@ scene.update = function(timestamp) {
     return o;
   }, []);
 
+  log.textContent += "\nTime: " + timestamp.toFixed(2);
   log.textContent += "\nVertices: " + scene.meshes.reduce(function(o, i) {
     return o + i.count;
   }, 0);
 
   t += .001;
 
-  log.textContent += "\nLights: " + scene.lights.length / 18;
+  log.textContent += ", Lights: " + scene.lights.length / 18;
 
 }
 // 87 65 83 68;

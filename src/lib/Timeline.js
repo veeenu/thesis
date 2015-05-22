@@ -1,11 +1,11 @@
 var easings = {
-  no: function(t) { return 0; },
-  linear: function(t) { return t; },
-  quadratic: function(t) { return t * t; },
-  cubic: function(t) { return t * t * t; },
-  h01: function(t) {
-    return t * t * (3 - 2 * t);
-  }
+  no:     function(t) { return 0; },
+  lin:    function(t) { return t; },
+  in2:    function(t) { return t * t; },
+  out2:   function(t) { var t1 = 1 - t; return 1 - t1 * t1; },
+  in3:    function(t) { return t * t * t; },
+  out3:   function(t) { var t1 = 1 - t; return 1 - t1 * t1 * t1; },
+  h01:    function(t) { return t * t * (3 - 2 * t); }
 };
 
 var locate = function(time, arr, a, b) {
@@ -19,52 +19,60 @@ var locate = function(time, arr, a, b) {
   }
 }
 
-var Timeline = function(obj) {
-  this.obj = obj;
+var normalize = function(t0, t1, t) {
+  return Math.max(Math.min((t - t0) / (t1 - t0), 1), 0);
+}
+
+var PropTimeline = function() {
   this.keyframes = [];
 }
 
-Timeline.prototype.addKeyframe = function(time, kf, easing) {
+PropTimeline.prototype.at = function(time, kf, easing) {
   var kfs = this.keyframes;
-  /*kfs.splice(locate(time, kfs, 0, kfs.length) + 1, 0, {
-    time: time,
-    values: kf,
-    easing: easing || 'linear'
-  });*/
 
   kfs.push({
-    time: kfs.length > 0 ? kfs[this.count - 1].time + time : time,
-    values: kf,
+    //time: kfs.length > 0 ? kfs[this.count - 1].time + time : time,
+    time: time,
+    value: kf,
     easing: easing || 'linear'
   });
 
   this.count = kfs.length;
+
+  return this;
 }
 
-Timeline.prototype.update = function(time) {
+PropTimeline.prototype.update = function(time) {
 
   var i = locate(time, this.keyframes, 0, this.count),
       k0 = this.keyframes[i],
       k1 = this.keyframes[Math.min(i + 1, this.count - 1)],
-      v0 = k0.values,
-      v1 = k1.values;
+      v0 = k0.value,
+      v1 = k1.value;
 
+  var t = easings[k1.easing].call(null, normalize(k0.time, k1.time, time));
+
+  return v0 * (1 - t) + v1 * t;
+
+}
+
+var Timeline = function() {
+  this.properties = {};
+}
+
+Timeline.prototype.property = function(name) {
+  if(!(name in this.properties))
+    this.properties[name] = new PropTimeline();
+
+  return this.properties[name];
+}
+
+Timeline.prototype.update = function(time) {
   var ret = {};
-  for(var i in v1) {
-    var t = easings[k1.easing].call(null,
-               Timeline.normalize(k0.time, k1.time, time)
-             );
-    ret[i] = v0[i] * (1 - t) + v1[i] * t;
+  for(var i in this.properties) {
+    ret[i] = this.properties[i].update(time);
   }
-
   return ret;
-
 }
-
-Timeline.normalize = function(t0, t1, t) {
-  return Math.max(Math.min((t - t0) / (t1 - t0), 1), 0);
-}
-
-
 
 module.exports = Timeline;
