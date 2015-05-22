@@ -308,14 +308,14 @@ shg.define('Window', null, function() {
     windowPane.points[2].x, windowPane.points[2].y, windowPane.points[2].z
   ]);
 
-  var borders = SHAPE.extrudeAll(windowPane.points, -.005, 'Quad', norm);
+  var borders = SHAPE.extrudeAll(windowPane.points, -.0025, 'Quad', norm);
   var nX = norm[0],
       nY = norm[1],
       nZ = norm[2];
   
-  nX *= .005;
-  nY *= .005;
-  nZ *= .005;
+  nX *= .0025;
+  nY *= .0025;
+  nZ *= .0025;
 
   for(var i = 0, I = windowPane.points.length; i < I; i++) {
     var p = windowPane.points[i];

@@ -242,6 +242,8 @@ scene.init = function() {
       arrowidx = scene.meshes.length,
       wobbleFreq = Math.PI * 2 / 1000;
 
+  scene.totalTime = totalTime;
+
   scene.update = function(timestamp) {
 
     var px = Math.min(timestamp / totalTime, 1),
@@ -282,10 +284,10 @@ scene.init = function() {
       0, 1, 0, 0, 1, 0, 0, 1, 0
     ]);
 
-    /*mat4.identity(scene.view);
+    mat4.identity(scene.view);
     //mat4.rotateX(scene.view, scene.view, Math.PI / 6);
     mat4.rotateY(scene.view, scene.view, -angle);
-    mat4.translate(scene.view, scene.view, [ -x + wobbleX, -.75 + wobble, -y + wobbleZ ]);*/
+    mat4.translate(scene.view, scene.view, [ -x + wobbleX, -.75 + wobble, -y + wobbleZ ]);
 
   }
 };
