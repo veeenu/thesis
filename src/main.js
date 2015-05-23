@@ -67,8 +67,10 @@ function sceneLoop(ts) {
   stats.begin();
 
   var dt = (ts - sceneLoop.t0);
+  mainScene.update(dt);
+  Renderer.render(mainScene, true);
 
-  if(dt < 32000) {
+  /*if(dt < 32000) {
     mainScene.update(dt);
     Renderer.render(mainScene, true);
   } else {
@@ -83,7 +85,7 @@ function sceneLoop(ts) {
       Renderer.render(mainScene);
       Renderer.render(roomScene, true);
     }
-  } 
+  } */
 
   stats.end();
 

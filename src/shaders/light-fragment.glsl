@@ -50,10 +50,11 @@ void main() {
   //if(dist > 2.)
   //  discard;
 
-  vec3 normal = -normalize(unpackNormal(t0.xy)),
+  vec3 normal = normalize(unpackNormal(t0.xy)),
        color  = unpackColor(t0.z);
 
-  float lambert = max(dot(faceforward(-normal, lightDir, normal), normalize(lightDir)), 0.),
+  float lambert = max(dot(normal, normalize(lightDir)), 0.),
+        specular = step(0., lambert) * pow(dot(normal, normalize(lightDir - vertex)), 64.),
         att = lightParameters.x * min(1.,
                 1. /
                 (
@@ -63,7 +64,7 @@ void main() {
                 )
               );
 
-  gl_FragColor = vec4(lambert * att * color, 1.);
+  gl_FragColor = vec4((lambert + specular) * att * color, 1.);
   //gl_FragColor = vec4(color, 1.);
 
 }

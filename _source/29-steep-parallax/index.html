@@ -1,0 +1,96 @@
+---
+layout: proto
+title: "Steep Parallax Mapping"
+---
+
+<script type='application/x-shader' id='vertex'>
+#extension GL_OES_standard_derivatives: enable
+
+uniform mat4 perspective, modelview;
+uniform mat3 nmatrix;
+uniform vec3 light;
+
+attribute vec3 position;
+attribute vec2 uv;
+
+varying vec2 vUv;
+
+varying vec3 vP;
+
+void main() {
+
+  gl_Position = perspective * modelview * vec4(position, 1.);
+
+  vP = (modelview * vec4(position, 1.)).xyz;
+  vUv = uv;
+}
+
+</script>
+
+<script type='application/x-shader' id='fragment'>
+#extension GL_OES_standard_derivatives: enable
+precision highp float;
+
+uniform mat4 modelview;
+uniform mat3 nmatrix;
+uniform sampler2D tex, map;
+uniform vec3 light, campos;
+
+varying vec3 vP;
+varying vec2 vUv;
+
+void main() {
+  
+  const float steps = 60., step = 1. / steps;
+  float height = .5;
+
+  vec3 N, T, B, lightTS, eyeTS;
+
+  eyeTS = normalize(campos - vP);
+  lightTS = normalize(light - vP);
+  
+  N = nmatrix * vec3(0., 0., 1.);
+  T = nmatrix * vec3(1., 0., 0.);
+  B = -nmatrix * vec3(0., 1., 0.);
+
+  lightTS = normalize(vec3(
+    dot(lightTS, T),
+    dot(lightTS, B),
+    dot(lightTS, N)
+  ));
+
+  eyeTS = normalize(vec3(
+    dot(eyeTS, T),
+    dot(eyeTS, B),
+    dot(eyeTS, N)
+  ));
+
+
+  vec3 lightDir = normalize(lightTS),
+       eyeDir   = normalize(eyeTS),
+       eyeRay   = -eyeDir;
+
+  vec2 offset = vUv, parallax;
+
+  parallax = eyeTS.xy * .05 / (-eyeTS.z * steps);
+
+  vec4 NB = texture2D(map, offset);
+
+  for(float i = 0.; i < steps; i++) {
+    if(NB.a < height) {
+      height -= step;
+      offset += parallax;
+      NB = texture2D(map, offset);
+    } else break;
+  }
+
+  vec3 color  = texture2D(tex, offset).rgb,
+       nnormal = texture2D(map, offset).rgb * 2. - 1.;
+
+  float nxDir = max(0., dot(nnormal, lightDir));
+
+  gl_FragColor = vec4(color * max(nxDir, .3), 1.);
+}
+</script>
+
+<script src='{{site.baseurl}}/js/gl-matrix-min.js'></script>

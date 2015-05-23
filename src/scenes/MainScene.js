@@ -215,8 +215,8 @@ Context.canvas.parentElement.appendChild(log);
   var roadQuads = city.roadQuads.reduce((function() { 
     var N, U;
     N = [
-      0, -1, 0, 0, -1, 0, 0, -1, 0,
-      0, -1, 0, 0, -1, 0, 0, -1, 0
+      0, 1, 0, 0, 1, 0, 0, 1, 0,
+      0, 1, 0, 0, 1, 0, 0, 1, 0
     ];
     U = [
       0, 0, 2,  0, 1, 2,  1, 1, 2,  
@@ -287,7 +287,7 @@ gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, Context.w, Context.h, 0, gl.RGBA, gl.UN
 gl.bindTexture(gl.TEXTURE_2D, null);
 
 var t = 0., pushFn = function(o, i) { o.push(i); return o; },
-    _x = 2, _y = .19, _z = 1.8, _alpha = 0, _beta = 0,
+    _x = 2.71, _y = .38, _z = 1.31, _alpha = 0.26, _beta = 0.79,
     dx = 0, dz = 0;
 
 var timeline = new Timeline();
@@ -331,7 +331,7 @@ var timeline = new Timeline();
   b.at(20000, -3.14, 'h01').at(26000, -3.14, 'no') .at(30000, -1.56, 'out2')
 }());
 
-window.followTimeline = true;
+window.followTimeline = false;
 
 Context.canvas.addEventListener('click', function(evt) { if(evt.which === 2) window.followTimeline = !window.followTimeline });
 

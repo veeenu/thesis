@@ -242,7 +242,8 @@ void main() {
 
   float depth = clipPosition.z / clipPosition.w;
 
-  normal = normalize(faceforward(vNormal, gl_FragCoord.xyz, vNormal));
+  //normal = normalize(faceforward(vNormal, gl_FragCoord.xyz, vNormal));
+  normal = vNormal;
 
   if(texUV.z > 7.1) {
     color = texture2D(mainScene, texUV.xy).rgb;
