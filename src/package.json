@@ -7,7 +7,7 @@
     "start": "watchify -dv -t aliasify -t brfs -e main.js -o ../_site/build.js",
     "build": "browserify -t aliasify -t brfs -e main.js | uglifyjs -mc --screw-ie8 -o ../build.js",
     "disc": "browserify --full-paths -t aliasify -t brfs $PWD/main.js | uglifyjs --screw-ie8 -o ../build.js && discify ../build.js > ../report.html",
-    "deploy": "npm run build && cd .. && git add --all . && git commit -am . && git push -u origin --all",
+    "deploy": "npm run build && cd .. && git add --all . && git commit -am . && git push -u origin gh-pages",
     "warnings": "for i in `find . -name '*.js' -and -not -ipath '*/node_modules/*'`; do echo ${i}': '; cat $i | uglifyjs -mc -o /dev/null; done",
     "env": "env"
   },

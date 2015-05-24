@@ -123,6 +123,8 @@ scene.init = function() {
           door: via[cn]
         });
       cur = cameFrom[cn];
+      if(cur === undefined)
+        return path;
     }
 
     return path;
@@ -150,9 +152,9 @@ scene.init = function() {
       
   shuffledNodes.sort(function() { var ret = rng.random() - .5; return ret; });
 
-  /*for(var i = 0, I = apt.nodes.length; i < I - 1; i++)
+  for(var i = 0, I = apt.nodes.length; i < I - 1; i++)
     p = p.concat(AStar(shuffledNodes[i], shuffledNodes[(i + 1) % I], shuffledNodes));
-  p = p.concat(AStar(shuffledNodes[shuffledNodes.length - 1], nodes.first, shuffledNodes));*/
+  p = p.concat(AStar(shuffledNodes[shuffledNodes.length - 1], nodes.first, shuffledNodes));
 
   p = p.concat({ door: undefined, room: nodes.first });
   p = p.concat(AStar(nodes.first, nodes.last, apt.nodes));
@@ -167,7 +169,8 @@ scene.init = function() {
 
   geom = computeGeometry(apt, p);
 
-  scene.meshes = [ geom.mesh, geom.lampMesh, geom.tableMesh ];
+  //scene.meshes = [ geom.mesh, geom.lampMesh, geom.tableMesh ];
+  scene.meshes = [ geom.mesh ];
   scene.lights = geom.lights.reduce(function(o, i) {
     for(var k = 0; k < 6; k++)
       o.push(i.x, i.y, i.z);
@@ -234,7 +237,7 @@ scene.init = function() {
   loadingProgress += loadStep;
   Loader.progress('Rooms', loadingProgress);
 
-  mat4.translate(scene.view, scene.view, [0,0, -8]);
+  mat4.translate(scene.view, scene.view, [0,0, -6]);
   mat4.rotateX(scene.view, scene.view, Math.PI / 2);
   mat4.rotateY(scene.view, scene.view, Math.PI / 2);
 
@@ -272,7 +275,7 @@ scene.init = function() {
     vec3.transformMat4(p1, p1, m);
     vec3.transformMat4(p2, p2, m);
 
-    scene.meshes[arrowidx] = new Mesh([
+    /*scene.meshes[arrowidx] = new Mesh([
       p0[0], p0[1], p0[2],
       p1[0], p1[1], p1[2],
       p2[0], p2[1], p2[2]
@@ -282,10 +285,9 @@ scene.init = function() {
       0, 0, 6, 0, 1, 6, 1, 1, 6
     ], [
       0, 1, 0, 0, 1, 0, 0, 1, 0
-    ]);
+    ]);*/
 
     mat4.identity(scene.view);
-    //mat4.rotateX(scene.view, scene.view, Math.PI / 6);
     mat4.rotateY(scene.view, scene.view, -angle);
     mat4.translate(scene.view, scene.view, [ -x + wobbleX, -.75 + wobble, -y + wobbleZ ]);
 

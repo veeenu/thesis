@@ -243,7 +243,8 @@ void main() {
   float depth = clipPosition.z / clipPosition.w;
 
   //normal = normalize(faceforward(vNormal, gl_FragCoord.xyz, vNormal));
-  normal = vNormal;
+  //normal = normalize(vNormal);
+  normal = cross(dFdx(vPosition.xyz), dFdy(vPosition.xyz));
 
   if(texUV.z > 7.1) {
     color = texture2D(mainScene, texUV.xy).rgb;
@@ -252,17 +253,17 @@ void main() {
     color = textureWood(8. * (vExtra - .5));
   }
   else if(texUV.z > 5.1) {
-    ti = textureBrick(vPosition.xyz, vNormal, gl_FragCoord.z, mod(texUV.xy, 1.), vExtra);
+    ti = textureBrick(vPosition.xyz, normal, gl_FragCoord.z, mod(texUV.xy, 1.), vExtra);
     color = ti.color;
     normal = ti.normal;
   }
   else if(texUV.z > 4.1) {
-    ti = textureWindow(vPosition.xyz, vNormal, gl_FragCoord.z, mod(texUV.yx, 1.), vec3(1., 1., .7));
+    ti = textureWindow(vPosition.xyz, normal, gl_FragCoord.z, mod(texUV.yx, 1.), vec3(1., 1., .7));
     color = ti.color;
     normal = ti.normal;
   }
   else if(texUV.z > 3.1) {
-    ti = textureWindow(vPosition.xyz, vNormal, gl_FragCoord.z, mod(texUV.yx, 1.), vec3(.3, .3, .3));
+    ti = textureWindow(vPosition.xyz, normal, gl_FragCoord.z, mod(texUV.yx, 1.), vec3(.3, .3, .3));
     color = ti.color;
     normal = ti.normal;
   }

@@ -331,7 +331,7 @@ var timeline = new Timeline();
   b.at(20000, -3.14, 'h01').at(26000, -3.14, 'no') .at(30000, -1.56, 'out2')
 }());
 
-window.followTimeline = false;
+window.followTimeline = true;
 
 Context.canvas.addEventListener('click', function(evt) { if(evt.which === 2) window.followTimeline = !window.followTimeline });
 

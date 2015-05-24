@@ -11,7 +11,7 @@ var shgRoom = new ShapeGrammar(),
 // Inspired by http://procworld.blogspot.it/2012/03/building-rooms.html
 shgRoom.define('Apartment', null, function() {
 
-  var outerWalls = SHAPE.extrudeAll(this.points, shgRoom.floorHeight, 'Quad', [0, 1, 0]);
+  var outerWalls = SHAPE.extrudeAll(this.points.slice().reverse(), shgRoom.floorHeight, 'Quad', [0, 1, 0]);
 
   outerWalls.push({
     sym: 'Room',
@@ -145,49 +145,6 @@ shgRoom.define('Room', null,
       node: gnode,
       points: pts
     });
-
-    /*ret.push({
-      sym: 'Quad',
-      texID: 8,
-      points: [
-        { x: gnode.roomCentroid.x - .25, y: gnode.roomCentroid.y + .5, z: gnode.roomCentroid.z - .25},
-        { x: gnode.roomCentroid.x - .25, y: gnode.roomCentroid.y + 1, z: gnode.roomCentroid.z - .25},
-        { x: gnode.roomCentroid.x + .25, y: gnode.roomCentroid.y + 1, z: gnode.roomCentroid.z - .25},
-        { x: gnode.roomCentroid.x + .25, y: gnode.roomCentroid.y + .5, z: gnode.roomCentroid.z - .25}
-      ]
-    });
-
-    ret.push({
-      sym: 'Quad',
-      texID: 8,
-      points: [
-        { x: gnode.roomCentroid.x - .25, y: gnode.roomCentroid.y + .5, z: gnode.roomCentroid.z + .25},
-        { x: gnode.roomCentroid.x - .25, y: gnode.roomCentroid.y + 1, z: gnode.roomCentroid.z + .25},
-        { x: gnode.roomCentroid.x + .25, y: gnode.roomCentroid.y + 1, z: gnode.roomCentroid.z + .25},
-        { x: gnode.roomCentroid.x + .25, y: gnode.roomCentroid.y + .5, z: gnode.roomCentroid.z + .25}
-      ]
-    });
-
-    ret.push({
-      sym: 'Quad',
-      texID: 8,
-      points: [
-        { x: gnode.roomCentroid.x - .25, y: gnode.roomCentroid.y + .5, z: gnode.roomCentroid.z  - .25},
-        { x: gnode.roomCentroid.x - .25, y: gnode.roomCentroid.y + 1, z: gnode.roomCentroid.z - .25},
-        { x: gnode.roomCentroid.x - .25, y: gnode.roomCentroid.y + 1, z: gnode.roomCentroid.z + .25},
-        { x: gnode.roomCentroid.x - .25, y: gnode.roomCentroid.y + .5, z: gnode.roomCentroid.z + .25}
-      ]
-    });
-    ret.push({
-      sym: 'Quad',
-      texID: 8,
-      points: [
-        { x: gnode.roomCentroid.x + .25, y: gnode.roomCentroid.y + .5, z: gnode.roomCentroid.z - .25},
-        { x: gnode.roomCentroid.x + .25, y: gnode.roomCentroid.y + 1, z: gnode.roomCentroid.z - .25},
-        { x: gnode.roomCentroid.x + .25, y: gnode.roomCentroid.y + 1, z: gnode.roomCentroid.z + .25},
-        { x: gnode.roomCentroid.x + .25, y: gnode.roomCentroid.y + .5, z: gnode.roomCentroid.z + .25 }
-      ]
-    });*/
 
     ret.push({
       sym: 'Lamp',
@@ -347,32 +304,48 @@ shgRoom.define('Wall', function(context) {
         maxZ = this.boundaries.maxZ,
         minX = this.boundaries.minX,
         minZ = this.boundaries.minZ,
-        _self = this,
-        length = this.length,
-        occluded = context.reduce(function(o, ii) {
-          if(o.occluded || ii === _self || ii.sym !== 'Wall')
+        len = this.length,
+        occluded = false, by = null;
+
+    for(var i = 0, I = context.length; i < I && !occluded; i++) {
+      var ii = context[i];
+      if(occluded || ii.occluded || ii === this || ii.sym !== 'Wall')
+        continue;
+
+      var b = ii.boundaries;
+
+      if(ii.length >= len && 
+         !(maxX < b.minX || b.maxX < minX || maxZ < b.minZ || b.maxZ < minZ)) {
+        occluded = true;
+        by = ii.room;
+      }
+
+
+    }
+        /*occluded = context.reduce(function(o, ii) {
+          if(o.occluded || ii.occluded || ii === _self || ii.sym !== 'Wall')
             return o;
 
           var i = ii.boundaries;
 
-          if(ii.length >= length && 
+          if(ii.length >= len && 
              !(maxX < i.minX || i.maxX < minX || maxZ < i.minZ || i.maxZ < minZ)) {
             o.occluded = true;
             o.by = ii.room;
           }
 
           return o;
-        }, { occluded: false, by: null });
+        }, { occluded: false, discard: false, by: null })*/;
 
     // Prevent next walls to take this one into account
-    if(occluded.occluded) {
+    if(occluded) {
       this.occluded = true; 
 
       return {
         sym: 'OccludedWall',
         points: this.points,
         angle: this.angle,
-        connects: [ this.room, occluded.by ],
+        connects: [ this.room, by ],
         length: this.length
       }
     }
@@ -385,16 +358,16 @@ shgRoom.define('Wall', null, function() { return this; });
 
 shgRoom.define('OccludedWall', null, function() {
 
-  var angle = this.angle + Math.PI / 2,
+  var p0 = this.points[0], p1 = this.points[1],
+      angle = Math.atan2(p0.x - p1.x, p1.z - p0.z), //Math.atan2(p1.z - p0.z, p1.x - p0.x),
       sin = Math.sin(angle) * shgRoom.wallDepth / 2,
       cos = Math.cos(angle) * shgRoom.wallDepth / 2,
-      p0 = this.points[0], p1 = this.points[1],
       p10 = { x: p0.x + cos, y: p0.y, z: p0.z + sin },
       p11 = { x: p1.x + cos, y: p1.y, z: p1.z + sin },
       p20 = { x: p0.x - cos, y: p0.y, z: p0.z - sin },
       p21 = { x: p1.x - cos, y: p1.y, z: p1.z - sin },
       extr1 = SHAPE.extrude('OccludedWall', p10, p11, shgRoom.floorHeight, [0,1,0]),
-      extr2 = SHAPE.extrude('OccludedWall', p20, p21, shgRoom.floorHeight, [0,1,0]),
+      extr2 = SHAPE.extrude('OccludedWall', p21, p20, shgRoom.floorHeight, [0,1,0]),
       hspace = .5 / this.length, chspace = (1 - hspace) / 2,
       hsp1 = SHAPE.split(extr1, [ chspace, hspace, chspace ], [1], 'Quad'),
       vsp1 = SHAPE.split(hsp1[1], [1], [ .7, .3 ], 'Quad'),
@@ -437,15 +410,15 @@ shgRoom.define('OccludedWall', null, function() {
     hsp2[0], hsp2[2], vsp2[1],
     {
       sym: 'Quad',
-      points: [ q1.points[1], q1.points[0], q0.points[0], q0.points[1] ]
+      points: [ q1.points[0], q1.points[1], q0.points[2], q0.points[3] ]
     },
     {
       sym: 'Quad',
-      points: [ q1.points[3], q1.points[2], q0.points[2], q0.points[3] ]
+      points: [ q1.points[2], q1.points[1], q0.points[2], q0.points[1] ]
     },
     {
       sym: 'Quad',
-      points: [ q1.points[2], q1.points[1], q0.points[1], q0.points[2] ]
+      points: [ q1.points[3], q1.points[2], q0.points[1], q0.points[0] ]
     },
     door,
     //
@@ -527,7 +500,7 @@ shgRoom.define('Door', null, function() {
 shgRoom.define('WallSegment', null, function() {
 
   return {
-    sym: 'Wall',
+    sym: 'WallT',
     isTerminal: true,
     p0: this.points[0],
     p1: this.points[1]
@@ -584,7 +557,7 @@ module.exports = {
             o.chair.extra.push(chair.extra[j]);
           }
           break;
-        case 'Wall':
+        case 'WallT':
           o.walls.push(i);
           break;
         case 'Door':
@@ -611,6 +584,8 @@ module.exports = {
       chair: { vertices: [], normals: [], uvs: [], extra: [] },
       monitor: null
     });
+
+    console.log(ret.rooms.map(function(i) { return i.roomCentroid }));
 
     var bbox = points.reduce(function(o, i) {
       o.minX = Math.min(i.x, o.minX);

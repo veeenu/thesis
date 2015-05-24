@@ -64,7 +64,7 @@ void main() {
                 )
               );
 
-  gl_FragColor = vec4((lambert + specular) * att * color, 1.);
+  gl_FragColor = vec4((lambert) * att * color, 1.);
   //gl_FragColor = vec4(color, 1.);
 
 }
