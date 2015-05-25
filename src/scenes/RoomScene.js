@@ -169,8 +169,8 @@ scene.init = function() {
 
   geom = computeGeometry(apt, p);
 
-  //scene.meshes = [ geom.mesh, geom.lampMesh, geom.tableMesh ];
-  scene.meshes = [ geom.mesh ];
+  scene.meshes = [ geom.mesh, geom.lampMesh, geom.tableMesh ];
+  //scene.meshes = [ geom.mesh ];
   scene.lights = geom.lights.reduce(function(o, i) {
     for(var k = 0; k < 6; k++)
       o.push(i.x, i.y, i.z);
