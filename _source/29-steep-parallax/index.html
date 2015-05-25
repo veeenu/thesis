@@ -39,32 +39,113 @@ uniform vec3 light, campos;
 varying vec3 vP;
 varying vec2 vUv;
 
+struct TTextureInfo {
+  vec3 color;
+  vec3 normal;
+  float bump;
+};
+
+#define textureBrickI(x, p, notp) ((floor(x)*(p))+max(fract(x)-(notp), 0.0))
+TTextureInfo textureBrick(vec2 uv, vec3 brickColor) {
+
+  const float bW  = .0625,
+              bH  = .03125,
+              mS  = 1. / 64.,
+              mWf = mS * .5 / bW,
+              mHf = mS * .5 / bH;
+  const vec3 mortarColor = vec3(.68, .68, .71);
+
+  float u = uv.s / bW,
+        v = uv.t / bH,
+        brU = floor(u),
+        brV = floor(v);
+
+  if(mod(v * .5, 1.) > .5)
+    u += .5;
+  brU = floor(u);
+
+  float brickDamp = 1. + .125 * sin(1.57 * (brU + 1.)) * sin(2. * (brV + 1.));
+
+  vec2 uuv = vec2(u, v),
+       fw = 2. * vec2(fwidth(uuv.x), fwidth(uuv.y)),
+       mortarPct = vec2(mWf, mHf),
+       brickPct = vec2(1., 1.) - mortarPct,
+       ub = (textureBrickI(uuv + fw, brickPct, mortarPct) -
+             textureBrickI(uuv, brickPct, mortarPct)) / fw;
+
+  vec3 color = mix(mortarColor, brickColor * brickDamp, ub.x * ub.y);
+
+  // Adaptive box blur filter. Not perfect but quick and somewhat acceptable
+  /*vec2 ubSample, ubKernel = 4. * fwidth(ub), noiseKernel = fwidth(uv);
+  float bump = 0., invd = 1. / 11.;
+
+  for(int x = -1; x <= 1; x++) {
+    for(int y = -1; y <= 1; y++) {
+      ubSample = ub + vec2(float(x), float(y)) * ubKernel;
+      bump += .1111111 * ubSample.x * ubSample.y;
+    }
+  }*/
+
+  float bump = ub.x * ub.y;
+
+  return TTextureInfo(
+    color,
+    vec3(0.),
+    bump
+  );
+}
+
+TTextureInfo texx(vec2 uv) {
+  
+  TTextureInfo brick = textureBrick(uv * .5, vec3(.8, .3, 0.));
+
+  return brick;
+
+  return TTextureInfo(
+    texture2D(tex, uv).rgb,
+    texture2D(map, uv).rgb,
+    texture2D(map, uv).a
+  );
+}
+
 void main() {
   
-  const float steps = 60., step = 1. / steps;
-  float height = .5;
+  const float steps = 120., step = 1. / steps;
+  float height = .6;
 
   vec3 N, T, B, lightTS, eyeTS;
 
-  eyeTS = normalize(campos - vP);
+  eyeTS = normalize(- vP);
   lightTS = normalize(light - vP);
-  
-  N = nmatrix * vec3(0., 0., 1.);
-  T = nmatrix * vec3(1., 0., 0.);
-  B = -nmatrix * vec3(0., 1., 0.);
 
+  vec3 Q1 = dFdx(vP), 
+       Q2 = dFdy(vP);
+  vec2 st1 = dFdx(vUv),
+       st2 = dFdy(vUv);
+
+  T =  Q1 * st2.t - Q2 * st1.t;
+  B = -Q1 * st2.s + Q2 * st1.s;
+
+  float invmax = inversesqrt(max(dot(T,T), dot(B,B)));
+  T *= invmax;
+  B *= invmax;
+
+  N = normalize(cross(Q1, Q2));
+
+  mat3 TBN = mat3(T, B, N);
+
+  /*lightTS = normalize(lightTS * TBN);
+  eyeTS = normalize(eyeTS * TBN);*/
   lightTS = normalize(vec3(
     dot(lightTS, T),
     dot(lightTS, B),
     dot(lightTS, N)
   ));
-
   eyeTS = normalize(vec3(
     dot(eyeTS, T),
     dot(eyeTS, B),
     dot(eyeTS, N)
   ));
-
 
   vec3 lightDir = normalize(lightTS),
        eyeDir   = normalize(eyeTS),
@@ -72,24 +153,33 @@ void main() {
 
   vec2 offset = vUv, parallax;
 
-  parallax = eyeTS.xy * .05 / (-eyeTS.z * steps);
+  parallax = eyeTS.xy * .04 / (eyeTS.z * steps);
 
-  vec4 NB = texture2D(map, offset);
+  float NB = texx(offset).bump;
 
   for(float i = 0.; i < steps; i++) {
-    if(NB.a < height) {
+    if(NB < height) {
       height -= step;
       offset += parallax;
-      NB = texture2D(map, offset);
+      NB = texx(offset).bump;
     } else break;
   }
 
-  vec3 color  = texture2D(tex, offset).rgb,
-       nnormal = texture2D(map, offset).rgb * 2. - 1.;
+  TTextureInfo tti = texx(offset);
+  vec3 color  = tti.color;
+  vec3 aN = normalize(N - dFdy(tti.bump) * T - dFdx(tti.bump) * B); 
 
+  vec3 n1 = normalize(tti.normal * 2. - 1.),
+       n2 = vec3(dFdx(tti.bump), dFdy(tti.bump), 0.);
+
+  n2.z = 1. - n2.x * n2.x - n2.y * n2.y;
+
+  n2 = normalize(n2);
+
+  vec3 nnormal = normalize(N + n2);
   float nxDir = max(0., dot(nnormal, lightDir));
 
-  gl_FragColor = vec4(color * max(nxDir, .3), 1.);
+  gl_FragColor = vec4(color * nxDir, 1.);
 }
 </script>
 

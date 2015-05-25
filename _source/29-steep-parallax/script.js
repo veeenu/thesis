@@ -102,7 +102,7 @@ doTextures = function() {
 
 }
 
-gl.uniform3f(program.light, 2., 0., 1.);
+gl.uniform3f(program.light, 0., 1., -2.);
 
 var angle = 0;
 
@@ -115,13 +115,17 @@ var angle = 0;
 
 var r = function() {
   mat4.identity(modelview);
-  mat4.translate(modelview, modelview, [Math.sin(angle), Math.cos(angle), -1]);
-  //mat4.rotateX(modelview, modelview, Math.PI / 6);
+  mat4.translate(modelview, modelview, [0, -.5, -1]);
+  //mat4.translate(modelview, modelview, [Math.sin(angle), Math.cos(angle), -1]);
+  //mat4.rotateX(modelview, modelview, Math.cos(angle) * Math.PI / 2);
+  //mat4.rotateX(modelview, modelview, Math.sin(angle) * Math.PI / 6);
+  mat4.rotateX(modelview, modelview, -Math.PI / 2);
   //mat4.rotateY(modelview, modelview, angle);
   mat3.normalFromMat4(nmatrix, modelview);
   gl.uniformMatrix4fv(program.modelview, false, modelview);
   gl.uniformMatrix3fv(program.nmatrix, false, nmatrix);
-  gl.uniform3f(program.campos, -Math.sin(angle), -Math.cos(angle), 1);
+  gl.uniform3f(program.campos, 0, .5, 1);
+  //gl.uniform3f(program.campos, -Math.sin(angle), -Math.cos(angle), 1);
 
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   gl.drawArrays(gl.TRIANGLES, 0, 6);
