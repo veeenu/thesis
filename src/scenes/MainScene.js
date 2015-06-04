@@ -189,14 +189,14 @@ Context.canvas.parentElement.appendChild(log);
     geom.quadtree = qtree;
     geom.allLights = lights;
 
-    scene.lights = geom.allLights.reduce(function(o, i) {
+    /*scene.lights = geom.allLights.reduce(function(o, i) {
       for(var k = 0; k < 6; k++)
         o.push(i.x, i.y, i.z);
       return o;
     }, []);
     gl.bindBuffer(gl.ARRAY_BUFFER, scene.lightBuf);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(scene.lights), gl.STATIC_DRAW);
-    gl.bindBuffer(gl.ARRAY_BUFFER, null);
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);*/
 
 
   }}(geom, blocks)));
@@ -277,7 +277,7 @@ Context.canvas.parentElement.appendChild(log);
 var scene = {
   meshes: [],
   lights: [],
-  lightBuf: gl.createBuffer(),
+  //lightBuf: gl.createBuffer(),
   lightParameters: [ 12, 0, 6, 32 ],
   view:  mat4.create(),
   model: mat4.create(),
@@ -332,18 +332,6 @@ var timeline = new Timeline();
   a.at(40000,   .26, 'no').at(56000, - .18, 'h01').at(70000,   .05, 'out3').at(80000,  0   , 'in3')
   b.at(40000, -2.72, 'no').at(56000, -2.35, 'h01').at(70000,   .21, 'out3').at(80000,  0   , 'in3')
 
-  /*f.at(39800,  1,    'no').at(40000,  0   , 'h01').at(40200,  1, 'h01')
-  x.at(40000,  5.45, 'no').at(48000,  5.45, 'in3').at(56000,  5.45, 'h01').at(64000,  5.45, 'out3')
-  y.at(40000,  1.28, 'no').at(48000,  1.28, 'in3').at(56000,   .08, 'h01').at(64000,   .08, 'out3')
-  z.at(40000,   .56, 'no').at(48000,   .09, 'in3').at(56000,  0   , 'h01').at(64000,  0   , 'out3')
-  a.at(40000,   .26, 'no').at(48000,  1.24, 'in3').at(50000,  1.56, 'h01').at(64000,   .37, 'out3')
-  b.at(40000, -2.72, 'no').at(48000,   .04, 'in3').at(50000,  0   , 'h01').at(64000, -1.61, 'out3')*/
-
-  /*x.at(20000,  4   , 'h01')                        .at(30000,  3.84, 'out2').at(32000,  3.825, 'in3')
-  y.at(20000,   .01, 'h01')                        .at(30000,   .28, 'out2')
-  z.at(20000,   .02, 'h01').at(26000,  4.65, 'in2').at(30000,  5.20, 'out2')
-  a.at(20000,  0   , 'h01').at(26000,   .17, 'in2').at(30000,  0   , 'out2')
-  b.at(20000, -3.14, 'h01').at(26000, -3.14, 'no') .at(30000, -1.56, 'out2')*/
 }());
 
 window.followTimeline = true;

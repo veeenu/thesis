@@ -14,7 +14,7 @@ var glMatrix = require('glMatrix'),
 var scene = {
   meshes: [],
   lights: [],
-  lightBuf: gl.createBuffer(),
+  //lightBuf: gl.createBuffer(),
   lightParameters: [ 6, 0, 2, .1 ],
   view: mat4.create(),
   model: mat4.create(),
@@ -176,9 +176,9 @@ scene.init = function() {
     
     return o;
   }, []);
-  gl.bindBuffer(gl.ARRAY_BUFFER, scene.lightBuf);
+/*  gl.bindBuffer(gl.ARRAY_BUFFER, scene.lightBuf);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(scene.lights), gl.STATIC_DRAW);
-  gl.bindBuffer(gl.ARRAY_BUFFER, null);
+  gl.bindBuffer(gl.ARRAY_BUFFER, null);*/
 
   loadingProgress += loadStep;
   Loader.progress('Rooms', loadingProgress);

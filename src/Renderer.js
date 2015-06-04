@@ -161,7 +161,6 @@ gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(quadArr), gl.STATIC_DRAW);
 gl.bindBuffer(gl.ARRAY_BUFFER, lightBuf);
 gl.bufferData(gl.ARRAY_BUFFER, lightArr, gl.STREAM_DRAW);
-//gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([1, -1, -1, -1, -1, 1,  1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
 gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
 mat4.perspective(projection, Math.PI / 2, Context.aspectRatio, .001, 1000.);
@@ -270,16 +269,16 @@ programLight.activate = function(scene) {
   gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
   gl.vertexAttribPointer(programLight.position, 2, gl.FLOAT, false, 0, 0);
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, scene.lightBuf);
-  gl.vertexAttribPointer(programLight.lightPos, 3, gl.FLOAT, false, 0, 0);
-  /*gl.bindBuffer(gl.ARRAY_BUFFER, lightBuf);
+  //gl.bindBuffer(gl.ARRAY_BUFFER, scene.lightBuf);
+  //gl.vertexAttribPointer(programLight.lightPos, 3, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, lightBuf);
   gl.vertexAttribPointer(programLight.lightPos, 3, gl.FLOAT, false, 0, 0);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, lightBuf);
   var len = Math.min(scene.lights.length, lightArr.length),
       lightSub = lightArr.subarray(0, len);
   lightSub.set(scene.lights);
-  gl.bufferSubData(gl.ARRAY_BUFFER, 0, lightSub);*/
+  gl.bufferSubData(gl.ARRAY_BUFFER, 0, lightSub);
 
   gl.enableVertexAttribArray(programLight.position);
   gl.enableVertexAttribArray(programLight.lightPos);
