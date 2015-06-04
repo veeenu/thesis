@@ -196,6 +196,37 @@ vec3 textureRoad(vec2 uuv) {
   return mix(asphaltColor * noiseA, stripColor * noiseS, q);
 }
 
+vec3 textureIntersection(vec2 uuv) {
+  const float padding = 1. / 32.,
+              tapeW   = 1. / 32.,
+              s2      = 1.4142135623730951;
+
+  const vec3 asphaltColor = vec3(.2, .2, .2),
+             stripColor = vec3(.8, .8, .8);
+
+  vec2 uv = uuv + vec2(0, .5), fk = fwidth(uv);
+  float noiseA = 1. +
+                 abs(snoise(uv * 16.))  * .0625 +
+                 abs(snoise(uv * 32.))  * .0625 +
+                 abs(snoise(uv * 128.)) * .125,
+        noiseS = 1. + 
+                 abs(snoise(uv * 128.)) * .125;
+
+  vec2 nuv = vec2(
+        min(uuv.x, 1. - uuv.x),
+        min(uuv.y, 1. - uuv.y)
+      );
+
+  float l = length(nuv),
+        f = min(fk.x, fk.y),
+        q = (
+              smoothstep(padding, padding + f, l) -
+              smoothstep(padding + tapeW, padding + tapeW + f, l)
+            );
+
+  return mix(asphaltColor * noiseA, stripColor * noiseS, q);
+}
+
 vec3 textureAsphalt(vec2 uuv) {
   const vec3 asphaltColor = vec3(.2, .2, .2);
 
@@ -246,8 +277,11 @@ void main() {
   //normal = normalize(vNormal);
   normal = cross(dFdx(vPosition.xyz), dFdy(vPosition.xyz));
 
-  if(texUV.z > 7.1) {
+  if(texUV.z > 31.1) {
     color = texture2D(mainScene, texUV.xy).rgb;
+  }
+  else if(texUV.z > 7.1) {
+    color = textureIntersection(mod(texUV.xy, 1.));
   }
   else if(texUV.z > 6.1) {
     color = textureWood(8. * (vExtra - .5));

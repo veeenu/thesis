@@ -114,7 +114,6 @@ Context.canvas.parentElement.appendChild(log);
 
 (function() {
   var vertices = [],
-      normals  = [],
       uvs      = [],
       extra    = [],
       block,
@@ -206,10 +205,6 @@ Context.canvas.parentElement.appendChild(log);
     -20, -10e-4, -20,   20, -10e-4, 20,  20, -10e-4, -20
   ]);
 
-  normals.push.apply(normals, [
-    0, 1, 0,  0, 1, 0,  0, 1, 0,
-    0, 1, 0,  0, 1, 0,  0, 1, 0
-  ]);
   uvs.push.apply(uvs, [
     0, 0, 3,  0, 40, 3,  40, 40, 3,  
     0, 0, 3,  40, 40, 3,  40, 0, 3
@@ -218,6 +213,8 @@ Context.canvas.parentElement.appendChild(log);
     0, 0, 0,  0, 0, 0,  0, 0, 0,
     0, 0, 0,  0, 0, 0,  0, 0, 0
   ]);
+
+  var RY = 10e-4;
 
   var roadQuads = city.roadQuads.reduce((function() { 
     var N, U;
@@ -241,8 +238,8 @@ Context.canvas.parentElement.appendChild(log);
           len = Math.sqrt( Math.pow(b.y - a.y, 2) + Math.pow(b.x - a.x, 2) );
 
       var vertices = [
-        a.x - dx, 0, a.y - dy,  b.x - dx, 0, b.y - dy,  b.x + dx, 0, b.y + dy,
-        a.x - dx, 0, a.y - dy,  b.x + dx, 0, b.y + dy,  a.x + dx, 0, a.y + dy
+        a.x - dx, RY, a.y - dy,  b.x - dx, RY, b.y - dy,  b.x + dx, RY, b.y + dy,
+        a.x - dx, RY, a.y - dy,  b.x + dx, RY, b.y + dy,  a.x + dx, RY, a.y + dy
       ], uvs = U.map(function(i, idx) {
         switch(idx % 3) {
           case 0: return i;
@@ -254,18 +251,49 @@ Context.canvas.parentElement.appendChild(log);
 
       for(var k = 0, K = vertices.length; k < K; k++) {
         out.vertices.push(vertices[k]);
-        out.normals.push(N[k]);
         out.uvs.push(uvs[k]);
         out.extra.push(0);
       }
 
       return out;
     }
-  }()), { vertices: [], normals: [], uvs: [], extra: [] });
+  }()), { vertices: [], uvs: [], extra: [] });
 
+  var intersQuads = city.roads.reduce((function() {
+    var N, U, dx = .09, dy = .09;
+    N = [
+      0, 1, 0, 0, 1, 0, 0, 1, 0,
+      0, 1, 0, 0, 1, 0, 0, 1, 0
+    ];
+    U = [
+      0, 0, 8,  0, 1, 8,  1, 1, 8,  
+      0, 0, 8,  1, 1, 8,  1, 0, 8
+    ];
+    return function(out, i) {
+
+      var x = i.x, y = i.y;
+      var vertices = [
+        x - dx, RY, y - dy,  x - dx, RY, y + dy,  x + dx, RY, y + dy,
+        x - dx, RY, y - dy,  x + dx, RY, y + dy,  x + dx, RY, y - dy
+      ]
+
+      for(var k = 0, K = vertices.length; k < K; k++) {
+        out.vertices.push(vertices[k]);
+        out.uvs.push(U[k]);
+        out.extra.push(0);
+      }
+
+      return out;
+    }
+  }()), { vertices: [], uvs: [], extra: [] });
+
+  for(var k = 0, K = intersQuads.vertices.length; k < K; k++) {
+    vertices.push(intersQuads.vertices[k]);
+    uvs.push(intersQuads.uvs[k]);
+    extra.push(intersQuads.extra[k]);
+  }
   for(var k = 0, K = roadQuads.vertices.length; k < K; k++) {
     vertices.push(roadQuads.vertices[k]);
-    normals.push(roadQuads.normals[k]);
     uvs.push(roadQuads.uvs[k]);
     extra.push(roadQuads.extra[k]);
   }

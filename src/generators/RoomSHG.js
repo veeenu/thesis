@@ -261,7 +261,7 @@ shgRoom.define('LastRoom', null,
 
     var monitor = {
       sym: 'Quad',
-      texID: 8,
+      texID: 32,
       points: [
         { x: cw.x + dx, y: cw.y + .75 + mm, z: cw.z - dz },
         { x: cw.x + dx, y: cw.y + .75 - mm, z: cw.z - dz },
