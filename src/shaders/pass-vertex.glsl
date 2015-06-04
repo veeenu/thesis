@@ -13,7 +13,7 @@ void main() {
   gl_Position = clipPosition;
 
   vPosition = viewPos;
-  vNormal = normalM * normal;
+  //vNormal = normalM * normal;
   vExtra = extra;
   texUV = uv;
 

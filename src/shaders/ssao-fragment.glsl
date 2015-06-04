@@ -87,6 +87,8 @@ void main() {
   //color = pow(color, vec3(1. / 2.2));
 
   gl_FragColor = vec4(color, 1.);
+  //occlusion = 1. - occlusion;
+  //gl_FragColor = vec4(occlusion, occlusion, occlusion, 1.);
 
   //gl_FragColor = vec4(lambert * att * 2.5 * color, 1.);
 }

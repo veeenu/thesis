@@ -4,8 +4,6 @@ var ShapeGrammar = require('ShapeGrammar'),
     Geom         = require('Geom'),
     PRNG         = require('PRNG'),
     BalconySHG   = require('./BalconySHG.js');
-    //BalconySHG   = require('./BalconySHG.js'),
-    //StaircaseSHG = require('./StaircaseSHG.js');
 
 var shg = new ShapeGrammar(),
     litWindowsRNG     = new PRNG(31337),

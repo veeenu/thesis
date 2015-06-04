@@ -190,6 +190,30 @@ mat4.invert(invProjection, projection);
  * Uniforms and attributes setup
  *******************************************************************************/
 
+[ programPass, programLight, programSSAO, programPassthrough ].forEach(
+  function(prog) {
+
+    for(var i = 0, I = gl.getProgramParameter(prog, gl.ACTIVE_ATTRIBUTES); i < I; i++) {
+      var j = gl.getActiveAttrib(prog, i).name;
+      prog[j] = gl.getAttribLocation(prog, j);
+    }
+
+    for(var i = 0, I = gl.getProgramParameter(prog, gl.ACTIVE_UNIFORMS); i < I; i++) {
+      var j = gl.getActiveUniform(prog, i).name;
+      prog[j] = gl.getUniformLocation(prog, j);
+    }
+
+    console.log(prog)
+
+  }
+);
+/*(function() {
+var K = gl.getProgramParameter(programPass, gl.ACTIVE_UNIFORMS);
+for(var i = 0; i < K; i++) {
+  console.log(gl.getActiveUniform(programPass, i));
+}
+}());
+
 ['vertex', 'normal', 'uv', 'extra'].forEach(function(i) {
   programPass[i] = gl.getAttribLocation(programPass, i);
 });
@@ -220,7 +244,7 @@ mat4.invert(invProjection, projection);
 
 ['tex', 'fade'].forEach(function(i) {
   programPassthrough[i] = gl.getUniformLocation(programPassthrough, i);
-});
+});*/
 
 /*******************************************************************************
  * Procedures that setup/cleanup buffers and matrices for the shader
@@ -259,8 +283,8 @@ programPass.activate = function(scene) {
   scene.meshes.forEach(function(mesh) {
     gl.bindBuffer(gl.ARRAY_BUFFER, mesh.vBuf);
     gl.vertexAttribPointer(programPass.vertex, 3, gl.FLOAT, false, 0, 0);
-    gl.bindBuffer(gl.ARRAY_BUFFER, mesh.nBuf);
-    gl.vertexAttribPointer(programPass.normal, 3, gl.FLOAT, false, 0, 0);
+    //gl.bindBuffer(gl.ARRAY_BUFFER, mesh.nBuf);
+    //gl.vertexAttribPointer(programPass.normal, 3, gl.FLOAT, false, 0, 0);
     gl.bindBuffer(gl.ARRAY_BUFFER, mesh.uBuf);
     gl.vertexAttribPointer(programPass.uv,     3, gl.FLOAT, false, 0, 0);
     gl.bindBuffer(gl.ARRAY_BUFFER, mesh.eBuf);

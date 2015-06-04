@@ -3,7 +3,7 @@ var Context  = require('Context'),
 
 var Mesh = function(vertices, normals, uvs, extra) {
   this.vBuf = gl.createBuffer();
-  this.nBuf = gl.createBuffer();
+  //this.nBuf = gl.createBuffer();
   this.uBuf = gl.createBuffer();
   this.eBuf = gl.createBuffer();
 
@@ -11,8 +11,8 @@ var Mesh = function(vertices, normals, uvs, extra) {
 
   gl.bindBuffer(gl.ARRAY_BUFFER, this.vBuf);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-  gl.bindBuffer(gl.ARRAY_BUFFER, this.nBuf);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
+  //gl.bindBuffer(gl.ARRAY_BUFFER, this.nBuf);
+  //gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
   gl.bindBuffer(gl.ARRAY_BUFFER, this.uBuf);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uvs), gl.STATIC_DRAW);
   gl.bindBuffer(gl.ARRAY_BUFFER, this.eBuf);
