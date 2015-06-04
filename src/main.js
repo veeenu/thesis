@@ -52,8 +52,53 @@ function loadingLoop() {
   Loader.render();
 }
 
-//var screencast = [], scLen = 60 * 10;
-var ccc = 0;
+var TS = 0, paused = false;
+
+document.addEventListener('keydown', function(evt) {
+  if(evt.keyCode === 32) {
+    evt.preventDefault();
+    evt.stopPropagation();
+    paused = !paused;
+  }
+});
+
+document.addEventListener('wheel', function(evt) {
+  evt.preventDefault();
+  evt.stopPropagation();
+  TS += evt.deltaY;
+
+  TS = Math.max(TS, 0);
+})
+
+window.JMP = function(d) { TS = d; }
+
+/* dev */
+
+/*function sceneLoop(ts) {
+
+  if(isNaN(sceneLoop.t0) || sceneLoop.t0 === undefined)
+    sceneLoop.t0 = ts;
+
+  stats.begin();
+
+  var dt = (ts - sceneLoop.t1);
+
+  if(!paused) {
+    TS += dt;
+  }
+
+  dt = TS;
+    mainScene.update(dt);
+    Renderer.render(mainScene, true);
+
+  stats.end();
+
+  requestAnimationFrame(sceneLoop);
+
+  sceneLoop.t1 = ts;
+
+}*/
+
 function sceneLoop(ts) {
 
   if(isNaN(sceneLoop.t0) || sceneLoop.t0 === undefined)
@@ -67,24 +112,19 @@ function sceneLoop(ts) {
   stats.begin();
 
   var dt = (ts - sceneLoop.t0);
-  /*mainScene.update(dt);
-  Renderer.render(mainScene, true);*/
 
-  /*roomScene.update(dt % roomScene.totalTime);
-  Renderer.render(roomScene, true);*/
-
-  if(dt < 32000) {
+  if(dt < 80000) {
     mainScene.update(dt);
     Renderer.render(mainScene, true);
   } else {
     dt -= 4000;
-    dt %= 28000 + roomScene.totalTime;
-    if(dt < 28000) {
+    dt %= 76000 + roomScene.totalTime;
+    if(dt < 76000) {
       mainScene.update(dt + 4000);
       Renderer.render(mainScene, true);
     } else {
-      mainScene.update(Math.max(0, dt - (28000 + roomScene.totalTime) + 4000));
-      roomScene.update(dt - 28000);
+      mainScene.update(Math.max(0, dt - (76000 + roomScene.totalTime) + 4000));
+      roomScene.update(dt - 76000);
       Renderer.render(mainScene);
       Renderer.render(roomScene, true);
     }
@@ -92,14 +132,14 @@ function sceneLoop(ts) {
 
   stats.end();
 
-  if(window.STAHP !== true)
-    requestAnimationFrame(sceneLoop);
+  requestAnimationFrame(sceneLoop);
 
   sceneLoop.t1 = ts;
   //if(screencast.length < scLen)
   //  screencast.push(canvas.toDataURL());
 
 }
+
 gl.viewport(0, 0, Context.w, Context.h);
 
 roomScene.init();

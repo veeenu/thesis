@@ -29,8 +29,12 @@ shg.define('Building', null, function() {
 
     if('frontFacade' in this)
       floor.frontFacade = this.frontFacade;
-    if('hasBalcony' in this)
+    if('hasBalcony' in this) {
       floor.hasBalcony = this.hasBalcony;
+      if(i >= I - 2) {
+        floor.hasBalconyTop = this.hasBalcony;
+      }
+    }
 
     curHeight += fli.height;
     
@@ -73,6 +77,7 @@ shg.define('FL_Floor', null, function() {
     facades[i].windows = this.params.windows;
   }
   if('hasBalcony' in this) facades[this.frontFacade].hasBalcony = this.hasBalcony;
+  if('hasBalconyTop' in this) facades[this.frontFacade].hasBalconyTop = this.hasBalconyTop;
 
   return facades;
 
@@ -81,14 +86,6 @@ shg.define('FL_Floor', null, function() {
 shg.define('FL_Ledge', null, function() {
 
   var extrPoints = [], h = this.height, yy = this.points[0].y;
-
-  /*for(var i = 0, I = this.points.length; i < I; i++) {
-    var p0 = this.points[i], p1 = this.points[(i + 1) % I],
-        angle = Math.atan2(p1.z - p0.z, p1.x - p0.x),
-        anglep = angle - Math.PI / 2,
-        cos = Math.cos(angle) + Math.cos(anglep),
-        sin = Math.sin(angle) + Math.sin(anglep);
-  }*/
 
   extrPoints = Geom.insetPolygon(this.points.map(function(i) { 
                  return { x: i.x, y: i.z }
@@ -135,14 +132,6 @@ shg.define('FL_Ledge', null, function() {
 shg.define('FL_Rooftop', null, function() {
 
   var extrPoints = [], h = this.height, yy = this.points[0].y;
-
-  /*for(var i = 0, I = this.points.length; i < I; i++) {
-    var p0 = this.points[i], p1 = this.points[(i + 1) % I],
-        angle = Math.atan2(p1.z - p0.z, p1.x - p0.x),
-        anglep = angle - Math.PI / 2,
-        cos = Math.cos(angle) + Math.cos(anglep),
-        sin = Math.sin(angle) + Math.sin(anglep);
-  }*/
 
   extrPoints = Geom.insetPolygon(this.points.map(function(i) { 
                  return { x: i.x, y: i.z }
@@ -214,9 +203,6 @@ shg.define('Facade', function() { return this.type === 'OneDoor' }, function() {
 
   quads[ ~~(quads.length / 2) ].sym = 'Door';
   //quads.splice(Math.floor(quads.length / 2), 1);
-  
-  for(var i = 0, I = quads.length; i < I; i++)
-    quads[i].normal = this.normal;
 
   return quads;
 
@@ -239,10 +225,7 @@ shg.define('Facade', null, function() {
     { s: s, t: t }
   ];
 
-  var quads = SHAPE.fit('x', this, 'Window', 1).map(function(i) {
-    i.normal = norm;
-    return i;
-  });
+  var quads = SHAPE.fit('x', this, 'Window', 1);
 
   if(this.type === 'Window') {
     // Do nothing
@@ -267,16 +250,18 @@ shg.define('Facade', null, function() {
       angle: Math.atan2(-dz, dx)
     };
 
-    bs = BalconySHG.createBalconyWithStairs(
-      pars
-    );
+    if(this.hasBalconyTop)
+      bs = BalconySHG.createBalcony(
+        pars
+      );
+    else
+      bs = BalconySHG.createBalconyWithStairs(
+        pars
+      );
 
     bs.sym = ShapeGrammar.TERMINAL;
 
   }
-
-  for(var i = 0, I = quads.length; i < I; i++)
-    quads[i].normal = this.normal;
 
   if(bs !== null) {
     quads.push(bs)
@@ -406,7 +391,7 @@ shg.define('Quad', null, (function() {
 
   return function() {
     
-    var vertices, normals = [], uvs,
+    var vertices, uvs,
         normal, texID,
         u0, u1, u2, u3,
         p0, p1, p2, p3, ps = this.points;
@@ -417,10 +402,6 @@ shg.define('Quad', null, (function() {
       p0.x, p0.y, p0.z, p1.x, p1.y, p1.z, p2.x, p2.y, p2.z,
       p0.x, p0.y, p0.z, p2.x, p2.y, p2.z, p3.x, p3.y, p3.z
     ];
-
-    normal = this.normal || Geom.triToNormal(vertices);
-    for(var i = 0; i < 6; i++)
-      normals.push(normal[0], normal[1], normal[2]);
 
     uvs = this.uvs || defaultUVS;
     u0 = uvs[0], u1 = uvs[1], u2 = uvs[2], u3 = uvs[3];
@@ -434,7 +415,6 @@ shg.define('Quad', null, (function() {
     return {
       sym: ShapeGrammar.TERMINAL,
       vertices: vertices,
-      normals: normals,
       uvs: uvs
     }
 
@@ -452,8 +432,7 @@ shg.define('Poly', null, function() {
         o.push(i[0], y, i[1]);
         return o;
       }, []),
-      normal = this.normal || Geom.triToNormal(vertices),
-      normals = [], uvs = [];
+      uvs = [];
 
   var minX, minZ, maxX, maxZ, dx, dz, p;
 
@@ -474,13 +453,11 @@ shg.define('Poly', null, function() {
   for(var i = 0, I = vertices.length; i < I; i += 3) {
     var x = vertices[i], z = vertices[i + 2];
     uvs.push( (x - minX) / dx, (z - minZ) / dz, this.texID );
-    normals.push(normal[0], normal[1], normal[2]);
   }
 
   return {
     sym: ShapeGrammar.TERMINAL,
     vertices: vertices,
-    normals: normals,
     uvs: uvs
   }
 

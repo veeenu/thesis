@@ -19,7 +19,6 @@ var lerp = function(a, b, t) {
 
 var computeBlockMesh = function(block, availColors) {
   var vertices = [],
-      normals  = [],
       uvs      = [],
       extra    = [],
       lights   = [],
@@ -67,7 +66,6 @@ var computeBlockMesh = function(block, availColors) {
       else
         for(var k = 0, K = bg.vertices.length; k < K; k++) {
           vertices.push(bg.vertices[k]);
-          normals.push(bg.normals[k]);
           uvs.push(bg.uvs[k]);
           extra.push(color[k % 3]);
         }
@@ -76,14 +74,13 @@ var computeBlockMesh = function(block, availColors) {
     }
 
     meshes.push({
-      mesh: new Mesh(vertices, normals, uvs, extra),
+      mesh: new Mesh(vertices, uvs, extra),
       x: cx,
       y: cy,
       w: Math.max(xM - xm, yM - ym)
     });
 
     vertices.splice(0);
-    normals.splice(0);
     uvs.splice(0);
     extra.splice(0);
 
@@ -192,6 +189,16 @@ Context.canvas.parentElement.appendChild(log);
     geom.quadtree = qtree;
     geom.allLights = lights;
 
+    scene.lights = geom.allLights.reduce(function(o, i) {
+      for(var k = 0; k < 6; k++)
+        o.push(i.x, i.y, i.z);
+      return o;
+    }, []);
+    gl.bindBuffer(gl.ARRAY_BUFFER, scene.lightBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(scene.lights), gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+
   }}(geom, blocks)));
 
   vertices.push.apply(vertices, [
@@ -263,13 +270,14 @@ Context.canvas.parentElement.appendChild(log);
     extra.push(roadQuads.extra[k]);
   }
 
-  geom.fixedMeshes = [new Mesh(vertices, normals, uvs, extra)];
+  geom.fixedMeshes = [new Mesh(vertices, uvs, extra)];
 
 }());
 
 var scene = {
   meshes: [],
   lights: [],
+  lightBuf: gl.createBuffer(),
   lightParameters: [ 12, 0, 6, 32 ],
   view:  mat4.create(),
   model: mat4.create(),
@@ -312,23 +320,30 @@ var timeline = new Timeline();
   b.at( 9000,   .65, 'no').at(12000,   .75, 'h01')
 
   x.at(13000,  2.97, 'no')
-  y.at(13000,   .97, 'no').at(14500,   .02, 'h01')
+  y.at(13000,  1.02, 'no').at(40000,   .02, 'h01')
   z.at(13000,  2.16, 'no')
-  a.at(13000,   .34, 'no').at(14500, - .04, 'h01')
-  b.at(13000, -3.66, 'no').at(15500, -6.84, 'h01')
+  a.at(13000,   .34, 'no').at(40000, - .04, 'h01')
+  b.at(13000, -3.26, 'no').at(40000, -6.84, 'h01')
 
-  f.at(15400,  1,    'no').at(15500,  0   , 'h01').at(15600,  1, 'h01')
-  x.at(15500,  5.45, 'no').at(16500,  5.45, 'in3').at(17500,  5.45, 'lin').at(18500,  5.45, 'out3')
-  y.at(15500,  1.28, 'no').at(16500,  1.28, 'in3').at(17500,   .08, 'lin').at(18500,   .08, 'out3')
-  z.at(15500,   .56, 'no').at(16500,   .09, 'in3').at(17500,  0   , 'lin').at(18500,  0   , 'out3')
-  a.at(15500,   .26, 'no').at(16500,  1.24, 'in3').at(17000,  1.56, 'lin').at(18500,   .37, 'out3')
-  b.at(15500, -2.72, 'no').at(16500,   .04, 'in3').at(17000,  0   , 'lin').at(18500, -1.61, 'out3')
+  f.at(39800,  1,    'no').at(40000,  0   , 'h01').at(40200,  1, 'h01')
+  x.at(40000,  5.45, 'no').at(56000,  3.27, 'h01').at(70000,  3.27, 'out3').at(80000,  3.40, 'in3')
+  y.at(40000,  1.28, 'no').at(56000,   .48, 'h01').at(70000,   .48, 'out3').at(80000,   .425, 'in3')
+  z.at(40000,   .56, 'no').at(56000,  2.15, 'h01').at(70000,  2.15, 'out3').at(80000,  1.83, 'in3')
+  a.at(40000,   .26, 'no').at(56000, - .18, 'h01').at(70000,   .05, 'out3').at(80000,  0   , 'in3')
+  b.at(40000, -2.72, 'no').at(56000, -2.35, 'h01').at(70000,   .21, 'out3').at(80000,  0   , 'in3')
 
-  x.at(20000,  4   , 'h01')                        .at(30000,  3.84, 'out2').at(32000,  3.825, 'in3')
+  /*f.at(39800,  1,    'no').at(40000,  0   , 'h01').at(40200,  1, 'h01')
+  x.at(40000,  5.45, 'no').at(48000,  5.45, 'in3').at(56000,  5.45, 'h01').at(64000,  5.45, 'out3')
+  y.at(40000,  1.28, 'no').at(48000,  1.28, 'in3').at(56000,   .08, 'h01').at(64000,   .08, 'out3')
+  z.at(40000,   .56, 'no').at(48000,   .09, 'in3').at(56000,  0   , 'h01').at(64000,  0   , 'out3')
+  a.at(40000,   .26, 'no').at(48000,  1.24, 'in3').at(50000,  1.56, 'h01').at(64000,   .37, 'out3')
+  b.at(40000, -2.72, 'no').at(48000,   .04, 'in3').at(50000,  0   , 'h01').at(64000, -1.61, 'out3')*/
+
+  /*x.at(20000,  4   , 'h01')                        .at(30000,  3.84, 'out2').at(32000,  3.825, 'in3')
   y.at(20000,   .01, 'h01')                        .at(30000,   .28, 'out2')
   z.at(20000,   .02, 'h01').at(26000,  4.65, 'in2').at(30000,  5.20, 'out2')
   a.at(20000,  0   , 'h01').at(26000,   .17, 'in2').at(30000,  0   , 'out2')
-  b.at(20000, -3.14, 'h01').at(26000, -3.14, 'no') .at(30000, -1.56, 'out2')
+  b.at(20000, -3.14, 'h01').at(26000, -3.14, 'no') .at(30000, -1.56, 'out2')*/
 }());
 
 window.followTimeline = true;

@@ -98,25 +98,6 @@ console.log(
     extSD !== null ? 'OES_standard derivatives' : '', 
     extTF !== null ? 'OES_texture_float' : ''
 );
-/*var p = document.createElement('pre');
-p.textContent = [
-  "VP:", gl.getShaderInfoLog(vshPass),
-  "\nFP:", gl.getShaderInfoLog(fshPass),
-  "\nLP:", gl.getProgramInfoLog(programPass),
-  "\nVL:", gl.getShaderInfoLog(vshLight),
-  "\nFL:", gl.getShaderInfoLog(fshLight),
-  "\nLL:", gl.getProgramInfoLog(programLight),
-  "\nVS:", gl.getShaderInfoLog(vshSSAO),
-  "\nFS:", gl.getShaderInfoLog(fshSSAO),
-  "\nLS:", gl.getProgramInfoLog(programSSAO),
-  "\nVT:", gl.getShaderInfoLog(vshPassthrough),
-  "\nFT:", gl.getShaderInfoLog(fshPassthrough),
-  "\nLT:", gl.getProgramInfoLog(programPassthrough),
-  "\nExt:", 
-    extSD !== null ? 'OES_standard derivatives' : '', 
-    extTF !== null ? 'OES_texture_float' : ''
-].join(' ');
-document.body.appendChild(p)*/
 
 /*******************************************************************************
  * Texture MRTs setup.
@@ -203,48 +184,8 @@ mat4.invert(invProjection, projection);
       prog[j] = gl.getUniformLocation(prog, j);
     }
 
-    console.log(prog)
-
   }
 );
-/*(function() {
-var K = gl.getProgramParameter(programPass, gl.ACTIVE_UNIFORMS);
-for(var i = 0; i < K; i++) {
-  console.log(gl.getActiveUniform(programPass, i));
-}
-}());
-
-['vertex', 'normal', 'uv', 'extra'].forEach(function(i) {
-  programPass[i] = gl.getAttribLocation(programPass, i);
-});
-
-['projection', 'viewmodel', 'normalM', 'mainScene', 'roomScene'].forEach(function(i) {
-  programPass[i] = gl.getUniformLocation(programPass, i);
-});
-
-['position', 'lightPos'].forEach(function(i) {
-  programLight[i] = gl.getAttribLocation(programLight, i);
-});
-
-['target0', 'lightParameters', 'inverseProjection', 'viewMatrix'].forEach(function(i) {
-  programLight[i] = gl.getUniformLocation(programLight, i);
-});
-
-['position'].forEach(function(i) {
-  programSSAO[i] = gl.getAttribLocation(programSSAO, i);
-});
-
-['target0', 'lightBuffer'].forEach(function(i) {
-  programSSAO[i] = gl.getUniformLocation(programSSAO, i);
-});
-
-['position'].forEach(function(i) {
-  programPassthrough[i] = gl.getAttribLocation(programPassthrough, i);
-});
-
-['tex', 'fade'].forEach(function(i) {
-  programPassthrough[i] = gl.getUniformLocation(programPassthrough, i);
-});*/
 
 /*******************************************************************************
  * Procedures that setup/cleanup buffers and matrices for the shader
@@ -283,8 +224,6 @@ programPass.activate = function(scene) {
   scene.meshes.forEach(function(mesh) {
     gl.bindBuffer(gl.ARRAY_BUFFER, mesh.vBuf);
     gl.vertexAttribPointer(programPass.vertex, 3, gl.FLOAT, false, 0, 0);
-    //gl.bindBuffer(gl.ARRAY_BUFFER, mesh.nBuf);
-    //gl.vertexAttribPointer(programPass.normal, 3, gl.FLOAT, false, 0, 0);
     gl.bindBuffer(gl.ARRAY_BUFFER, mesh.uBuf);
     gl.vertexAttribPointer(programPass.uv,     3, gl.FLOAT, false, 0, 0);
     gl.bindBuffer(gl.ARRAY_BUFFER, mesh.eBuf);
@@ -293,7 +232,6 @@ programPass.activate = function(scene) {
   
   });
 
-  //gl.bindBuffer(gl.ARRAY_BUFFER, null);
 }
 
 programPass.deactivate = function() {
@@ -306,6 +244,7 @@ programPass.deactivate = function() {
   gl.disable(gl.DEPTH_TEST);
 }
 
+var aaaa = false;
 programLight.activate = function(scene) {
   gl.useProgram(programLight);
   gl.bindFramebuffer(gl.FRAMEBUFFER, lightFramebuffer);
@@ -331,29 +270,22 @@ programLight.activate = function(scene) {
   gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
   gl.vertexAttribPointer(programLight.position, 2, gl.FLOAT, false, 0, 0);
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, lightBuf);
+  gl.bindBuffer(gl.ARRAY_BUFFER, scene.lightBuf);
+  gl.vertexAttribPointer(programLight.lightPos, 3, gl.FLOAT, false, 0, 0);
+  /*gl.bindBuffer(gl.ARRAY_BUFFER, lightBuf);
   gl.vertexAttribPointer(programLight.lightPos, 3, gl.FLOAT, false, 0, 0);
 
+  gl.bindBuffer(gl.ARRAY_BUFFER, lightBuf);
   var len = Math.min(scene.lights.length, lightArr.length),
       lightSub = lightArr.subarray(0, len);
   lightSub.set(scene.lights);
-  gl.bufferSubData(gl.ARRAY_BUFFER, 0, lightSub);
+  gl.bufferSubData(gl.ARRAY_BUFFER, 0, lightSub);*/
 
   gl.enableVertexAttribArray(programLight.position);
   gl.enableVertexAttribArray(programLight.lightPos);
 
-  gl.drawArrays(gl.TRIANGLES, 0, len / 3);
+  gl.drawArrays(gl.TRIANGLES, 0, scene.lights.length / 3);
 
-  gl.enableVertexAttribArray(programLight.lightPosition);
-
-  /*if(scene.lights.length > 0) {
-    gl.uniform3fv(programLight.lightPos, scene.lights[0]);
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
-  }*/
-  /*for(var i = 0, I = scene.lights.length; i < I; i++) {
-    gl.uniform3fv(programLight.lightPos, scene.lights[i]);
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
-  }*/
 
 }
 

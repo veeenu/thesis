@@ -4,7 +4,7 @@ uniform mat3 normalM;
 attribute vec3 vertex, normal, uv, extra;
 
 varying vec4 vPosition, clipPosition;
-varying vec3 texUV, vNormal, vExtra;
+varying vec3 texUV, vExtra;
 
 void main() {
   
@@ -13,7 +13,6 @@ void main() {
   gl_Position = clipPosition;
 
   vPosition = viewPos;
-  //vNormal = normalM * normal;
   vExtra = extra;
   texUV = uv;
 

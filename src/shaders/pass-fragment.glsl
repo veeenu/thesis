@@ -5,7 +5,7 @@ precision highp float;
 uniform sampler2D mainScene, roomScene;
 
 varying vec4 vPosition, clipPosition;
-varying vec3 texUV, vNormal, vExtra;
+varying vec3 texUV, vExtra;
 
 ////////////////////////////////////////////////////////////////////////////////
 // https://github.com/ashima/webgl-noise/blob/master/src/noise2D.glsl         //
