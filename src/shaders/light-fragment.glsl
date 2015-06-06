@@ -53,6 +53,8 @@ void main() {
   vec3 normal = normalize(unpackNormal(t0.xy)),
        color  = unpackColor(t0.z);
 
+  normal = faceforward(normal, normal, vertex);
+
   float lambert = max(dot(normal, normalize(lightDir)), 0.),
         specular = step(0., lambert) * pow(dot(normal, normalize(lightDir - vertex)), 64.),
         att = lightParameters.x * min(1.,

@@ -153,7 +153,7 @@
 
   gl.enable(gl.DEPTH_TEST);
   gl.depthFunc(gl.LEQUAL);
-  gl.clearColor(0, 0, 0, 1);
+  gl.clearColor(1, 1, 1, 1);
   gl.getExtension('OES_standard_derivatives');
   gl.shaderSource(vsh, document.getElementById('vertex-shader').textContent);
   gl.shaderSource(fsh, document.getElementById('fragment-shader').textContent);

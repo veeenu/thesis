@@ -51,11 +51,11 @@ vec3 getNormal() {
 }
 
 void main() {
-  vec4 color = vec4(0.2, 0.2, 0.8, 1.);
+  vec4 color = vec4(0.4, 0.4, 1.0, 1.);
 
-  float diffuse = max(0., dot(normalize(- position + lightPos), getNormal()));
+  float diffuse = max(0., dot(getNormal(), normalize(lightPos)));
 
-  gl_FragColor = mix(vec4(0., 0., 0., 1.), color, .1 + .9 * diffuse);
+  gl_FragColor = mix(vec4(0., 0., 0., 1.), color, diffuse);
 }
 
 </script>

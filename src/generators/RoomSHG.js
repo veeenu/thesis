@@ -107,7 +107,7 @@ shgRoom.define('Room', null,
       sym: 'Quad',
       points: this.points
     });
-    /*ret.push({
+    ret.push({
       sym: 'Quad',
       points: this.points.map(function(i) {
         return {
@@ -116,7 +116,7 @@ shgRoom.define('Room', null,
           z: i.z
         }
       })
-    });*/
+    });
 
     var ipts = 1 / pts.length;
 

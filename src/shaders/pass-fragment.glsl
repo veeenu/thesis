@@ -63,6 +63,8 @@ struct TTextureInfo {
 };
 
 #define textureBrickI(x, p, notp) ((floor(x)*(p))+max(fract(x)-(notp), 0.0))
+//#define textureBrickB(uv, w, h) (smoothstep(0., w, uv.x) - smoothstep(1. - w, 1., w)) * (smoothstep(0., h, uv.y) - smoothstep(1. - h, 1., uv.y))
+
 TTextureInfo textureBrick(vec3 fvert, vec3 fnorm, float fdepth, vec2 uv, vec3 brickColor) {
 
   const float bW  = .0625,
@@ -86,6 +88,7 @@ TTextureInfo textureBrick(vec3 fvert, vec3 fnorm, float fdepth, vec2 uv, vec3 br
   float brickDamp = 1. + .125 * sin(1.57 * (brU + 1.)) * sin(2. * (brV + 1.));
 
   vec2 uuv = vec2(u, v),
+       nuv = fract(uuv),
        fw = 2. * vec2(fwidth(uuv.x), fwidth(uuv.y)),
        mortarPct = vec2(mWf, mHf),
        brickPct = vec2(1., 1.) - mortarPct,
@@ -95,8 +98,20 @@ TTextureInfo textureBrick(vec3 fvert, vec3 fnorm, float fdepth, vec2 uv, vec3 br
   vec3 color = mix(mortarColor, brickColor * brickDamp, ub.x * ub.y);
 
   // Adaptive box blur filter. Not perfect but quick and somewhat acceptable
-  vec2 ubSample, ubKernel = 4. * fwidth(ub), noiseKernel = fwidth(uv);
+  vec2 ubSample, ubKernel = fwidth(ub), noiseKernel = fwidth(uv);
   float bump = 0., invd = 1. / 11.;
+
+  for(int x = -1; x <= 1; x++) {
+    for(int y = -1; y <= 1; y++) {
+      ubSample = ub + vec2(float(x), float(y)) * ubKernel;
+      //ubSample = textureBrickB(nuv + vec2(float(x), float(y)) * ubKernel, mWf, mHf);
+      bump += .1111111 * ubSample.x * ubSample.y;
+    }
+  }
+
+  bump *= 1.75;
+  /*bump = (smoothstep(0., mWf, nuv.x) - smoothstep(1. - mWf, 1., nuv.x)) *
+         (smoothstep(0., mHf, nuv.y) - smoothstep(1. - mHf, 1., nuv.y)) * 2.;
 
   for(int x = -1; x <= 1; x++) {
     for(int y = -1; y <= 1; y++) {
@@ -105,7 +120,7 @@ TTextureInfo textureBrick(vec3 fvert, vec3 fnorm, float fdepth, vec2 uv, vec3 br
     }
   }
 
-  bump *= 1.75;
+  bump *= 1.75;*/
 
   // Frequency clamping
   bump -= 8. * (1. - smoothstep(0., .00125, max(noiseKernel.x, noiseKernel.y))) * noisev;

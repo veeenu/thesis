@@ -7,6 +7,7 @@ var glMatrix = require('glMatrix'),
     gl       = Context.gl,
     RoomSHG  = require('../generators/RoomSHG.js'),
     PRNG     = require('PRNG'),
+    Timeline = require('Timeline'),
     geom, apt, rng,
     computeGeometry,
     pathFn;
@@ -155,11 +156,11 @@ scene.init = function() {
     p = p.concat(AStar(shuffledNodes[i], shuffledNodes[(i + 1) % I], shuffledNodes));
   p = p.concat(AStar(shuffledNodes[shuffledNodes.length - 1], nodes.first, shuffledNodes));
 
-  p = p.concat({ door: undefined, room: nodes.first });
+  //p = p.concat({ door: undefined, room: nodes.first });
   p = p.concat(AStar(nodes.first, nodes.last, apt.nodes));
 
   p.push({
-    door: apt.monitor.door,
+    //door: apt.monitor.door,
     room: apt.monitor
   });
 
@@ -169,33 +170,30 @@ scene.init = function() {
   geom = computeGeometry(apt, p);
 
   scene.meshes = [ geom.mesh, geom.lampMesh, geom.tableMesh ];
-  //scene.meshes = [ geom.mesh ];
   scene.lights = geom.lights.reduce(function(o, i) {
     for(var k = 0; k < 6; k++)
       o.push(i.x, i.y, i.z);
     
     return o;
   }, []);
-/*  gl.bindBuffer(gl.ARRAY_BUFFER, scene.lightBuf);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(scene.lights), gl.STATIC_DRAW);
-  gl.bindBuffer(gl.ARRAY_BUFFER, null);*/
 
   loadingProgress += loadStep;
   Loader.progress('Rooms', loadingProgress);
 
-  pathFn = (function(path, us) { 
-    
-    var samples = [];
+  pathFn = (function(path) {
 
-    for(var i = 0, I = path.length; i < I - 1; i++) {
-    
+    var timeline = new Timeline(),
+        x = timeline.property('x'),
+        y = timeline.property('y'),
+        z = timeline.property('z'),
+        th = timeline.property('th'),
+        time = 0;
+    for(var i = 0, I = path.length; i < I - 2; i++) {
       var a = path[i], b = path[Math.min(i + 1, I - 1)], c = path[Math.min(i + 2, I - 1)],
-          dx = b.x - a.x,
-          dz = b.z - a.z,
-          arclen = Math.sqrt(dx * dx + dz * dz),
+          dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z,
+          len = Math.sqrt(dx * dx + dz * dz),
           th1 = (Math.atan2(-b.z + a.z, b.x - a.x) + Math.PI * 3 / 2) % (2 * Math.PI),
-          th2 = (Math.atan2(-c.z + b.z, c.x - b.x) + Math.PI * 3 / 2) % (2 * Math.PI),
-          t = 0;
+          th2 = (Math.atan2(-c.z + b.z, c.x - b.x) + Math.PI * 3 / 2) % (2 * Math.PI);
 
       if(i >= I - 4)
         th2 = th1;
@@ -205,36 +203,35 @@ scene.init = function() {
       while(th1 - th2 > Math.PI)
         th1 -= 2 * Math.PI;
 
-      for(var j = 0, J = ~~(arclen / us); j < J; j++) {
-        t = j / J;
-        samples.push({ 
-          x: a.x * (1 - t) + b.x * t,
-          y: a.y * (1 - t) + b.y * t,
-          z: a.z * (1 - t) + b.z * t,
-          th: th1 * (1 - t) + th2 * t
-        });
+      if(i == 0) {
+        x.at(time, a.x, 'no');
+        y.at(time, a.y, 'no');
+        z.at(time, a.z, 'no');
+        th.at(time, th1, 'no');
       }
 
+      time += len * 1000;
+
+      x.at(time, b.x, 'lin');
+      y.at(time, b.y, 'lin');
+      z.at(time, b.z, 'lin');
+      th.at(time, th2, 'lin');
     }
+
+    time += 4000;
+
+    x.at(time, c.x, 'in3');
+    y.at(time, c.y, 'in3');
+    z.at(time, c.z, 'in3');
+    th.at(time, th1, 'in3');
+
+    scene.totalTime = time;
 
     return function(x) {
-
-      var t = x; //x * x * (22 + x * x * (-17 + 4 * x * x)) / 9;
-
-      var I = samples.length,
-          j = t * (I - 1), i = Math.floor(j),
-          d = j - i,
-          a = samples[i], b = samples[(i + 1) % I];
-
-      return {
-        x: a.x * (1 - d) + b.x * d,
-        y: a.y * (1 - d) + b.y * d,
-        z: a.z * (1 - d) + b.z * d,
-        th: a.th * (1 - d) + b.th * d
-      }
-
+      return timeline.update(x);
     }
-  }(geom.path, .025));
+  
+  }(geom.path));
 
   loadingProgress += loadStep;
   Loader.progress('Rooms', loadingProgress);
@@ -243,16 +240,14 @@ scene.init = function() {
   mat4.rotateX(scene.view, scene.view, Math.PI / 2);
   mat4.rotateY(scene.view, scene.view, Math.PI / 2);
 
-  var totalTime = 750 * geom.path.length,
-      arrowidx = scene.meshes.length,
+  var arrowidx = scene.meshes.length,
       wobbleFreq = Math.PI * 2 / 1000;
-
-  scene.totalTime = totalTime;
 
   scene.update = function(timestamp) {
 
-    var px = Math.min(timestamp / totalTime, 1),
-        p = pathFn(isNaN(px) ? 0 : px),
+    var //px = Math.min(timestamp / totalTime, 1),
+        //p = pathFn(isNaN(px) ? 0 : px),
+        p = pathFn(isNaN(timestamp) ? 0 : timestamp),
         x = p.x, y = p.z, angle = p.th,
         wobble = 0, wobbleX = 0, wobbleZ = 0;
 
