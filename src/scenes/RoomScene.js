@@ -45,7 +45,6 @@ scene.init = function() {
   computeGeometry = function(room, path) {
 
     var vertices = room.vertices,
-        normals  = room.normals,
         uvs      = room.uvs,
         extra    = [];
 
@@ -190,7 +189,7 @@ scene.init = function() {
         time = 0;
     for(var i = 0, I = path.length; i < I - 2; i++) {
       var a = path[i], b = path[Math.min(i + 1, I - 1)], c = path[Math.min(i + 2, I - 1)],
-          dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z,
+          dx = b.x - a.x, dz = b.z - a.z,
           len = Math.sqrt(dx * dx + dz * dz),
           th1 = (Math.atan2(-b.z + a.z, b.x - a.x) + Math.PI * 3 / 2) % (2 * Math.PI),
           th2 = (Math.atan2(-c.z + b.z, c.x - b.x) + Math.PI * 3 / 2) % (2 * Math.PI);
@@ -240,8 +239,8 @@ scene.init = function() {
   mat4.rotateX(scene.view, scene.view, Math.PI / 2);
   mat4.rotateY(scene.view, scene.view, Math.PI / 2);
 
-  var arrowidx = scene.meshes.length,
-      wobbleFreq = Math.PI * 2 / 1000;
+  //var arrowidx = scene.meshes.length,
+  //    wobbleFreq = Math.PI * 2 / 1000;
 
   scene.update = function(timestamp) {
 

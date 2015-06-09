@@ -585,7 +585,7 @@ module.exports = {
       monitor: null
     });
 
-    console.log(ret.rooms.map(function(i) { return i.roomCentroid }));
+    //console.log(ret.rooms.map(function(i) { return i.roomCentroid }));
 
     var bbox = points.reduce(function(o, i) {
       o.minX = Math.min(i.x, o.minX);

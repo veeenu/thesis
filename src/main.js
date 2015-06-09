@@ -7,15 +7,19 @@ var Context  = require('Context'),
     Stats    = require('stats-js'),
     mainScene = require('./scenes/MainScene.js'),
     roomScene = require('./scenes/RoomScene.js'),
-    stats = new Stats();
+    stats;
 
-stats.setMode(0);
+if(process.env.NODE_ENV !== 'production') {
+  stats = new Stats();
 
-stats.domElement.style.position = 'absolute';
-stats.domElement.style.right = '1rem';
-stats.domElement.style.top = '1rem';
+  stats.setMode(0);
 
-canvas.parentNode.appendChild(stats.domElement);
+  stats.domElement.style.position = 'absolute';
+  stats.domElement.style.right = '1rem';
+  stats.domElement.style.top = '1rem';
+
+  canvas.parentNode.appendChild(stats.domElement);
+}
 
 var loadingStatus = 0, loadingProgress = 0;
 var t0 = NaN;
@@ -32,6 +36,7 @@ Loader.subscribe('Rooms', function() {
 
 Loader.subscribe('City', function() {
   console.log('Loading complete');
+  Loader.remove();
   loadingStatus = 1;
   t0 = NaN;
 
@@ -52,25 +57,27 @@ function loadingLoop() {
   Loader.render();
 }
 
-var TS = 0, paused = false;
+if(process.env.NODE_ENV !== 'production') {
+  var TS = 0, paused = false;
 
-document.addEventListener('keydown', function(evt) {
-  if(evt.keyCode === 32) {
+  document.addEventListener('keydown', function(evt) {
+    if(evt.keyCode === 32) {
+      evt.preventDefault();
+      evt.stopPropagation();
+      paused = !paused;
+    }
+  });
+
+  document.addEventListener('wheel', function(evt) {
     evt.preventDefault();
     evt.stopPropagation();
-    paused = !paused;
-  }
-});
+    TS += evt.deltaY;
 
-document.addEventListener('wheel', function(evt) {
-  evt.preventDefault();
-  evt.stopPropagation();
-  TS += evt.deltaY;
+    TS = Math.max(TS, 0);
+  })
 
-  TS = Math.max(TS, 0);
-})
-
-window.JMP = function(d) { TS = d; }
+  window.JMP = function(d) { TS = d; }
+}
 
 /* dev */
 
@@ -109,7 +116,8 @@ function sceneLoop(ts) {
     console.log('WARN', ts - sceneLoop.t1);
   }
 
-  stats.begin();
+  if(process.env.NODE_ENV !== 'production')
+    stats.begin();
 
   var dt = (ts - sceneLoop.t0);
 
@@ -130,7 +138,8 @@ function sceneLoop(ts) {
     }
   }
 
-  stats.end();
+  if(process.env.NODE_ENV !== 'production')
+    stats.end();
 
   requestAnimationFrame(sceneLoop);
 

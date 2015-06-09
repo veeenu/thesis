@@ -243,7 +243,6 @@ programPass.deactivate = function() {
   gl.disable(gl.DEPTH_TEST);
 }
 
-var aaaa = false;
 programLight.activate = function(scene) {
   gl.useProgram(programLight);
   gl.bindFramebuffer(gl.FRAMEBUFFER, lightFramebuffer);

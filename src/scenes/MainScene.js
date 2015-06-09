@@ -103,20 +103,21 @@ var city = new City(0),
       fixedMeshes: []
     };
 
-var log = document.createElement('pre');
-log.style.background = 'white';
-log.style.color = 'black';
-log.style.position = 'absolute';
-log.style.right = '1rem';
-log.style.top = '7rem';
+if(process.env.NODE_ENV !== 'production') {
+  var log = document.createElement('pre');
+  log.style.background = 'white';
+  log.style.color = 'black';
+  log.style.position = 'absolute';
+  log.style.right = '1rem';
+  log.style.top = '7rem';
 
-Context.canvas.parentElement.appendChild(log);
+  Context.canvas.parentElement.appendChild(log);
+}
 
 (function() {
   var vertices = [],
       uvs      = [],
       extra    = [],
-      block,
       blocks = [],
       lights = [],
       qtree;
@@ -392,9 +393,11 @@ scene.update = function(timestamp) {
     scene.fade = 1;
   }
 
-  log.textContent = [x,y,z,scene.fade].map(function(i) { return i.toFixed(2) }).join(', ') + ' ' +
-    (alpha).toFixed(2) + ' ' + 
-    (beta).toFixed(2);
+  if(process.env.NODE_ENV !== 'production') {
+    log.textContent = [x,y,z,scene.fade].map(function(i) { return i.toFixed(2) }).join(', ') + ' ' +
+      (alpha).toFixed(2) + ' ' + 
+      (beta).toFixed(2);
+  }
   //////////////////////////////////////////////////////////////////////////////
 
   mat4.identity(scene.view);

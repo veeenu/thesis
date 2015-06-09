@@ -50,5 +50,8 @@ module.exports = {
       dict[i].li.style.backgroundImage = a;
 
     }
+  },
+  remove: function() {
+    Context.canvas.parentNode.removeChild(log);
   }
 }

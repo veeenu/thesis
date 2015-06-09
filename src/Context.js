@@ -1,8 +1,14 @@
 var canvas   = document.getElementById('thesis-canvas'),
     gl       = canvas.getContext('webgl'),
-    bcr      = canvas.getBoundingClientRect(),
-    w        = bcr.width,
-    h        = bcr.height;
+    w, h;
+
+if(process.env.NODE_ENV !== 'production') {
+  bcr      = canvas.getBoundingClientRect(),
+  w        = bcr.width,
+  h        = bcr.height;
+} else {
+  w = innerWidth, h = innerHeight;
+}
 
 canvas.width  = w;
 canvas.height = h;

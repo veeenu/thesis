@@ -216,7 +216,7 @@ shg.define('Facade', null, function() {
       len = Math.sqrt(dx * dx + dz * dz),
       t  = dy / shg.UVSCALE,
       s  = t * len / dy,
-      bs = null, norm = this.normal;
+      bs = null;
 
   this.uvs = [
     { s: 0, t: t },
@@ -391,8 +391,7 @@ shg.define('Quad', null, (function() {
 
   return function() {
     
-    var vertices, uvs,
-        normal, texID,
+    var vertices, uvs, texID,
         u0, u1, u2, u3,
         p0, p1, p2, p3, ps = this.points;
 
