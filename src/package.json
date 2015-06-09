@@ -4,12 +4,13 @@
   "description": "",
   "scripts": {
     "__": "nodemon --delay 0 -e js,glsl -x npm run build",
-    "start": "watchify -dv -t aliasify -t brfs -e main.js -o ../_site/build.js",
-    "build": "browserify -t aliasify -t brfs -e main.js | uglifyjs -mc --screw-ie8 -o ../build.js",
+    "start": "watchify -dv -t aliasify -t brfs -t [ envify ] -e main.js -o ../_site/build.js",
+    "build": "browserify -t aliasify -t brfs -t [ envify ] -e main.js | uglifyjs -mc --screw-ie8 -o ../build.js",
+    "build-final": "browserify -t aliasify -t brfs -t [ envify ]-e main.js | uglifyjs -mc --screw-ie8 -o ../build.js",
+    "glslmin": "mkdir -p shaders-min; for i in shaders/*.glsl; do cat $i | glsl-transition-minify > shaders-min/`basename $i`; done",
     "disc": "browserify --full-paths -t aliasify -t brfs $PWD/main.js | uglifyjs --screw-ie8 -o ../build.js && discify ../build.js > ../report.html",
     "deploy": "npm run build && cd .. && git add --all . && git commit -am . && git push -u origin gh-pages",
-    "warnings": "for i in `find . -name '*.js' -and -not -ipath '*/node_modules/*'`; do echo ${i}': '; cat $i | uglifyjs -mc -o /dev/null; done",
-    "env": "env"
+    "warnings": "for i in `find . -name '*.js' -and -not -ipath '*/node_modules/*'`; do echo ${i}': '; cat $i | uglifyjs -mc -o /dev/null; done"
   },
   "dependencies": {
     "brfs": "^1.4.0",
@@ -23,7 +24,9 @@
   },
   "devDependencies": {
     "aliasify": "^1.5.1",
+    "envify": "^3.4.0",
     "glslify": "^2.1.2",
+    "glslmin": "0.0.0",
     "nodemon": "^1.3.7",
     "watchify": "^3.1.1"
   },

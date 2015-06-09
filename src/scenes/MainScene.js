@@ -322,7 +322,7 @@ gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, Context.w, Context.h, 0, gl.RGBA, gl.UN
 
 gl.bindTexture(gl.TEXTURE_2D, null);
 
-var t = 0., pushFn = function(o, i) { o.push(i); return o; },
+var pushFn = function(o, i) { o.push(i); return o; },
     _x = 2.71, _y = .38, _z = 1.31, _alpha = 0.26, _beta = 0.79,
     dx = 0, dz = 0;
 
@@ -362,15 +362,13 @@ var timeline = new Timeline();
 
 }());
 
-window.followTimeline = true;
-
-Context.canvas.addEventListener('click', function(evt) { if(evt.which === 2) window.followTimeline = !window.followTimeline });
+var followTimeline = true;
 
 scene.update = function(timestamp) {
   
   var x, y, z, alpha, beta;
 
-  if(window.followTimeline) {
+  if(followTimeline) {
 
     var state = timeline.update(timestamp);
 
@@ -419,67 +417,73 @@ scene.update = function(timestamp) {
     return o;
   }, []);
 
-  log.textContent += "\nTime: " + timestamp.toFixed(2);
-  log.textContent += "\nVertices: " + scene.meshes.reduce(function(o, i) {
-    return o + i.count;
-  }, 0);
+  if(process.env.NODE_ENV !== 'production') {
+    log.textContent += "\nTime: " + timestamp.toFixed(2);
+    log.textContent += "\nVertices: " + scene.meshes.reduce(function(o, i) {
+      return o + i.count;
+    }, 0);
 
-  t += .001;
+    //t += .001;
 
-  log.textContent += ", Lights: " + scene.lights.length / 18;
+    log.textContent += ", Lights: " + scene.lights.length / 18;
+  }
 
 }
-// 87 65 83 68;
 
-document.body.addEventListener('keydown', function(evt) {
+if(process.env.NODE_ENV !== 'production') {
 
-  switch(evt.which) {
-    case 87: dz = -.008; break;
-    case 83: dz = .008; break;
-    case 65: dx = -.008; break;
-    case 68: dx = .008; break;
-  }
+  Context.canvas.addEventListener('click', function(evt) { if(evt.which === 2) followTimeline = !followTimeline });
 
-});
+  document.body.addEventListener('keydown', function(evt) {
 
-document.body.addEventListener('keyup', function(evt) {
-
-  switch(evt.which) {
-    case 87: dz = 0; break;
-    case 83: dz = 0; break;
-    case 65: dx = 0; break;
-    case 68: dx = 0; break;
-  }
-
-});
-
-Context.canvas.addEventListener('mousedown', function(evt) {
-
-  var onMove, onUp, x0 = evt.clientX, y0 = evt.clientY;
-
-  onMove = function(evt) {
-    var dx = evt.clientX - x0,
-        dy = evt.clientY - y0;
-
-    _alpha += dy * .005;
-    _beta += dx * .005;
-
-    x0 = evt.clientX;
-    y0 = evt.clientY;
-
-    log.textContent = [_x,_y,_z].map(function(i) { return i.toFixed(2) }).join(', ') + ' ' +
-      (_alpha).toFixed(2) + ' ' + 
-      (_beta).toFixed(2);
+    switch(evt.which) {
+      case 87: dz = -.008; break;
+      case 83: dz = .008; break;
+      case 65: dx = -.008; break;
+      case 68: dx = .008; break;
     }
 
-  onUp = function(evt) {
-    Context.canvas.removeEventListener('mousemove', onMove);
-    Context.canvas.removeEventListener('mouseup', onUp);
-  }
+  });
 
-  Context.canvas.addEventListener('mousemove', onMove);
-  Context.canvas.addEventListener('mouseup', onUp);
+  document.body.addEventListener('keyup', function(evt) {
 
-});
+    switch(evt.which) {
+      case 87: dz = 0; break;
+      case 83: dz = 0; break;
+      case 65: dx = 0; break;
+      case 68: dx = 0; break;
+    }
+
+  });
+
+  Context.canvas.addEventListener('mousedown', function(evt) {
+
+    var onMove, onUp, x0 = evt.clientX, y0 = evt.clientY;
+
+    onMove = function(evt) {
+      var dx = evt.clientX - x0,
+          dy = evt.clientY - y0;
+
+      _alpha += dy * .005;
+      _beta += dx * .005;
+
+      x0 = evt.clientX;
+      y0 = evt.clientY;
+
+      log.textContent = [_x,_y,_z].map(function(i) { return i.toFixed(2) }).join(', ') + ' ' +
+        (_alpha).toFixed(2) + ' ' + 
+        (_beta).toFixed(2);
+      }
+
+    onUp = function(evt) {
+      Context.canvas.removeEventListener('mousemove', onMove);
+      Context.canvas.removeEventListener('mouseup', onUp);
+    }
+
+    Context.canvas.addEventListener('mousemove', onMove);
+    Context.canvas.addEventListener('mouseup', onUp);
+
+  });
+}
 
 module.exports = scene;

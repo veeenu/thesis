@@ -1,12 +1,19 @@
-#extension GL_OES_standard_derivatives : require
+---
+layout: proto
+title: "Procedural textures - screenshots"
+---
+<script type='application/x-vertex-shader' id='vertex-shader'>
+attribute vec2 pos;
 
+void main() {
+
+  gl_Position = vec4(2. * pos - 1., 1., 1.);
+}
+
+</script>
+<script type='application/x-fragment-shader' id='fragment-shader'> 
+#extension GL_OES_standard_derivatives: require
 precision highp float;
-
-uniform sampler2D mainScene, roomScene;
-
-varying vec4 vPosition, clipPosition;
-varying vec3 texUV, vExtra;
-
 ////////////////////////////////////////////////////////////////////////////////
 // https://github.com/ashima/webgl-noise/blob/master/src/noise2D.glsl         //
 ////////////////////////////////////////////////////////////////////////////////
@@ -221,11 +228,16 @@ vec3 textureIntersection(vec2 uuv) {
       );
 
   float l = length(nuv),
-        f = min(fk.x, fk.y),
+        f = max(fk.x, fk.y),
         q = (
+              smoothstep(padding - f, padding, l) -
+              smoothstep(padding + tapeW - f, padding + tapeW, l)
+            ) * step(.5, uuv.y) +
+            (
               smoothstep(padding, padding + f, l) -
               smoothstep(padding + tapeW, padding + tapeW + f, l)
-            );
+            ) * (1. - step(.5, uuv.y))
+            ;
 
   return mix(asphaltColor * noiseA, stripColor * noiseS, q);
 }
@@ -256,62 +268,36 @@ vec3 textureWood(vec3 str) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-float packColor(vec3 v) {
-  const float u = 255. / 256.;
-
-  return fract(v.x * u) + floor(v.y * u * 255.) + floor(v.z * u * 255.) * 255.;
-}
-
-vec2 packNormal(in vec3 normal)
-{
-    const float SCALE = 1.7777;
-    float scalar1 = (normal.z + 1.0) * (SCALE * 2.0);
-    return normal.xy / scalar1 + 0.5;
-}
-
 void main() {
-
+  vec2 v  = gl_FragCoord.xy / 512.,
+       uv = mod(v, 1.);
+  
   TTextureInfo ti;
   vec3 color, normal;
 
-  float depth = clipPosition.z / clipPosition.w;
-
-  //normal = normalize(faceforward(vNormal, gl_FragCoord.xyz, vNormal));
-  //normal = normalize(vNormal);
-  normal = cross(dFdx(vPosition.xyz), dFdy(vPosition.xyz));
-
-  if(texUV.z > 31.1) {
-    color = texture2D(mainScene, texUV.xy).rgb;
-  }
-  else if(texUV.z > 7.1) {
-    color = textureIntersection(mod(texUV.xy, 1.));
-  }
-  else if(texUV.z > 6.1) {
-    color = textureWood(8. * (vExtra - .5));
-  }
-  else if(texUV.z > 5.1) {
-    ti = textureBrick(vPosition.xyz, normal, gl_FragCoord.z, mod(texUV.xy, 1.), vExtra);
+  if(v.x >= 4.) {
+    ti = textureBrick(gl_FragCoord.xyz, vec3(0.,0.,1.), 
+                      gl_FragCoord.z, mod(uv * .25, 1.),vec3(.3));
     color = ti.color;
     normal = ti.normal;
-  }
-  else if(texUV.z > 4.1) {
-    ti = textureWindow(vPosition.xyz, normal, gl_FragCoord.z, mod(texUV.yx, 1.), vec3(1., 1., .7));
+  } else if(v.x >= 3.) {
+    ti = textureWindow(gl_FragCoord.xyz, vec3(0.,0.,1.), gl_FragCoord.z, uv, vec3(1., 1., .7));
     color = ti.color;
     normal = ti.normal;
+  } else if(v.x < 3. && v.y > 1.) {
+    color = textureWood(8. * vec3(uv, 8. * floor(v.x)).xzy - 4.);
+  } else if(v.x >= 2.) {
+    color = textureIntersection(uv);
+  } else if(v.x >= 1.) {
+    color = textureRoad(uv.yx);
+  } else {
+    color = textureAsphalt(uv);
   }
-  else if(texUV.z > 3.1) {
-    ti = textureWindow(vPosition.xyz, normal, gl_FragCoord.z, mod(texUV.yx, 1.), vec3(.3, .3, .3));
-    color = ti.color;
-    normal = ti.normal;
-  }
-  else if(texUV.z > 2.1)
-    color = textureAsphalt(mod(texUV.yx, 1.));
-  else if(texUV.z > 1.1)
-    color = textureRoad(mod(texUV.xy, 1.));
-  else
-    color = textureAsphalt(mod(texUV.yx, 1.));
 
-  color = clamp(.2 * color, 0., 1.);
+  if(v.y >= 1. && v.x >= 3.)
+    color = normalize(normal * .5 + .5);
 
-  gl_FragColor = vec4(packNormal(normalize(normal)), packColor(color), depth);
+  gl_FragColor = vec4(color, 1.);
 }
+
+</script>

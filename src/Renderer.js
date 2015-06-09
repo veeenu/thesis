@@ -21,14 +21,14 @@ var programPass         = gl.createProgram(),
     vsrcPass, vsrcLight, fsrcPass, fsrcLight, fsrcSSAO,
     vsrcPassthrough, fsrcPassthrough;
 
-vsrcPass          = fs.readFileSync(__dirname + '/shaders/pass-vertex.glsl', 'utf-8');
-fsrcPass          = fs.readFileSync(__dirname + '/shaders/pass-fragment.glsl', 'utf-8');
-vsrcLight         = fs.readFileSync(__dirname + '/shaders/light-vertex.glsl', 'utf-8');
-fsrcLight         = fs.readFileSync(__dirname + '/shaders/light-fragment.glsl', 'utf-8');
-vsrcSSAO          = fs.readFileSync(__dirname + '/shaders/ssao-vertex.glsl', 'utf-8');
-fsrcSSAO          = fs.readFileSync(__dirname + '/shaders/ssao-fragment.glsl', 'utf-8');
-vsrcPassthrough   = fs.readFileSync(__dirname + '/shaders/pt-vertex.glsl', 'utf-8');
-fsrcPassthrough   = fs.readFileSync(__dirname + '/shaders/pt-fragment.glsl', 'utf-8');
+vsrcPass          = fs.readFileSync(__dirname + '/shaders-min/pass-vertex.glsl', 'utf-8');
+fsrcPass          = fs.readFileSync(__dirname + '/shaders-min/pass-fragment.glsl', 'utf-8');
+vsrcLight         = fs.readFileSync(__dirname + '/shaders-min/light-vertex.glsl', 'utf-8');
+fsrcLight         = fs.readFileSync(__dirname + '/shaders-min/light-fragment.glsl', 'utf-8');
+vsrcSSAO          = fs.readFileSync(__dirname + '/shaders-min/ssao-vertex.glsl', 'utf-8');
+fsrcSSAO          = fs.readFileSync(__dirname + '/shaders-min/ssao-fragment.glsl', 'utf-8');
+vsrcPassthrough   = fs.readFileSync(__dirname + '/shaders-min/pt-vertex.glsl', 'utf-8');
+fsrcPassthrough   = fs.readFileSync(__dirname + '/shaders-min/pt-fragment.glsl', 'utf-8');
 
 gl.clearColor(0, 0, 0, 0);
 gl.depthFunc(gl.LESS);
