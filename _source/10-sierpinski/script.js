@@ -77,7 +77,7 @@
           ctx.lineTo(points[2], points[3]);
           ctx.lineTo(points[4], points[5]);
           ctx.closePath();
-          ctx.stroke();
+          ctx.fill();
         }
       }
     },

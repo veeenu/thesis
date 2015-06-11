@@ -151,8 +151,10 @@ scene.init = function() {
       
   shuffledNodes.sort(function() { var ret = rng.random() - .5; return ret; });
 
-  for(var i = 0, I = apt.nodes.length; i < I - 1; i++)
-    p = p.concat(AStar(shuffledNodes[i], shuffledNodes[(i + 1) % I], shuffledNodes));
+  //for(var i = 0, I = apt.nodes.length; i < I - 1; i++)
+  //  p = p.concat(AStar(shuffledNodes[i], shuffledNodes[(i + 1) % I], shuffledNodes));
+  for(var i = 0, I = apt.nodes.length; i < I - 1; i += 2)
+    p = p.concat(AStar(shuffledNodes[i], shuffledNodes[(i + 2) % I], shuffledNodes));
   p = p.concat(AStar(shuffledNodes[shuffledNodes.length - 1], nodes.first, shuffledNodes));
 
   //p = p.concat({ door: undefined, room: nodes.first });
@@ -186,13 +188,16 @@ scene.init = function() {
         y = timeline.property('y'),
         z = timeline.property('z'),
         th = timeline.property('th'),
-        time = 0;
+        time = 0, th1 = NaN;
     for(var i = 0, I = path.length; i < I - 2; i++) {
       var a = path[i], b = path[Math.min(i + 1, I - 1)], c = path[Math.min(i + 2, I - 1)],
           dx = b.x - a.x, dz = b.z - a.z,
           len = Math.sqrt(dx * dx + dz * dz),
-          th1 = (Math.atan2(-b.z + a.z, b.x - a.x) + Math.PI * 3 / 2) % (2 * Math.PI),
+          //th1 = (Math.atan2(-b.z + a.z, b.x - a.x) + Math.PI * 3 / 2) % (2 * Math.PI),
           th2 = (Math.atan2(-c.z + b.z, c.x - b.x) + Math.PI * 3 / 2) % (2 * Math.PI);
+
+      if(isNaN(th1))
+        th1 = th2;
 
       if(i >= I - 4)
         th2 = th1;
@@ -215,6 +220,7 @@ scene.init = function() {
       y.at(time, b.y, 'lin');
       z.at(time, b.z, 'lin');
       th.at(time, th2, 'lin');
+      th1 = th2;
     }
 
     time += 4000;
